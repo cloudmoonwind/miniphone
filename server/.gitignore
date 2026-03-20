@@ -1,0 +1,11 @@
+# 忽略依赖文件夹
+node_modules
+
+# 忽略环境变量文件，这是最重要的！
+.env
+
+# 忽略日志和临时文件
+*.log
+
+# 忽略含 API key 的配置文件（换电脑需手动复制）
+data/presets.json

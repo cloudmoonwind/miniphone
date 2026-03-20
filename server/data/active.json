@@ -1,0 +1,20 @@
+{
+  "primaryPresetId": "preset_1773397452854_9csr",
+  "activePresetId": "preset_1773397452854_9csr",
+  "activeMapId": null,
+  "timestampSettings": {
+    "sendUserTimestamp": true,
+    "sendCharTimestamp": false,
+    "syncConfirmed": false,
+    "timestampFormat": "metadata"
+  },
+  "activePromptPresetId": "ppr_default",
+  "featurePresets": {
+    "summaries": null,
+    "dafu": null,
+    "life": null
+  },
+  "summaryPrompts": {
+    "segment": ""
+  }
+}

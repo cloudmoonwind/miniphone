@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const icons = require\\(''d:/Projects/miniphone/client/node_modules/lucide-react/dist/cjs/lucide-react.cjs''\\); const toCheck = [''Drama'',''Dice5'',''Cat'',''FileText'',''PenSquare'',''PiggyBank'',''BookCopy'',''SlidersHorizontal'',''Bot'',''Users2'',''Scroll'',''CloudSun'',''Gamepad2'',''Briefcase'',''Palette'',''ListChecks'',''Wallet'',''ImageIcon'']; toCheck.forEach\\(n => console.log\\(n, n in icons ? ''OK'' : ''MISSING''\\)\\);\")",
+      "Bash(node -e \"const icons = require\\(''d:/Projects/miniphone/client/node_modules/lucide-react/dist/cjs/lucide-react.cjs''\\); const toCheck = [''Film'',''Clapperboard'',''Theater'',''Wand2'',''Sparkles'',''Star'',''Zap'',''Feather'']; toCheck.forEach\\(n => console.log\\(n, n in icons ? ''OK'' : ''MISSING''\\)\\);\")"
+    ]
+  }
+}

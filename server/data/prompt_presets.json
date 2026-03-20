@@ -1,0 +1,124 @@
+[
+  {
+    "id": "ppr_default",
+    "name": "默认预设",
+    "type": "preset",
+    "contextItems": [
+      {
+        "entryId": "sys-syspre",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null,
+        "content": null
+      },
+      {
+        "entryId": "sys-tools",
+        "enabled": false,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null,
+        "content": null
+      },
+      {
+        "entryId": "sys-wbpre",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null
+      },
+      {
+        "entryId": "sys-char-core",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null
+      },
+      {
+        "entryId": "sys-char-desc",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null,
+        "content": null
+      },
+      {
+        "entryId": "sys-char-sample",
+        "enabled": false,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null,
+        "content": null
+      },
+      {
+        "entryId": "sys-user-desc",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null
+      },
+      {
+        "entryId": "sys-memories",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null
+      },
+      {
+        "entryId": "sys-wbpost",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null
+      },
+      {
+        "entryId": "sys-scene",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null,
+        "content": null
+      },
+      {
+        "entryId": "sys-life",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null,
+        "content": null
+      },
+      {
+        "entryId": "sys-dreams",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null,
+        "content": null
+      },
+      {
+        "entryId": "sys-summaries",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null
+      },
+      {
+        "entryId": "sys-history",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": 20
+      },
+      {
+        "entryId": "sys-syspost",
+        "enabled": true,
+        "roleOverride": null,
+        "maxTokens": null,
+        "historyCount": null,
+        "content": null
+      }
+    ],
+    "createdAt": "2026-03-16T00:00:00.000Z",
+    "updatedAt": "2026-03-17T05:49:47.365Z"
+  }
+]

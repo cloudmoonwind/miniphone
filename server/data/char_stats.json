@@ -1,0 +1,15 @@
+[
+  {
+    "id": "cst_ally_init",
+    "charId": "char_legacy_ally",
+    "stats": {
+      "mood": 65,
+      "energy": 72,
+      "relationship": 55,
+      "trust": 48,
+      "stress": 38
+    },
+    "createdAt": "2026-03-16T00:00:00.000Z",
+    "updatedAt": "2026-03-16T00:00:00.000Z"
+  }
+]

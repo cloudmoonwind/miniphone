@@ -1,0 +1,192 @@
+[
+  {
+    "id": "sum_1773467638965_2dgk",
+    "charId": "char_legacy_ally",
+    "personaId": null,
+    "type": "conversation",
+    "level": "segment",
+    "sourceIds": [
+      "msg_1773400040823_rws2",
+      "msg_1773400040826_g1zg"
+    ],
+    "content": "",
+    "period": {
+      "from": "2026-03-13T11:07:20.823Z",
+      "to": "2026-03-13T11:07:20.826Z"
+    },
+    "importance": 5,
+    "keywords": [],
+    "createdAt": "2026-03-14T05:53:58.965Z"
+  },
+  {
+    "id": "sum_1773467641991_wus5",
+    "charId": "char_legacy_ally",
+    "personaId": null,
+    "type": "conversation",
+    "level": "segment",
+    "sourceIds": [
+      "msg_1773397519169_ur2w",
+      "msg_1773397519171_kzgu"
+    ],
+    "content": "",
+    "period": {
+      "from": "2026-03-13T10:25:19.169Z",
+      "to": "2026-03-13T10:25:19.171Z"
+    },
+    "importance": 5,
+    "keywords": [],
+    "createdAt": "2026-03-14T05:54:01.991Z"
+  },
+  {
+    "id": "sum_1773467644085_qk0x",
+    "charId": "char_legacy_ally",
+    "personaId": null,
+    "type": "conversation",
+    "level": "segment",
+    "sourceIds": [
+      "msg_1773463771645_n36k",
+      "msg_1773465005350_d3hz"
+    ],
+    "content": "",
+    "period": {
+      "from": "2026-03-14T04:49:31.645Z",
+      "to": "2026-03-14T05:10:05.350Z"
+    },
+    "importance": 5,
+    "keywords": [],
+    "createdAt": "2026-03-14T05:54:04.086Z"
+  },
+  {
+    "id": "sum_1773467663407_ekuq",
+    "charId": "char_legacy_ally",
+    "personaId": null,
+    "type": "conversation",
+    "level": "segment",
+    "sourceIds": [
+      "msg_1773461188602_4b3s",
+      "msg_1773461226263_0g0t",
+      "msg_1773462004632_qvvb",
+      "msg_1773462024082_6rbm",
+      "msg_1773462094662_2xsc",
+      "msg_1773462178618_5ufs",
+      "msg_1773462460458_main",
+      "msg_1773462475796_ilpj",
+      "msg_1773462539442_gjzk",
+      "msg_1773462620308_3rkh",
+      "msg_1773463660075_6qr0"
+    ],
+    "content": "",
+    "period": {
+      "from": "2026-03-14T04:06:28.600Z",
+      "to": "2026-03-14T04:47:40.075Z"
+    },
+    "importance": 5,
+    "keywords": [],
+    "createdAt": "2026-03-14T05:54:23.408Z"
+  },
+  {
+    "id": "sum_1773468369883_xyyp",
+    "charId": "char_legacy_ally",
+    "personaId": null,
+    "type": "conversation",
+    "level": "segment",
+    "sourceIds": [
+      "msg_1773461188602_4b3s",
+      "msg_1773461226263_0g0t",
+      "msg_1773462004632_qvvb",
+      "msg_1773462024082_6rbm",
+      "msg_1773462094662_2xsc",
+      "msg_1773462178618_5ufs",
+      "msg_1773462460458_main",
+      "msg_1773462475796_ilpj",
+      "msg_1773462539442_gjzk",
+      "msg_1773462620308_3rkh",
+      "msg_1773463660075_6qr0"
+    ],
+    "content": "",
+    "period": {
+      "from": "2026-03-14T04:06:28.600Z",
+      "to": "2026-03-14T04:47:40.075Z"
+    },
+    "importance": 5,
+    "keywords": [],
+    "createdAt": "2026-03-14T06:06:09.883Z"
+  },
+  {
+    "id": "sum_1773474671426_xhvf",
+    "charId": "char_legacy_ally",
+    "personaId": null,
+    "type": "day",
+    "level": "day",
+    "date": "2026-03-14",
+    "sourceIds": [
+      "msg_1773461188602_4b3s",
+      "msg_1773461226263_0g0t",
+      "msg_1773462004632_qvvb",
+      "msg_1773462024082_6rbm",
+      "msg_1773462094662_2xsc",
+      "msg_1773462178618_5ufs",
+      "msg_1773462460458_main",
+      "msg_1773462475796_ilpj",
+      "msg_1773462539442_gjzk",
+      "msg_1773462620308_3rkh",
+      "msg_1773463660075_6qr0",
+      "msg_1773463771645_n36k",
+      "msg_1773465005350_d3hz",
+      "msg_1773465536082_wunv",
+      "msg_1773465572506_dpra",
+      "msg_1773465591682_jmq0",
+      "msg_1773466694867_fw83",
+      "msg_1773467013079_pjjt",
+      "msg_1773467106182_2kan",
+      "msg_1773467122157_cu3k",
+      "msg_1773467162409_x09j",
+      "msg_1773467248458_kl8j",
+      "msg_1773474631920_bqr2"
+    ],
+    "content": "",
+    "period": {
+      "from": "2026-03-14T04:06:28.600Z",
+      "to": "2026-03-14T07:50:31.919Z"
+    },
+    "importance": 5,
+    "keywords": [],
+    "createdAt": "2026-03-14T07:51:11.426Z"
+  },
+  {
+    "id": "sum_1773478937797_c9r6",
+    "charId": "char_legacy_ally",
+    "personaId": null,
+    "type": "conversation",
+    "level": "segment",
+    "sourceIds": [
+      "msg_1773478883017_1afc"
+    ],
+    "content": "",
+    "period": {
+      "from": "2026-03-14T09:01:23.017Z",
+      "to": "2026-03-14T09:01:23.017Z"
+    },
+    "importance": 5,
+    "keywords": [],
+    "createdAt": "2026-03-14T09:02:17.798Z"
+  },
+  {
+    "id": "sum_1773827690874_shta",
+    "charId": "char_legacy_ally",
+    "personaId": null,
+    "type": "conversation",
+    "level": "segment",
+    "sourceIds": [
+      "msg_1773827661659_zssj"
+    ],
+    "content": "",
+    "period": {
+      "from": "2026-03-18T09:54:21.659Z",
+      "to": "2026-03-18T09:54:21.659Z"
+    },
+    "importance": 5,
+    "keywords": [],
+    "createdAt": "2026-03-18T09:54:50.875Z"
+  }
+]
