@@ -38,10 +38,10 @@ router.get('/books', async (req, res) => {
 
 router.post('/books', async (req, res) => {
   try {
-    const { name, description = '', charId = null } = req.body;
+    const { name, description = '', charId = null, scanDepth = 20 } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: '名称不能为空' });
     const book = await wbBookStore.create({
-      id: genId('wb'), name: name.trim(), description, charId, enabled: true,
+      id: genId('wb'), name: name.trim(), description, charId, enabled: true, scanDepth,
     });
     res.status(201).json(book);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -86,6 +86,8 @@ router.post('/entries', async (req, res) => {
       // insertionPosition: "system-top" | "system-bottom" | "before-chat" | "after-chat"
       insertionPosition = 'system-bottom',
       priority = 100,
+      noRecurse = false,
+      noFurtherRecurse = false,
       // eventConfig 仅用于 event-* 模式
       eventConfig = null,
     } = req.body;
@@ -93,6 +95,7 @@ router.post('/entries', async (req, res) => {
     const entry = await wbEntryStore.create({
       id: genId('wbe'), bookId, name, content, enabled,
       keywords, activationMode, insertionPosition, priority,
+      noRecurse, noFurtherRecurse,
       eventConfig: eventConfig || null,
     });
     res.status(201).json(entry);

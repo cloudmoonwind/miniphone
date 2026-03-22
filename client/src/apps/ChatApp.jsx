@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ChevronLeft, Send, AlertCircle, RefreshCw, Pencil, X, Check, Square,
   SlidersHorizontal, ChevronDown, ChevronRight, Trash2, Copy,
-  Calendar, FileText, ToggleLeft, ToggleRight, Bot,
+  Calendar, FileText, ToggleLeft, ToggleRight, Bot, MessageSquare, User,
 } from 'lucide-react';
 
 // 消息合并分隔符（与 server/services/context.js 保持一致）
 const MSG_SEP = '\u001E';
 import { AnimatePresence, motion } from 'framer-motion';
+import Avatar from '../components/Avatar.jsx';
 
 // --- 呼吸灯动点 ---
 const BreathingDots = () => {
@@ -70,7 +71,9 @@ const ChatNoChar = ({ onBack }) => (
       <span className="ml-2 font-bold">信息</span>
     </div>
     <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-6">
-      <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center text-3xl">💬</div>
+      <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center">
+        <MessageSquare size={32} className="text-purple-300" />
+      </div>
       <p className="text-gray-700 font-semibold">还没有选择角色</p>
       <p className="text-gray-400 text-sm leading-relaxed">请先去「结缘」选择一个角色，<br />再点击「发消息」开始聊天</p>
       <button onClick={onBack}
@@ -191,7 +194,7 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
   const charId     = initialChar.id;
   const MSGS_KEY   = `ics_msgs_${charId}`;
   const charName   = initialChar.name;
-  const charAvatar = initialChar.avatar || '✨';
+  const charAvatarEl = (size) => <Avatar value={initialChar.avatar} name={charName} size={size} rounded />;
 
   // ── 消息 ──
   const [allMessages, setAllMessages]   = useState([]);
@@ -547,11 +550,14 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
 
   // ── 删除消息 ──
   const deleteMessages = async (ids) => {
-    setAllMessages(prev => prev.filter(m => !ids.has(m.id)));
-    const realIds = [...ids].filter(id => !String(id).startsWith('tmp-') && !String(id).startsWith('err-'));
-    await Promise.all(realIds.map(id =>
-      fetch(`/api/messages/${id}`, { method: 'DELETE' }).catch(() => {})
-    ));
+    // 规范化：去除 MSG_SEP 子消息的合成ID后缀（如 msg_sub_0 → msg）
+    const normalIds = new Set([...ids].map(id => String(id).replace(/_sub_\d+$/, '')));
+    setAllMessages(prev => prev.filter(m => !normalIds.has(m.id)));
+    const realIds = [...normalIds].filter(id => !id.startsWith('tmp-') && !id.startsWith('err-'));
+    // 串行删除：后端 FileStore 已有操作锁，但前端也不并发，避免额外竞争
+    for (const id of realIds) {
+      await fetch(`/api/messages/${id}`, { method: 'DELETE' }).catch(() => {});
+    }
   };
 
   // ── 编辑消息 ──
@@ -697,8 +703,10 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
   //    isSubsequent: 是否为合并消息组的后续子消息（隐藏头像/名称）
   //    withId: 是否在外层 div 加 id 属性（renderMsgGroup 自己管理 id 时传 false）
   //    overrideShowTime: 强制覆盖时间戳显示（null=默认，true=显示，false=隐藏）
-  const renderMsg = (msg, segMode, isSubsequent = false, withId = true, overrideShowTime = null, noUserAvatar = false) => {
-    const isSel    = selIds.has(msg.id);
+  //    selectId: 选择操作使用的真实消息ID（MSG_SEP子消息传父ID）
+  const renderMsg = (msg, segMode, isSubsequent = false, withId = true, overrideShowTime = null, noUserAvatar = false, selectId = null) => {
+    const sid      = selectId || msg.id;
+    const isSel    = selIds.has(sid);
     const isEdit   = editingId === msg.id;
     const isErr    = String(msg.id).startsWith('err-');
 
@@ -743,7 +751,7 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
         {msg.sender !== 'user' && (
           isSubsequent
             ? <div className="w-7 h-7 shrink-0" /> /* 占位，与首条对齐 */
-            : <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-sm shrink-0">{charAvatar}</div>
+            : <div className="w-7 h-7 shrink-0">{charAvatarEl(28)}</div>
         )}
         <div className={`max-w-[72%] px-3.5 py-2 rounded-2xl text-sm ${
           msg.sender === 'user'
@@ -757,7 +765,7 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
         {msg.sender === 'user' && (
           noUserAvatar
             ? <div className="w-7 h-7 shrink-0" />
-            : <div className="w-7 h-7 rounded-full bg-sky-100 flex items-center justify-center text-sm shrink-0">🧑</div>
+            : <div className="w-7 h-7 rounded-full bg-sky-100 flex items-center justify-center shrink-0"><User size={14} className="text-sky-400" /></div>
         )}
       </div>
     );
@@ -770,13 +778,14 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
       ? <p className={`text-[10px] text-gray-400 mt-0.5 ${msg.sender === 'user' ? `text-right ${segMode === 'online' ? 'pr-9' : 'pr-1'}` : 'pl-9'}`}>{tsText}</p>
       : null;
 
+    const selMsg = sid !== msg.id ? { ...msg, id: sid } : msg;
     const touchProps = !isEdit ? {
-      onMouseDown:  () => onMsgPressStart(msg),
+      onMouseDown:  () => onMsgPressStart(selMsg),
       onMouseUp:    onMsgPressEnd,
       onMouseLeave: onMsgPressEnd,
-      onTouchStart: () => onMsgPressStart(msg),
+      onTouchStart: () => onMsgPressStart(selMsg),
       onTouchEnd:   onMsgPressEnd,
-      onClick:      () => onMsgClick(msg),
+      onClick:      () => onMsgClick(selMsg),
     } : {};
 
     const bubble = (
@@ -796,7 +805,7 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
 
     return (
       <div key={msg.id} className={`flex items-center gap-2 py-0.5 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-        <button onClick={() => toggleSelect(msg.id)}
+        <button onClick={() => toggleSelect(sid)}
           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
             isSel ? 'bg-blue-500 border-blue-500' : 'border-gray-300 bg-white'
           }`}>
@@ -822,6 +831,7 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
             false,          // withId
             i === last,     // overrideShowTime：只在最后一条子消息显示时间
             i !== last,     // noUserAvatar：user 头像只在最后一条子消息显示
+            msg.id,         // selectId：子消息选择时使用父消息的真实ID
           )
         )}
       </div>
@@ -845,7 +855,7 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
             <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full">
               <ChevronLeft size={20} className="text-gray-600" />
             </button>
-            <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center text-base shrink-0">{charAvatar}</div>
+            {charAvatarEl(36)}
             <span className="font-bold flex-1 truncate">{charName}</span>
             <button onClick={() => { setShowDateSearch(true); setShowSettings(false); }}
               className={`p-2 rounded-full transition-colors ${showDateSearch ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:bg-gray-100'}`}
@@ -885,7 +895,8 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
                         ? 'bg-sky-50 border-sky-200 text-sky-600 hover:bg-sky-100'
                         : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
                     }`}>
-                    <span>{seg.mode === 'online' ? '📱 线上' : '🌸 线下'}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full inline-block ${seg.mode === 'online' ? 'bg-sky-400' : 'bg-amber-400'}`} />
+                    <span>{seg.mode === 'online' ? '线上' : '线下'}</span>
                     <span className="opacity-60">{seg.msgs.length}条</span>
                     {collapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
                   </button>
@@ -943,7 +954,7 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
           {sending && (
             <div className="flex flex-col items-start gap-2 pl-1">
               <div className="flex items-end gap-2">
-                <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-sm shrink-0">{charAvatar}</div>
+                <div className="w-7 h-7 shrink-0">{charAvatarEl(28)}</div>
                 <div className="bg-white border shadow-sm text-gray-400 text-xs px-4 py-2.5 rounded-2xl rounded-bl-sm flex items-center">
                   <span className="animate-[pulse_1.5s_ease-in-out_infinite]">回复中</span><BreathingDots />
                 </div>
@@ -1125,11 +1136,11 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
             <div className={`flex p-0.5 rounded-full ${mode === 'online' ? 'bg-sky-100' : 'bg-amber-100'}`}>
               <button onClick={() => setMode('online')}
                 className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${mode === 'online' ? 'bg-white text-sky-600 shadow-sm' : 'text-gray-400 hover:text-sky-500'}`}>
-                📱 线上
+                线上
               </button>
               <button onClick={() => setMode('offline')}
                 className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${mode === 'offline' ? 'bg-white text-amber-700 shadow-sm' : 'text-gray-400 hover:text-amber-600'}`}>
-                🌸 线下
+                线下
               </button>
             </div>
             <span className="text-[10px] text-gray-400">{mode === 'online' ? '短消息 · 即时互动' : '沉浸叙事 · 场景描写'}</span>

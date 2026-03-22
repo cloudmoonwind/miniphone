@@ -60,7 +60,9 @@ export function getProvider(preset) {
   if (!apiKey) throw new Error('未配置 API Key，请先去设置中添加 API 配置并保存');
 
   // 用户自定义 URL 优先（支持反向代理），否则用该 provider 的官方默认端点
-  const baseURL = preset?.baseURL?.trim() || config.defaultBaseURL;
+  // 去掉末尾斜杠，防止 OpenAI SDK 拼接成 .../v4//chat/completions
+  const rawURL = preset?.baseURL?.trim() || config.defaultBaseURL;
+  const baseURL = rawURL.replace(/\/+$/, '');
 
   // 目前所有已实现的 provider 均使用 OpenAI 兼容格式
   return new OpenAICompatProvider({ apiKey, baseURL });

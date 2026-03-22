@@ -17,7 +17,26 @@ router.get('/', async (req, res) => {
   try {
     const personas = await personaStore.getAll();
     const active = await activeStore.getObject().catch(() => ({}));
-    res.json({ personas, activePersonaId: active.activePersonaId || null });
+    res.json({ personas, activePersonaId: active.activePersonaId || null, userProfile: active.userProfile || null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/personas/user-profile
+router.get('/user-profile', async (req, res) => {
+  try {
+    const active = await activeStore.getObject().catch(() => ({}));
+    res.json(active.userProfile || { name: '', avatar: '', description: '' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/personas/user-profile
+router.put('/user-profile', async (req, res) => {
+  try {
+    const { name = '', avatar = '', description = '' } = req.body;
+    const active = await activeStore.getObject().catch(() => ({}));
+    const userProfile = { name, avatar, description };
+    await activeStore.setObject({ ...active, userProfile });
+    res.json(userProfile);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

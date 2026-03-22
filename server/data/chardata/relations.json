@@ -1,0 +1,6 @@
+[
+  {"id":"rel_ysl_001","charId":"char_1773377502265_2f2r","targetName":"你","targetEmoji":"💙","type":"friend","closeness":58,"notes":"说不清楚是什么关系。总之，是会让他犹豫要不要主动发消息的那种人。","extractedSource":"seed"},
+  {"id":"rel_ysl_002","charId":"char_1773377502265_2f2r","targetName":"1","targetEmoji":"1","type":"colleague","closeness":42,"notes":"同组的人。话不多但相处不累。偶尔一起吃饭。","extractedSource":"seed"},
+  {"id":"rel_ysl_003","charId":"char_1773377502265_2f2r","targetName":"陈默","targetEmoji":"🤫","type":"friend","closeness":70,"notes":"唯一一个知道他真实性格的人。高中同学，现在偶尔联系。","extractedSource":"seed"},
+  {"id":"rel_ysl_004","charId":"char_1773377502265_2f2r","targetName":"方晴","targetEmoji":"☀️","type":"rival","closeness":35,"notes":"公司里的竞争对手，能力很强。表面客气，暗中较劲。但某种程度上也是互相认可的。","extractedSource":"seed"}
+]

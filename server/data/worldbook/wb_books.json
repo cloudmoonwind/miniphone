@@ -1,0 +1,82 @@
+[
+  {
+    "id": "wb_demo_world",
+    "name": "现代都市·通用世界观",
+    "description": "角色所在的现代都市设定背景，全局生效",
+    "charId": null,
+    "enabled": true,
+    "createdAt": "2026-03-16T00:00:00.000Z",
+    "scanDepth": 19,
+    "updatedAt": "2026-03-22T15:35:19.196Z"
+  },
+  {
+    "id": "wb_ally_life",
+    "name": "艾莉的日常生活",
+    "description": "艾莉（Ally）专属的生活背景、习惯和日常事件库",
+    "charId": "char_legacy_ally",
+    "enabled": true,
+    "createdAt": "2026-03-16T00:00:00.000Z"
+  },
+  {
+    "id": "wb_ysl_life",
+    "name": "郁疏澜的世界",
+    "description": "郁疏澜专属的生活背景、性格和日常事件库",
+    "charId": "char_1773377502265_2f2r",
+    "enabled": true,
+    "createdAt": "2026-03-21T00:00:00.000Z"
+  },
+  {
+    "id": "wb_1774203021991_2tjz",
+    "name": "大富翁·益智棋盘（华尔街征途）",
+    "description": "益智模式专用棋盘格子内容",
+    "enabled": true,
+    "scanDepth": 20,
+    "charId": null,
+    "createdAt": "2026-03-22T18:10:21.992Z"
+  },
+  {
+    "id": "wb_1774203021991_huaz",
+    "name": "大富翁·益智棋盘（华尔街征途）",
+    "description": "益智模式专用棋盘格子内容",
+    "enabled": true,
+    "scanDepth": 20,
+    "charId": null,
+    "createdAt": "2026-03-22T18:10:21.993Z"
+  },
+  {
+    "id": "wb_1774203022067_89zf",
+    "name": "大富翁·恋爱棋盘（约会之旅）",
+    "description": "恋爱模式专用棋盘格子内容",
+    "enabled": true,
+    "scanDepth": 20,
+    "charId": null,
+    "createdAt": "2026-03-22T18:10:22.068Z"
+  },
+  {
+    "id": "wb_1774203022069_1skc",
+    "name": "大富翁·恋爱棋盘（约会之旅）",
+    "description": "恋爱模式专用棋盘格子内容",
+    "enabled": true,
+    "scanDepth": 20,
+    "charId": null,
+    "createdAt": "2026-03-22T18:10:22.069Z"
+  },
+  {
+    "id": "wb_1774203022162_j77a",
+    "name": "大富翁·十八禁棋盘（欲望迷宫）",
+    "description": "十八禁模式专用棋盘格子内容",
+    "enabled": true,
+    "scanDepth": 20,
+    "charId": null,
+    "createdAt": "2026-03-22T18:10:22.163Z"
+  },
+  {
+    "id": "wb_1774203022165_s9r2",
+    "name": "大富翁·十八禁棋盘（欲望迷宫）",
+    "description": "十八禁模式专用棋盘格子内容",
+    "enabled": true,
+    "scanDepth": 20,
+    "charId": null,
+    "createdAt": "2026-03-22T18:10:22.165Z"
+  }
+]

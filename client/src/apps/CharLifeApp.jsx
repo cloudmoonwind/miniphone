@@ -11,6 +11,7 @@ import {
   Sliders, BookOpen, AlignLeft, Sun, Coffee, Moon, Star,
   ChevronDown, ChevronUp,
 } from 'lucide-react';
+import Avatar from '../components/Avatar.jsx';
 
 const API = async (path, opts) => {
   const r = await fetch(`/api${path}`, {
@@ -215,9 +216,7 @@ const CharLifeApp = ({ onBack, initialChar = null }) => {
               onClick={() => setChar(c)}
               className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-3 mb-2 hover:bg-indigo-50 transition-colors text-left"
             >
-              <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-lg shrink-0">
-                {c.avatar || c.name?.[0] || '?'}
-              </div>
+              <Avatar value={c.avatar} name={c.name} size={40} rounded className="shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-800">{c.name}</p>
                 {c.tags?.length > 0 && (
@@ -240,9 +239,7 @@ const CharLifeApp = ({ onBack, initialChar = null }) => {
         <button onClick={() => setChar(null)} className="p-2 hover:bg-gray-100 rounded-full">
           <ChevronLeft size={20} className="text-gray-500" />
         </button>
-        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm shrink-0">
-          {char.avatar || char.name?.[0] || '?'}
-        </div>
+        <Avatar value={char.avatar} name={char.name} size={32} rounded className="shrink-0" />
         <span className="font-bold text-gray-800 flex-1">{char.name}的生活</span>
       </div>
 

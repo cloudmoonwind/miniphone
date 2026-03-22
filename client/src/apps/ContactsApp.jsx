@@ -3,23 +3,20 @@ import { charactersService } from '../services/characters.js';
 import { settingsService } from '../services/settings.js';
 import { ChevronLeft, ChevronRight, ChevronDown, Plus, Trash2, Check, X, Heart, Users, Users2, Tag, MessageSquare, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Avatar from '../components/Avatar.jsx';
+import AvatarUpload from '../components/AvatarUpload.jsx';
 
 // --- 组件：联系人 (结缘) App ---
-const AVATAR_COLORS = ['bg-purple-200','bg-pink-200','bg-sky-200','bg-green-200','bg-yellow-200','bg-rose-200','bg-indigo-200','bg-teal-200'];
 const DEFAULT_FORM = { name:'', avatar:'', tags:[], group:'', core:'', persona:'', sample:'', timezone:'', apiPresetId:null, isFavorite:false, isBlacklisted:false };
-const colorFor = (id) => id ? parseInt(id.replace(/\D/g,'').slice(-2)||'0') % AVATAR_COLORS.length : 0;
 
 // CharRow 必须定义在 ContactsApp 外部，否则每次父组件渲染都是新类型，
 // React DOM reconciliation 会抛 insertBefore 错误。
 const CharRow = ({ char, selMode, selIds, onPressStart, onPressEnd, onCharClick, onStartChat }) => {
   const sel = selIds.has(char.id);
-  const col = AVATAR_COLORS[colorFor(char.id)];
 
   const infoContent = (
     <>
-      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl font-bold shrink-0 ${col}`}>
-        {char.avatar || char.name?.[0] || '?'}
-      </div>
+      <Avatar value={char.avatar} name={char.name} size={44} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="font-semibold text-sm truncate">{char.name||'未命名'}</span>
@@ -228,16 +225,11 @@ const ContactsApp = ({ onBack, onStartChat }) => {
           <Plus size={15}/> 导入角色卡（PNG / JSON）
         </button>
         {/* 头像 + 姓名 */}
-        <div className="flex gap-3 items-start">
-          <div className="flex flex-col items-center gap-1 shrink-0">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl border-2 border-dashed border-gray-200 ${AVATAR_COLORS[colorFor(form.id)]}`}>
-              {form.avatar || form.name?.[0] || '?'}
-            </div>
-            <span className="text-[10px] text-gray-400">头像预览</span>
-          </div>
-          <div className="flex-1 space-y-2">
-            <input value={form.avatar ?? ''} onChange={e=>setForm(f=>({...f,avatar:e.target.value}))} placeholder="头像（emoji 或字母）" className="w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"/>
+        <div className="flex gap-3 items-center">
+          <AvatarUpload value={form.avatar ?? ''} onChange={v => setForm(f => ({...f, avatar: v}))} size={64} />
+          <div className="flex-1">
             <input value={form.name ?? ''} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="角色名（默认 char）" className="w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"/>
+            <p className="text-[10px] text-gray-400 mt-1 pl-1">点击头像上传图片</p>
           </div>
         </div>
         {/* 标签 */}
@@ -319,7 +311,6 @@ const ContactsApp = ({ onBack, onStartChat }) => {
 
   // ===== 详情页 =====
   if (screen === 'detail' && detailChar) {
-    const col = AVATAR_COLORS[colorFor(detailChar.id)];
     const toggleFav = async () => {
       const updated = await charactersService.update(detailChar.id, { isFavorite: !detailChar.isFavorite });
       setChars(cs => cs.map(c => c.id === updated.id ? updated : c));
@@ -338,9 +329,7 @@ const ContactsApp = ({ onBack, onStartChat }) => {
         </div>
         <div className="flex-1 overflow-y-auto">
           <div className="flex flex-col items-center py-7 px-4 border-b">
-            <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-4xl font-bold ${col}`}>
-              {cur.avatar||cur.name?.[0]||'?'}
-            </div>
+            <Avatar value={cur.avatar} name={cur.name} size={80} />
             <h2 className="mt-3 text-xl font-bold">{cur.name}</h2>
             {cur.core && <p className="mt-1 text-sm text-gray-500 text-center">{cur.core}</p>}
             {cur.tags?.length>0 && (

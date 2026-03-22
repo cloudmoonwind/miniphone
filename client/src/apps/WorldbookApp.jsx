@@ -42,6 +42,7 @@ const EntryForm = ({ entry, bookId, onSave, onCancel }) => {
     name: '', content: '', enabled: true,
     keywords: [], activationMode: 'always',
     insertionPosition: 'system-bottom', priority: 100,
+    noRecurse: false, noFurtherRecurse: false,
     eventConfig: { tags: [], weight: 1, condition: { stat: 'mood', op: 'gte', value: 50 } },
   });
   const [kwInput, setKwInput] = useState('');
@@ -263,6 +264,35 @@ const EntryForm = ({ entry, bookId, onSave, onCancel }) => {
             <span className="text-xs text-gray-600">{form.enabled ? '已启用' : '已禁用'}</span>
           </div>
         </div>
+
+        {/* 递归控制（仅 keyword / always 模式） */}
+        {!isEvent && (
+          <div className="border border-gray-200 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-medium text-gray-600">级联激活控制</p>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox" checked={!!form.noRecurse}
+                onChange={e => set('noRecurse', e.target.checked)}
+                className="mt-0.5 accent-indigo-500"
+              />
+              <div>
+                <p className="text-xs text-gray-700 font-medium">不可递归</p>
+                <p className="text-[10px] text-gray-400">此条目不会被其他世界书条目的内容激活，只响应原始对话消息</p>
+              </div>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox" checked={!!form.noFurtherRecurse}
+                onChange={e => set('noFurtherRecurse', e.target.checked)}
+                className="mt-0.5 accent-indigo-500"
+              />
+              <div>
+                <p className="text-xs text-gray-700 font-medium">防止进一步递归</p>
+                <p className="text-[10px] text-gray-400">此条目被激活后，其内容不会用于触发其他世界书条目</p>
+              </div>
+            </label>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -273,6 +303,7 @@ const BookDetail = ({ book, onBack }) => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null); // null=列表, 'new'=新建, entry=编辑
+  const [scanDepth, setScanDepth] = useState(book.scanDepth ?? 20);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -294,6 +325,12 @@ const BookDetail = ({ book, onBack }) => {
     load();
   };
 
+  const saveScanDepth = async (val) => {
+    const v = Math.max(1, Math.min(200, val || 20));
+    setScanDepth(v);
+    await API(`/books/${book.id}`, { method: 'PUT', body: JSON.stringify({ scanDepth: v }) });
+  };
+
   if (editing === 'new' || (editing && editing !== null)) {
     return (
       <EntryForm
@@ -312,20 +349,32 @@ const BookDetail = ({ book, onBack }) => {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      <div className="h-12 bg-white border-b flex items-center px-3 gap-2 shrink-0">
-        <button onClick={onBack} className="p-1.5 hover:bg-gray-100 rounded-full">
-          <ChevronLeft size={20} className="text-gray-500" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-800 text-sm truncate">{book.name}</p>
-          <p className="text-[10px] text-gray-400">{entries.length} 条条目</p>
+      <div className="bg-white border-b shrink-0">
+        <div className="h-12 flex items-center px-3 gap-2">
+          <button onClick={onBack} className="p-1.5 hover:bg-gray-100 rounded-full">
+            <ChevronLeft size={20} className="text-gray-500" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-gray-800 text-sm truncate">{book.name}</p>
+            <p className="text-[10px] text-gray-400">{entries.length} 条条目</p>
+          </div>
+          <button
+            onClick={() => setEditing('new')}
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 text-white text-xs rounded-lg"
+          >
+            <Plus size={12} /> 新建条目
+          </button>
         </div>
-        <button
-          onClick={() => setEditing('new')}
-          className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 text-white text-xs rounded-lg"
-        >
-          <Plus size={12} /> 新建条目
-        </button>
+        <div className="flex items-center gap-2 px-4 pb-2">
+          <span className="text-[10px] text-gray-400">关键词扫描深度（最近 N 条消息）：</span>
+          <input
+            type="number" min={1} max={200}
+            value={scanDepth}
+            onChange={e => setScanDepth(+e.target.value)}
+            onBlur={e => saveScanDepth(+e.target.value)}
+            className="w-14 border border-gray-200 rounded px-2 py-0.5 text-xs text-center focus:outline-none focus:border-indigo-400"
+          />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -392,6 +441,7 @@ const WorldbookApp = ({ onBack }) => {
   const [openBook, setOpenBook] = useState(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName]  = useState('');
+  const [newScanDepth, setNewScanDepth] = useState(20);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -408,8 +458,9 @@ const WorldbookApp = ({ onBack }) => {
 
   const createBook = async () => {
     if (!newName.trim()) return;
-    await API('/books', { method: 'POST', body: JSON.stringify({ name: newName.trim() }) });
+    await API('/books', { method: 'POST', body: JSON.stringify({ name: newName.trim(), scanDepth: newScanDepth }) });
     setNewName('');
+    setNewScanDepth(20);
     setCreating(false);
     load();
   };
@@ -452,16 +503,26 @@ const WorldbookApp = ({ onBack }) => {
 
       {/* 新建表单 */}
       {creating && (
-        <div className="bg-white border-b px-4 py-3 flex gap-2">
-          <input
-            autoFocus
-            value={newName} onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && createBook()}
-            placeholder="新世界书名称…"
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
-          />
-          <button onClick={createBook} className="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg">确认</button>
-          <button onClick={() => setCreating(false)} className="px-3 py-2 text-gray-500 text-sm">取消</button>
+        <div className="bg-white border-b px-4 py-3 space-y-2">
+          <div className="flex gap-2">
+            <input
+              autoFocus
+              value={newName} onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && createBook()}
+              placeholder="新世界书名称…"
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
+            />
+            <button onClick={createBook} className="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg">确认</button>
+            <button onClick={() => setCreating(false)} className="px-3 py-2 text-gray-500 text-sm">取消</button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">扫描深度（最近几条消息）：</span>
+            <input
+              type="number" min={1} max={200}
+              value={newScanDepth} onChange={e => setNewScanDepth(+e.target.value)}
+              className="w-16 border border-gray-200 rounded px-2 py-1 text-sm text-center focus:outline-none focus:border-indigo-400"
+            />
+          </div>
         </div>
       )}
 
@@ -490,7 +551,7 @@ const WorldbookApp = ({ onBack }) => {
                   <p className="text-xs text-gray-400 truncate mt-0.5">{book.description}</p>
                 )}
                 <p className="text-[10px] text-gray-400 mt-0.5">
-                  {book.charId ? '角色专属' : '全局'} · {book.enabled ? '已启用' : '已禁用'}
+                  {book.charId ? '角色专属' : '全局'} · {book.enabled ? '已启用' : '已禁用'} · 扫描深度 {book.scanDepth ?? 20}
                 </p>
               </button>
               <button onClick={() => setOpenBook(book)} className="p-1.5 hover:bg-gray-100 rounded-lg shrink-0">

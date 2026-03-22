@@ -17,6 +17,13 @@ import worldbookRouter   from './routes/worldbook.js';
 import charStatsRouter   from './routes/charstats.js';
 import personasRouter    from './routes/personas.js';
 import diaryRouter       from './routes/diary.js';
+import itemsRouter       from './routes/items.js';
+import timelineRouter    from './routes/timeline.js';
+import skillsRouter      from './routes/skills.js';
+import relationsRouter   from './routes/relations.js';
+import suixiangRouter    from './routes/suixiang.js';
+import calendarRouter    from './routes/calendar.js';
+import dafuRouter        from './routes/dafu.js';
 
 const PORT = 3000;
 const app  = express();
@@ -49,6 +56,13 @@ app.use('/api/worldbook',                    worldbookRouter);
 app.use('/api/charstats',                    charStatsRouter);
 app.use('/api/personas',                     personasRouter);
 app.use('/api/diary',                        diaryRouter);
+app.use('/api/characters/:charId/items',     itemsRouter);
+app.use('/api/characters/:charId/timeline',  timelineRouter);
+app.use('/api/characters/:charId/skills',    skillsRouter);
+app.use('/api/characters/:charId/relations', relationsRouter);
+app.use('/api/suixiang',                     suixiangRouter);
+app.use('/api/calendar',                     calendarRouter);
+app.use('/api/dafu',                         dafuRouter);
 // charstats/defs 作为独立路径暴露（charstats 路由内部已处理 /defs）
 
 // ── Error handler ───────────────────────────────────────────────────────

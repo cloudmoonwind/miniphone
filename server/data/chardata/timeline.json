@@ -1,0 +1,188 @@
+[
+  {
+    "id": "tl_ysl_001",
+    "charId": "char_1773377502265_2f2r",
+    "title": "午夜的屋顶",
+    "content": "独自坐在天台上，城市的灯光倒映在瞳孔里。风很大，但他没有要走的意思。这是他第一次对某个人说了'再见'之后感到不安。",
+    "type": "milestone",
+    "timestamp": "2026-02-15T23:30:00.000Z",
+    "linkedItemIds": [],
+    "linkedEventId": null,
+    "extractedSource": "seed"
+  },
+  {
+    "id": "tl_ysl_002",
+    "charId": "char_1773377502265_2f2r",
+    "title": "旧书店的偶遇",
+    "content": "在二手书店翻到一本绝版的推理小说，正要结账时发现那个人也在。装作没看见，但心跳快了半拍。",
+    "type": "event",
+    "timestamp": "2026-02-20T14:20:00.000Z",
+    "linkedItemIds": [
+      "item_ysl_002"
+    ],
+    "linkedEventId": null,
+    "extractedSource": "seed"
+  },
+  {
+    "id": "tl_ysl_003",
+    "charId": "char_1773377502265_2f2r",
+    "title": "第一次主动发消息",
+    "content": "盯着聊天界面看了十分钟，最后发了一句'那本书你看完了吗'。发完就把手机扣在桌上不敢看。",
+    "type": "chat",
+    "timestamp": "2026-02-25T21:45:00.000Z",
+    "linkedItemIds": [],
+    "linkedEventId": null,
+    "extractedSource": "seed"
+  },
+  {
+    "id": "tl_ysl_004",
+    "charId": "char_1773377502265_2f2r",
+    "title": "雨中的沉默",
+    "content": "一起被困在便利店门口等雨停。谁都没说话，但那种沉默不令人不安。他默默把伞递了过去。",
+    "type": "event",
+    "timestamp": "2026-03-02T18:00:00.000Z",
+    "linkedItemIds": [
+      "item_ysl_003"
+    ],
+    "linkedEventId": null,
+    "extractedSource": "seed"
+  },
+  {
+    "id": "tl_ysl_005",
+    "charId": "char_1773377502265_2f2r",
+    "title": "难得的笑容",
+    "content": "被猫咖的小猫抓了一下，意外地笑了出来。旁边的人说'原来你也会笑啊'。不知道该怎么回答。",
+    "type": "event",
+    "timestamp": "2026-03-08T15:30:00.000Z",
+    "linkedItemIds": [],
+    "linkedEventId": null,
+    "extractedSource": "seed"
+  },
+  {
+    "id": "tl_ysl_006",
+    "charId": "char_1773377502265_2f2r",
+    "title": "深夜的坦白",
+    "content": "凌晨两点，终于说出了那句一直想说的话。对方的回答不是他预想的任何一种。世界安静了三秒。",
+    "type": "milestone",
+    "timestamp": "2026-03-12T02:00:00.000Z",
+    "linkedItemIds": [],
+    "linkedEventId": null,
+    "extractedSource": "seed"
+  },
+  {
+    "id": "tl_ysl_007",
+    "charId": "char_1773377502265_2f2r",
+    "title": "做了一个梦",
+    "content": "梦见自己站在一片白色的空间里，什么都没有。醒来后发现枕头是湿的。",
+    "type": "event",
+    "timestamp": "2026-03-16T06:00:00.000Z",
+    "linkedItemIds": [],
+    "linkedEventId": null,
+    "extractedSource": "seed"
+  },
+  {
+    "id": "tl_ysl_008",
+    "charId": "char_1773377502265_2f2r",
+    "title": "学会了做咖啡",
+    "content": "看了三个教程视频后终于拉出一个勉强能看的心形。虽然味道还是差了点，但有人说'不错'。",
+    "type": "milestone",
+    "timestamp": "2026-03-19T10:00:00.000Z",
+    "linkedItemIds": [
+      "item_ysl_004"
+    ],
+    "linkedEventId": null,
+    "extractedSource": "seed"
+  },
+  {
+    "id": "tl_1774097423742_rb89",
+    "charId": "char_legacy_ally",
+    "title": "事件：意外的好心情",
+    "content": "一觉睡到自然醒，窗帘缝里透进来的阳光正好打在被子上，芝士也蜷在脚边没乱动。罕见地心情很好，煮了咖啡，顺手把昨晚落在桌上的杯子都洗了。",
+    "type": "event",
+    "timestamp": "2026-03-21T12:50:23.741Z",
+    "linkedItemIds": [],
+    "linkedEventId": "wbe_event_morning_2",
+    "extractedSource": "stat-threshold",
+    "createdAt": "2026-03-21T12:50:23.743Z"
+  },
+  {
+    "id": "tl_1774097426600_kcj0",
+    "charId": "char_legacy_ally",
+    "title": "极好心情",
+    "content": "心情值达到顶峰",
+    "type": "milestone",
+    "timestamp": "2026-03-21T12:50:26.598Z",
+    "linkedItemIds": [],
+    "linkedEventId": null,
+    "extractedSource": "milestone",
+    "createdAt": "2026-03-21T12:50:26.601Z"
+  },
+  {
+    "id": "tl_1774097433492_f165",
+    "charId": "char_legacy_ally",
+    "title": "事件：情绪低落时的傍晚",
+    "content": "没怎么出门，傍晚在阳台上站了一会儿，看楼下的路灯一盏一盏亮起来。脑子里乱糟糟的，想了一些说不清楚的事情，后来干脆不想了，搬了个凳子坐在那里发呆直到饿才回来。",
+    "type": "event",
+    "timestamp": "2026-03-21T12:50:33.491Z",
+    "linkedItemIds": [],
+    "linkedEventId": "wbe_event_evening_lowmood",
+    "extractedSource": "stat-threshold",
+    "createdAt": "2026-03-21T12:50:33.493Z"
+  },
+  {
+    "id": "tl_1774097435809_b8sb",
+    "charId": "char_legacy_ally",
+    "title": "情绪低落",
+    "content": "心情跌至低谷，需要关怀",
+    "type": "milestone",
+    "timestamp": "2026-03-21T12:50:35.808Z",
+    "linkedItemIds": [],
+    "linkedEventId": null,
+    "extractedSource": "milestone",
+    "createdAt": "2026-03-21T12:50:35.810Z"
+  },
+  {
+    "id": "tl_1774097449939_yjt8",
+    "charId": "char_legacy_ally",
+    "title": "事件：高压状态爆发",
+    "content": "今天积累的事情有点多，到了某个临界点艾莉直接把椅子往后一推，什么都不想做了。泡了杯茶，坐到沙发上盯着芝士看，芝士睡得很香，完全不在乎她在崩溃。待了大概半小时，慢慢缓过来了一些。",
+    "type": "event",
+    "timestamp": "2026-03-21T12:50:49.938Z",
+    "linkedItemIds": [],
+    "linkedEventId": "wbe_event_stress_high",
+    "extractedSource": "stat-threshold",
+    "createdAt": "2026-03-21T12:50:49.940Z"
+  },
+  {
+    "id": "tl_1774097456922_axho",
+    "charId": "char_legacy_ally",
+    "title": "建立信任",
+    "content": "信任度达到了70，角色开始分享更多心事",
+    "type": "milestone",
+    "timestamp": "2026-03-21T12:50:56.920Z",
+    "linkedItemIds": [],
+    "linkedEventId": null,
+    "extractedSource": "milestone",
+    "createdAt": "2026-03-21T12:50:56.923Z"
+  },
+  {
+    "id": "tl_1774203388281_v2qb",
+    "charId": "char_1773377502265_2f2r",
+    "title": "与我玩了\"欲望迷宫\"（十八禁·线上）",
+    "content": "我获胜。我：0分，郁疏澜：0分。共1轮。",
+    "type": "event",
+    "timestamp": "2026-03-22T18:10:30.842Z",
+    "linkedItemIds": [],
+    "createdAt": "2026-03-22T18:16:28.282Z"
+  },
+  {
+    "id": "tl_1774203646734_3vkc",
+    "charId": "char_1773377502265_2f2r",
+    "title": "与我玩了\"欲望迷宫\"（十八禁·线上）",
+    "content": "郁疏澜获胜。我：-50分，郁疏澜：0分。共1轮。",
+    "type": "event",
+    "timestamp": "2026-03-22T18:16:43.102Z",
+    "linkedItemIds": [],
+    "createdAt": "2026-03-22T18:20:46.735Z"
+  }
+]

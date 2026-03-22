@@ -1,0 +1,5 @@
+[
+  {"id":"life_ysl_001","charId":"char_1773377502265_2f2r","type":"generated","period":"2026-03-20","timeOfDay":"morning","content":"08:00 被闹钟吵醒，按掉后又躺了二十分钟。\n08:25 起来煮了一杯黑咖啡，站在窗边喝。楼下有人在遛狗。\n09:00 坐到电脑前开始写代码，一个bug debug了一个半小时。\n10:30 揉了揉眼睛，发现咖啡已经凉了。","summary":"起床，写代码，debug了一上午","eventsUsed":[],"statsSnapshot":{"mood":45,"energy":60},"generatedAt":"2026-03-20T10:30:00.000Z"},
+  {"id":"life_ysl_002","charId":"char_1773377502265_2f2r","type":"generated","period":"2026-03-20","timeOfDay":"afternoon","content":"13:00 热了昨天的剩饭当午餐。味道一般。\n14:00 收到一条消息，看了之后沉默了很久。\n15:30 出门去了趟便利店，买了两罐咖啡和一包烟。\n16:00 在公园的长椅上坐了一会儿，看着来来往往的人。","summary":"午饭，收到消息，出门散步","eventsUsed":[],"statsSnapshot":{"mood":40,"energy":55},"generatedAt":"2026-03-20T16:00:00.000Z"},
+  {"id":"life_ysl_003","charId":"char_1773377502265_2f2r","type":"generated","period":"2026-03-20","timeOfDay":"evening","content":"19:00 做了一碗简单的面。加了个鸡蛋，算是对自己好一点。\n20:00 看了一集纪录片，关于深海生物的。\n21:30 翻了翻手机，在某条动态下停留了很久，最后没有点赞。\n23:00 关灯，但睡不着。听了很久的雨声白噪音。","summary":"晚饭，看纪录片，失眠","eventsUsed":[],"statsSnapshot":{"mood":42,"energy":40},"generatedAt":"2026-03-20T23:00:00.000Z"}
+]

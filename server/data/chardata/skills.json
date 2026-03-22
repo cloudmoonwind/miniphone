@@ -1,0 +1,9 @@
+[
+  {"id":"sk_ysl_001","charId":"char_1773377502265_2f2r","name":"洞察力","category":"emotion","level":4,"experience":7.5,"description":"能察觉到别人不想被发现的情绪变化","extractedSource":"seed"},
+  {"id":"sk_ysl_002","charId":"char_1773377502265_2f2r","name":"冷场制造","category":"emotion","level":3,"experience":5,"description":"总能用一句话终结话题的天赋","extractedSource":"seed"},
+  {"id":"sk_ysl_003","charId":"char_1773377502265_2f2r","name":"编程","category":"work","level":4,"experience":8,"description":"擅长后端开发，代码风格极简","extractedSource":"seed"},
+  {"id":"sk_ysl_004","charId":"char_1773377502265_2f2r","name":"推理","category":"work","level":3,"experience":6,"description":"读了太多推理小说的后遗症","extractedSource":"seed"},
+  {"id":"sk_ysl_005","charId":"char_1773377502265_2f2r","name":"厨艺","category":"life","level":2,"experience":3,"description":"能做几道像样的家常菜","extractedSource":"seed"},
+  {"id":"sk_ysl_006","charId":"char_1773377502265_2f2r","name":"咖啡","category":"life","level":1,"experience":1.5,"description":"正在学习手冲和拉花","extractedSource":"seed"},
+  {"id":"sk_ysl_007","charId":"char_1773377502265_2f2r","name":"伪装","category":"emotion","level":5,"experience":10,"description":"表面冷漠是因为不知道怎么表达在意","extractedSource":"seed"}
+]

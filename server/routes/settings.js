@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { presetStore, activeStore } from '../storage/index.js';
+import { presetStore, activeStore, promptStore } from '../storage/index.js';
 import { getClient, listModels } from '../services/ai.js';
 import { PROVIDER_CONFIGS } from '../providers/index.js';
 import { genId } from '../storage/FileStore.js';
+import { BUILTIN_PROMPT_PRESETS } from '../services/promptPresets.js';
 
 const router = Router();
 
@@ -164,6 +165,118 @@ router.put('/summary-prompts', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── Prompt presets ─────────────────────────────────────────────────
+
+// GET /api/settings/prompt-presets  (?feature=xxx 可选过滤)
+router.get('/prompt-presets', async (req, res) => {
+  try {
+    const { feature } = req.query;
+    let userPresets = await promptStore.getAll();
+    let all = [...BUILTIN_PROMPT_PRESETS, ...userPresets];
+    if (feature) all = all.filter(p => p.feature === feature);
+    res.json(all);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/settings/prompt-presets
+router.post('/prompt-presets', async (req, res) => {
+  try {
+    const { name, feature, description, prompts } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: '名称不能为空' });
+    if (!feature)      return res.status(400).json({ error: 'feature 不能为空' });
+    const preset = await promptStore.create({
+      id: genId('pp'),
+      name: name.trim(),
+      feature,
+      description: description || '',
+      prompts: prompts || {},
+      builtin: false,
+      createdAt: new Date().toISOString(),
+    });
+    res.status(201).json(preset);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/settings/prompt-presets/:id
+router.put('/prompt-presets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (BUILTIN_PROMPT_PRESETS.find(p => p.id === id)) {
+      return res.status(403).json({ error: '内置预设不可修改' });
+    }
+    const updated = await promptStore.update(id, req.body);
+    if (!updated) return res.status(404).json({ error: 'Not found' });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/settings/prompt-presets/:id
+router.delete('/prompt-presets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (BUILTIN_PROMPT_PRESETS.find(p => p.id === id)) {
+      return res.status(403).json({ error: '内置预设不可删除' });
+    }
+    const ok = await promptStore.delete(id);
+    if (!ok) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/settings/feature-prompt-presets
+router.get('/feature-prompt-presets', async (_req, res) => {
+  try {
+    const active = await activeStore.getObject();
+    res.json(active?.featurePromptPresets || { summaries: null, life: null, charSystem: null });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/settings/feature-prompt-presets
+router.put('/feature-prompt-presets', async (req, res) => {
+  try {
+    const active  = await activeStore.getObject();
+    const merged  = { ...(active?.featurePromptPresets || {}), ...req.body };
+    await activeStore.setObject({ ...active, featurePromptPresets: merged });
+    res.json({ ok: true, featurePromptPresets: merged });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Context budget ─────────────────────────────────────────────────
+
+// GET /api/settings/context-budget
+router.get('/context-budget', async (_req, res) => {
+  try {
+    const active = await activeStore.getObject();
+    res.json({ maxTokens: active?.contextBudget ?? 4000 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/settings/context-budget
+router.put('/context-budget', async (req, res) => {
+  try {
+    const { maxTokens } = req.body;
+    const active = await activeStore.getObject();
+    await activeStore.setObject({ ...active, contextBudget: maxTokens });
+    res.json({ maxTokens });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── AI utility routes (kept for compatibility) ─────────────────────
 
 // POST /api/settings/models  (also aliased as POST /api/models for old clients)
@@ -188,7 +301,7 @@ router.post('/test-connection', async (req, res) => {
     const p = getClient({ apiKey, baseURL, provider });
     await p.chatCompletion([{ role: 'user', content: 'Hi' }], {
       model: model || 'gpt-4o-mini',
-      max_tokens: 5,
+      max_tokens: 500,
     });
     res.json({ success: true, message: '连接成功' });
   } catch (err) {

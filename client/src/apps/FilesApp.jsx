@@ -5,11 +5,14 @@
  * 系统槽（sys-*）从后端自动填充内容，可编辑槽直接在此编写。
  * role 参数决定该槽在 messages 数组中的角色（system/user/assistant）。
  */
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { encode } from 'gpt-tokenizer';
 import {
   ChevronLeft, Plus, Trash2, X, Check, Eye, Pencil,
   ToggleLeft, ToggleRight, Loader2, Hash, AlertTriangle,
   ChevronDown, ChevronUp, Layers, Settings2,
+  Pin, Wrench, Globe, Star, FileText, Quote, User, Brain,
+  BookOpen, MapPin, Leaf, Moon, ScrollText, MessageSquare, Lock,
 } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 
@@ -20,7 +23,7 @@ const SYSTEM_SLOTS = {
     blockType: 'sys-pre',
     defaultRole: 'system',
     color: 'gray',
-    icon: '📌',
+    icon: Pin,
     desc: '在所有内容最前面的系统提示',
     editable: true,
     placeholder: '写全局系统提示（最高优先级，如整体行为准则）…',
@@ -30,7 +33,7 @@ const SYSTEM_SLOTS = {
     blockType: 'tools',
     defaultRole: 'system',
     color: 'orange',
-    icon: '🔧',
+    icon: Wrench,
     desc: 'AI 工具/函数定义（function calling）',
     editable: true,
     placeholder: '定义 AI 可调用的工具（JSON 格式或自然语言描述）…',
@@ -40,7 +43,7 @@ const SYSTEM_SLOTS = {
     blockType: 'wb-pre',
     defaultRole: 'system',
     color: 'cyan',
-    icon: '🌐',
+    icon: Globe,
     desc: '世界书 system-top 条目（世界观、全局背景）',
     sourceLabel: '在「世界书」中管理，插入位置选 system-top',
   },
@@ -49,7 +52,7 @@ const SYSTEM_SLOTS = {
     blockType: 'char-core',
     defaultRole: 'system',
     color: 'violet',
-    icon: '⭐',
+    icon: Star,
     desc: '角色的名字与核心性格设定（char.core）',
     sourceLabel: '在「结缘」→ 角色详情中修改',
     required: true,
@@ -59,7 +62,7 @@ const SYSTEM_SLOTS = {
     blockType: 'char-desc',
     defaultRole: 'system',
     color: 'purple',
-    icon: '🎭',
+    icon: FileText,
     desc: '角色的详细人设描述（char.persona）',
     sourceLabel: '在「结缘」→ 角色详情中修改',
   },
@@ -68,7 +71,7 @@ const SYSTEM_SLOTS = {
     blockType: 'char-sample',
     defaultRole: 'system',
     color: 'fuchsia',
-    icon: '💬',
+    icon: Quote,
     desc: '角色的范例对话、语气样本（char.sample）',
     sourceLabel: '在「结缘」→ 角色详情中修改',
   },
@@ -77,7 +80,7 @@ const SYSTEM_SLOTS = {
     blockType: 'user-desc',
     defaultRole: 'system',
     color: 'pink',
-    icon: '🪪',
+    icon: User,
     desc: '当前激活的命格马甲内容',
     sourceLabel: '在「命格」中管理',
   },
@@ -86,7 +89,7 @@ const SYSTEM_SLOTS = {
     blockType: 'memories',
     defaultRole: 'system',
     color: 'amber',
-    icon: '🧠',
+    icon: Brain,
     desc: '忆海中重要性 ≥ 7 的记忆条目',
     sourceLabel: '在「忆海」中管理',
   },
@@ -95,7 +98,7 @@ const SYSTEM_SLOTS = {
     blockType: 'wb-post',
     defaultRole: 'system',
     color: 'sky',
-    icon: '📖',
+    icon: BookOpen,
     desc: '世界书 before-chat / system-bottom 条目',
     sourceLabel: '在「世界书」中管理，插入位置选 before-chat 或 system-bottom',
   },
@@ -104,7 +107,7 @@ const SYSTEM_SLOTS = {
     blockType: 'scene',
     defaultRole: 'system',
     color: 'emerald',
-    icon: '🏞️',
+    icon: MapPin,
     desc: '当前场景描述（时间、地点、氛围）',
     editable: true,
     placeholder: '描述当前的场景，例如：傍晚，图书馆，窗外下着雨…',
@@ -114,7 +117,7 @@ const SYSTEM_SLOTS = {
     blockType: 'life',
     defaultRole: 'system',
     color: 'lime',
-    icon: '🌱',
+    icon: Leaf,
     desc: '角色最近 3 条生活日志（由角色系统生成）',
     sourceLabel: '在「角色系统」中生成',
   },
@@ -123,7 +126,7 @@ const SYSTEM_SLOTS = {
     blockType: 'dreams',
     defaultRole: 'system',
     color: 'indigo',
-    icon: '🌙',
+    icon: Moon,
     desc: '角色最近 3 条梦境记录（由梦境 App 记录）',
     sourceLabel: '在「梦境」App 中记录',
   },
@@ -132,7 +135,7 @@ const SYSTEM_SLOTS = {
     blockType: 'summaries',
     defaultRole: 'system',
     color: 'teal',
-    icon: '📋',
+    icon: ScrollText,
     desc: '最近 5 条对话摘要（从旧到新）',
     sourceLabel: '在「聊天」中生成',
     hasSummaryType: true, // 支持 summaryType 参数
@@ -142,7 +145,7 @@ const SYSTEM_SLOTS = {
     blockType: 'history',
     defaultRole: null, // 特殊：展开为 user/assistant 多条消息
     color: 'blue',
-    icon: '💬',
+    icon: MessageSquare,
     desc: '近 N 条原始对话记录（user/assistant）',
     sourceLabel: '在「聊天」中产生',
     required: true,
@@ -153,7 +156,7 @@ const SYSTEM_SLOTS = {
     blockType: 'sys-post',
     defaultRole: 'system',
     color: 'gray',
-    icon: '🔒',
+    icon: Lock,
     desc: '在对话历史之后的末尾系统提示',
     editable: true,
     placeholder: '写末尾系统提示（常用于格式要求、输出规范）…',
@@ -186,9 +189,11 @@ const SLOT_COLOR_CLASSES = {
   gray:    { bg: 'bg-gray-50',    border: 'border-gray-200',    text: 'text-gray-600',    dot: 'bg-gray-400' },
 };
 
-// token 估算（中英文混合粗估）
-function estimateTokens(text = '') {
-  return Math.max(0, Math.ceil(text.length / 3));
+// Precise token count using GPT-4 tokenizer (cl100k_base)
+// For GLM/Z.AI models this is an approximation but much more accurate than length/N
+function estimateTokens(text) {
+  if (!text) return 0;
+  try { return encode(text).length; } catch { return Math.ceil(text.length / 2.5); }
 }
 
 // ── API helpers ──────────────────────────────────────────────────────────────
@@ -205,6 +210,17 @@ const api = {
   setActive:    (id) => fetch('/api/prompt/active', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).then(r => r.json()),
   getSummaryPrompts: () => fetch('/api/settings/summary-prompts').then(r => r.ok ? r.json() : {}),
   saveSummaryPrompts: (d) => fetch('/api/settings/summary-prompts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }).then(r => r.json()),
+  getContextBudget: () => fetch('/api/settings/context-budget').then(r => r.ok ? r.json() : { maxTokens: 4000 }),
+  setContextBudget: (maxTokens) => fetch('/api/settings/context-budget', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maxTokens }) }).then(r => r.json()),
+  getCharacter: (charId) => fetch(`/api/characters/${charId}`).then(r => r.ok ? r.json() : null),
+  getWbEntries: (charId) => fetch(`/api/worldbook/active-entries?charId=${charId}`).then(r => r.ok ? r.json() : []),
+  getMemories: (charId) => fetch(`/api/characters/${charId}/memories`).then(r => r.ok ? r.json() : []),
+  getSummaries: (charId) => fetch(`/api/characters/${charId}/summaries?limit=5`).then(r => r.ok ? r.json() : []),
+  getPersonas: () => fetch('/api/personas').then(r => r.ok ? r.json() : []),
+  getActiveChar: () => fetch('/api/characters/active').then(r => r.ok ? r.json() : null),
+  getMessages: (charId, limit = 40) => fetch(`/api/characters/${charId}/messages?limit=${limit}`).then(r => r.ok ? r.json() : []),
+  getLifeLogs: (charId) => fetch(`/api/characters/${charId}/life?limit=5`).then(r => r.ok ? r.json() : []),
+  getDreams: (charId) => fetch(`/api/characters/${charId}/dreams`).then(r => r.ok ? r.json() : []),
 };
 
 // ── 默认上下文条目（新建预设时填充）─────────────────────────────────────────
@@ -240,6 +256,23 @@ const DEFAULT_SUMMARY_ITEMS = [
   maxTokens: null,
   historyCount: id === 'sys-history' ? 100 : null,
   content: null,
+}));
+
+// 默认梦境预设：聚焦角色内心，不含对话历史（避免AI复述聊天）
+const DEFAULT_DREAM_ITEMS = [
+  'sys-syspre',
+  'sys-char-core', 'sys-char-desc',
+  'sys-memories', 'sys-life',
+  'sys-syspost',
+].map(id => ({
+  entryId: id,
+  enabled: true,
+  roleOverride: null,
+  maxTokens: id === 'sys-memories' ? 800 : null,
+  historyCount: null,
+  content: id === 'sys-syspost'
+    ? '请根据以上角色信息，以第一人称生成一个真实的梦境叙述。内容要折射角色的情绪、恐惧或渴望，150-300字，结尾模糊不完整，像真实梦境一样。最后用JSON单独输出：{"title":"标题","type":"emotion|omen|memory|desire","importance":1-10}'
+    : null,
 }));
 
 // 向后兼容别名（老预设用 DEFAULT_CONTEXT_ITEMS 填充时仍使用聊天默认）
@@ -321,261 +354,286 @@ function TokenBadge({ tokens, warn = false }) {
   );
 }
 
-// 系统槽条目卡片
-function SystemSlotCard({ item, slot, onToggle, onRemove, onConfigChange }) {
-  const [expanded, setExpanded] = useState(false);
-  const colors = SLOT_COLOR_CLASSES[slot.color] || SLOT_COLOR_CLASSES.indigo;
-  const currentRole = item.roleOverride || slot.defaultRole;
-
+// 拖拽把手（复用）
+function DragHandle() {
   return (
-    <div className={`rounded-xl border ${item.enabled ? colors.border : 'border-gray-200'} bg-white shadow-sm overflow-hidden transition-all`}>
-      <div className={`flex items-center px-3 py-2.5 gap-2 ${item.enabled ? '' : 'opacity-50'}`}>
-        {/* drag handle */}
-        <div className="text-gray-300 cursor-grab active:cursor-grabbing shrink-0 select-none touch-none">
-          <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
-            <circle cx="3" cy="3" r="1.5"/><circle cx="7" cy="3" r="1.5"/>
-            <circle cx="3" cy="8" r="1.5"/><circle cx="7" cy="8" r="1.5"/>
-            <circle cx="3" cy="13" r="1.5"/><circle cx="7" cy="13" r="1.5"/>
-          </svg>
-        </div>
-
-        {/* icon + name */}
-        <span className={`text-base shrink-0 ${item.enabled ? '' : 'grayscale'}`}>{slot.icon}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-semibold text-gray-700 truncate">{slot.name}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${colors.bg} ${colors.text} shrink-0`}>系统</span>
-          </div>
-          <div className="text-[10px] text-gray-400 truncate mt-0.5">{slot.desc}</div>
-        </div>
-
-        {/* 可编辑槽的 token 数 */}
-        {slot.editable && item.content && (
-          <TokenBadge tokens={estimateTokens(item.content)} warn={estimateTokens(item.content) > 1000} />
-        )}
-
-        {/* role badge (only if not history) */}
-        {slot.blockType !== 'history' && currentRole && <RoleBadge role={currentRole} />}
-        {slot.blockType === 'history' && (
-          <span className="text-[10px] text-blue-400 font-mono bg-blue-50 px-1.5 py-0.5 rounded">
-            {item.historyCount || 20} 条
-          </span>
-        )}
-
-        {/* config expand */}
-        <button
-          onClick={() => setExpanded(v => !v)}
-          className="p-1 text-gray-300 hover:text-gray-500 transition-colors shrink-0"
-        >
-          {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-        </button>
-
-        {/* toggle */}
-        <button
-          onClick={() => onToggle(item.entryId)}
-          disabled={slot.required}
-          className={`transition-colors shrink-0 ${slot.required ? 'opacity-30 cursor-not-allowed' : ''} ${item.enabled ? 'text-green-500' : 'text-gray-300'}`}
-        >
-          {item.enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-        </button>
-
-        {/* remove */}
-        {!slot.required && (
-          <button onClick={() => onRemove(item.entryId)} className="p-1 text-gray-200 hover:text-red-400 transition-colors shrink-0">
-            <X size={13} />
-          </button>
-        )}
-      </div>
-
-      {/* expanded config panel */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
-            transition={{ duration: 0.15 }}
-            className="overflow-hidden"
-          >
-            <div className={`px-3 pb-3 pt-1 border-t ${colors.border} ${colors.bg} space-y-3`}>
-              {/* 来源提示（非可编辑槽） */}
-              {!slot.editable && slot.sourceLabel && (
-                <p className="text-[10px] text-gray-500 italic">{slot.sourceLabel}</p>
-              )}
-
-              {/* 可编辑槽位：内联 textarea */}
-              {slot.editable && (
-                <div>
-                  <div className="flex items-baseline justify-between mb-1">
-                    <label className="text-xs text-gray-600">内容</label>
-                    <span className="text-[10px] text-gray-400">约 {estimateTokens(item.content || '')} tokens</span>
-                  </div>
-                  <textarea
-                    value={item.content || ''}
-                    onChange={e => onConfigChange(item.entryId, { content: e.target.value })}
-                    placeholder={slot.placeholder || '输入内容…'}
-                    rows={4}
-                    className="w-full px-2.5 py-2 border rounded-xl text-xs text-gray-700 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 leading-relaxed placeholder:text-gray-300 bg-white"
-                  />
-                </div>
-              )}
-
-              {/* history depth */}
-              {slot.hasDepth && (
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-gray-600 shrink-0">消息深度</label>
-                  <input
-                    type="number" min={1} max={200}
-                    value={item.historyCount || 20}
-                    onChange={e => onConfigChange(item.entryId, { historyCount: Math.max(1, parseInt(e.target.value) || 20) })}
-                    className="w-16 px-2 py-1 border rounded-lg text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                  />
-                  <span className="text-[10px] text-gray-400">条（默认 20）</span>
-                </div>
-              )}
-
-              {/* role override (not for history) */}
-              {slot.blockType !== 'history' && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <label className="text-xs text-gray-600 shrink-0">角色覆盖</label>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => onConfigChange(item.entryId, { roleOverride: null })}
-                      className={`text-[10px] px-2 py-1 rounded-lg border transition-colors ${!item.roleOverride ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-500 border-gray-200'}`}
-                    >
-                      默认({slot.defaultRole})
-                    </button>
-                    {ROLE_OPTIONS.map(r => (
-                      <button
-                        key={r.value}
-                        onClick={() => onConfigChange(item.entryId, { roleOverride: r.value })}
-                        className={`text-[10px] px-2 py-1 rounded-lg border transition-colors ${item.roleOverride === r.value ? `${r.badge} border-current` : 'bg-white text-gray-400 border-gray-200'}`}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* maxTokens */}
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-600 shrink-0">Token 上限</label>
-                <input
-                  type="number" min={0} max={32000} step={100}
-                  value={item.maxTokens || ''}
-                  onChange={e => onConfigChange(item.entryId, { maxTokens: e.target.value ? parseInt(e.target.value) : null })}
-                  placeholder="不限"
-                  className="w-20 px-2 py-1 border rounded-lg text-xs text-center focus:outline-none focus:ring-1 focus:ring-gray-300"
-                />
-                <span className="text-[10px] text-gray-400">留空 = 不限制</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="text-gray-300 cursor-grab active:cursor-grabbing shrink-0 select-none touch-none">
+      <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor">
+        <circle cx="2" cy="2.5" r="1.2"/><circle cx="6" cy="2.5" r="1.2"/>
+        <circle cx="2" cy="7" r="1.2"/><circle cx="6" cy="7" r="1.2"/>
+        <circle cx="2" cy="11.5" r="1.2"/><circle cx="6" cy="11.5" r="1.2"/>
+      </svg>
     </div>
   );
 }
 
-// 自定义条目卡片
-function CustomEntryCard({ item, entry, onToggle, onRemove, onEdit, onConfigChange }) {
-  const [expanded, setExpanded] = useState(false);
+// 系统槽 — 紧凑单行
+function SystemSlotRow({ item, slot, onToggle, onRemove, onEditOpen, resolvedInfo }) {
+  const colors = SLOT_COLOR_CLASSES[slot.color] || SLOT_COLOR_CLASSES.indigo;
+  const currentRole = item.roleOverride || slot.defaultRole;
+  const Ic = slot.icon;
+
+  return (
+    <div className={`flex items-center h-9 px-2.5 gap-1.5 rounded-xl border bg-white shadow-sm transition-colors ${item.enabled ? colors.border : 'border-gray-200'} ${item.enabled ? '' : 'opacity-50'}`}>
+      <DragHandle />
+      {Ic && <Ic size={13} className={`shrink-0 ${colors.text}`} />}
+      <span className="flex-1 min-w-0 text-sm text-gray-700 truncate">{slot.name}</span>
+
+      {/* history count badge */}
+      {slot.blockType === 'history' && (
+        <span className="text-[10px] text-blue-400 font-mono bg-blue-50 px-1.5 py-0.5 rounded shrink-0">
+          {item.historyCount || 20}条
+        </span>
+      )}
+      {/* role badge */}
+      {slot.blockType !== 'history' && currentRole && <RoleBadge role={currentRole} />}
+      {/* token for editable slots */}
+      {slot.editable && item.content && (
+        <TokenBadge tokens={estimateTokens(item.content)} warn={estimateTokens(item.content) > 1000} />
+      )}
+      {/* token for resolved non-editable slots */}
+      {!slot.editable && resolvedInfo?.text && resolvedInfo.text !== '需选择角色' && !resolvedInfo.loading && (
+        <span className="text-[10px] text-gray-400 shrink-0">~{estimateTokens(resolvedInfo.text)}tok</span>
+      )}
+
+      <button
+        onClick={() => onToggle(item.entryId)}
+        disabled={slot.required}
+        className={`transition-colors shrink-0 ${slot.required ? 'opacity-30 cursor-not-allowed' : ''} ${item.enabled ? 'text-green-500' : 'text-gray-300'}`}
+      >
+        {item.enabled ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+      </button>
+      <button onClick={() => onEditOpen(item, slot)} className="p-0.5 text-gray-300 hover:text-blue-500 transition-colors shrink-0">
+        <Pencil size={12} />
+      </button>
+      {!slot.required && (
+        <button onClick={() => onRemove(item.entryId)} className="p-0.5 text-gray-200 hover:text-red-400 transition-colors shrink-0">
+          <X size={12} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// 自定义条目 — 紧凑单行
+function CustomEntryRow({ item, entry, onToggle, onRemove, onEdit }) {
   const role = item.roleOverride || entry?.role || 'system';
   const roleInfo = ROLE_MAP[role];
   const tokens = estimateTokens(entry?.content);
 
   return (
-    <div className={`rounded-xl border ${item.enabled ? 'border-gray-200' : 'border-gray-100'} bg-white shadow-sm overflow-hidden transition-all`}>
-      <div className={`flex items-center px-3 py-2.5 gap-2 ${item.enabled ? '' : 'opacity-40'}`}>
-        {/* drag handle */}
-        <div className="text-gray-300 cursor-grab active:cursor-grabbing shrink-0 select-none touch-none">
-          <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
-            <circle cx="3" cy="3" r="1.5"/><circle cx="7" cy="3" r="1.5"/>
-            <circle cx="3" cy="8" r="1.5"/><circle cx="7" cy="8" r="1.5"/>
-            <circle cx="3" cy="13" r="1.5"/><circle cx="7" cy="13" r="1.5"/>
-          </svg>
+    <div className={`flex items-center h-9 px-2.5 gap-1.5 rounded-xl border bg-white shadow-sm transition-colors ${item.enabled ? 'border-gray-200' : 'border-gray-100'} ${item.enabled ? '' : 'opacity-40'}`}>
+      <DragHandle />
+      <div className={`w-2 h-2 rounded-full shrink-0 ${roleInfo?.dot || 'bg-gray-400'}`} />
+      <span className="flex-1 min-w-0 text-sm text-gray-700 truncate">{entry?.name || '(未知条目)'}</span>
+      <TokenBadge tokens={tokens} warn={tokens > 2000} />
+      <RoleBadge role={role} />
+      <button onClick={() => onToggle(item.entryId)} className={`transition-colors shrink-0 ${item.enabled ? 'text-green-500' : 'text-gray-300'}`}>
+        {item.enabled ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+      </button>
+      <button onClick={() => onEdit(entry)} className="p-0.5 text-gray-300 hover:text-blue-500 transition-colors shrink-0">
+        <Pencil size={12} />
+      </button>
+      <button onClick={() => onRemove(item.entryId)} className="p-0.5 text-gray-200 hover:text-red-400 transition-colors shrink-0">
+        <X size={12} />
+      </button>
+    </div>
+  );
+}
+
+// 系统槽编辑弹窗
+function SystemSlotEditModal({ item, slot, resolvedInfo, onSave, onClose }) {
+  const [form, setForm] = useState({
+    roleOverride: item.roleOverride ?? null,
+    maxTokens: item.maxTokens ?? '',
+    historyCount: item.historyCount ?? 20,
+    content: item.content ?? '',
+  });
+  const [showFull, setShowFull] = useState(false);
+  const colors = SLOT_COLOR_CLASSES[slot.color] || SLOT_COLOR_CLASSES.indigo;
+  const Ic = slot.icon;
+
+  const handleSave = () => {
+    onSave(item.entryId, {
+      roleOverride: form.roleOverride,
+      maxTokens: form.maxTokens !== '' ? parseInt(form.maxTokens) : null,
+      ...(slot.hasDepth ? { historyCount: Math.max(1, parseInt(form.historyCount) || 20) } : {}),
+      ...(slot.editable ? { content: form.content } : {}),
+    });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="absolute inset-0 bg-black/40 flex items-end z-50"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 400, damping: 40 }}
+        className="w-full bg-white rounded-t-2xl px-5 pt-5 pb-6 max-h-[90%] flex flex-col shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          {Ic && <Ic size={16} className={colors.text} />}
+          <h3 className="font-bold text-gray-800 flex-1">{slot.name}</h3>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
 
-        {/* role dot */}
-        <div className={`w-2 h-2 rounded-full shrink-0 ${roleInfo?.dot || 'bg-gray-400'}`} />
-
-        {/* name + preview */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-medium text-gray-700 truncate">{entry?.name || '(未知条目)'}</span>
-            <RoleBadge role={role} />
-          </div>
-          {entry?.content && (
-            <p className="text-[10px] text-gray-400 truncate mt-0.5">{entry.content}</p>
+        <div className="flex-1 overflow-y-auto space-y-4 pb-2">
+          {/* 来源提示 */}
+          {!slot.editable && slot.sourceLabel && (
+            <p className="text-xs text-gray-400 italic">{slot.sourceLabel}</p>
           )}
-        </div>
 
-        {/* token count */}
-        <TokenBadge tokens={tokens} warn={tokens > 2000} />
-
-        {/* config expand */}
-        <button
-          onClick={() => setExpanded(v => !v)}
-          className="p-1 text-gray-300 hover:text-gray-500 transition-colors shrink-0"
-        >
-          {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-        </button>
-
-        {/* edit */}
-        <button onClick={() => onEdit(entry)} className="p-1 text-gray-300 hover:text-blue-500 transition-colors shrink-0">
-          <Pencil size={13} />
-        </button>
-
-        {/* toggle */}
-        <button onClick={() => onToggle(item.entryId)} className={`transition-colors shrink-0 ${item.enabled ? 'text-green-500' : 'text-gray-300'}`}>
-          {item.enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-        </button>
-
-        {/* remove */}
-        <button onClick={() => onRemove(item.entryId)} className="p-1 text-gray-200 hover:text-red-400 transition-colors shrink-0">
-          <X size={13} />
-        </button>
-      </div>
-
-      {/* expanded config */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
-            transition={{ duration: 0.15 }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pb-3 pt-1 border-t border-gray-100 bg-gray-50 space-y-3">
-              {/* role override */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <label className="text-xs text-gray-600 shrink-0">角色</label>
-                <div className="flex gap-1">
-                  {ROLE_OPTIONS.map(r => (
-                    <button
-                      key={r.value}
-                      onClick={() => onConfigChange(item.entryId, { roleOverride: r.value })}
-                      className={`text-[10px] px-2 py-1 rounded-lg border transition-colors ${role === r.value ? `${r.badge} border-current` : 'bg-white text-gray-400 border-gray-200'}`}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
+          {/* 可编辑槽：textarea */}
+          {slot.editable && (
+            <div>
+              <div className="flex items-baseline justify-between mb-1.5">
+                <label className="text-xs font-semibold text-gray-500">内容</label>
+                <span className="text-[10px] text-gray-400">约 {estimateTokens(form.content)} tokens</span>
               </div>
-              {/* maxTokens */}
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-600 shrink-0">Token 上限</label>
-                <input
-                  type="number" min={0} max={32000} step={100}
-                  value={item.maxTokens || ''}
-                  onChange={e => onConfigChange(item.entryId, { maxTokens: e.target.value ? parseInt(e.target.value) : null })}
-                  placeholder="不限"
-                  className="w-20 px-2 py-1 border rounded-lg text-xs text-center focus:outline-none focus:ring-1 focus:ring-gray-300"
-                />
-                <span className="text-[10px] text-gray-400">当前约 <strong>{tokens}</strong> tokens</span>
+              <textarea
+                value={form.content}
+                onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+                placeholder={slot.placeholder || '输入内容…'}
+                rows={6}
+                className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 leading-relaxed placeholder:text-gray-300"
+              />
+            </div>
+          )}
+
+          {/* 非可编辑槽：内容预览 */}
+          {!slot.editable && (
+            <div>
+              <div className="flex items-baseline justify-between mb-1.5">
+                <label className="text-xs font-semibold text-gray-500">内容预览</label>
+                {resolvedInfo?.text && !resolvedInfo.loading && resolvedInfo.text !== '需选择角色' && (
+                  <span className="text-[10px] text-gray-400">约 {estimateTokens(resolvedInfo.text)} tokens</span>
+                )}
+              </div>
+              {resolvedInfo?.loading ? (
+                <div className="flex items-center gap-2 py-3"><Loader2 size={14} className="animate-spin text-gray-400" /><span className="text-xs text-gray-400">加载中…</span></div>
+              ) : resolvedInfo?.text ? (
+                <div>
+                  <p className={`text-xs text-gray-600 leading-relaxed whitespace-pre-wrap break-words bg-gray-50 rounded-xl p-3 border border-gray-100 ${!showFull ? 'line-clamp-6' : ''}`}>
+                    {showFull || resolvedInfo.text.length <= 300 ? resolvedInfo.text : resolvedInfo.text.slice(0, 300) + '…'}
+                  </p>
+                  {resolvedInfo.text.length > 300 && (
+                    <button onClick={() => setShowFull(v => !v)} className="text-[10px] text-blue-400 hover:text-blue-600 mt-1">
+                      {showFull ? '收起' : '展开全文'}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic">（暂无内容）</p>
+              )}
+            </div>
+          )}
+
+          {/* 历史深度 */}
+          {slot.hasDepth && (
+            <div className="flex items-center gap-3">
+              <label className="text-xs font-semibold text-gray-500 shrink-0">消息深度</label>
+              <input
+                type="number" min={1} max={200}
+                value={form.historyCount}
+                onChange={e => setForm(f => ({ ...f, historyCount: e.target.value }))}
+                className="w-20 px-2 py-2 border rounded-lg text-sm text-center focus:outline-none focus:ring-1 focus:ring-indigo-300"
+              />
+              <span className="text-xs text-gray-400">条（默认 20）</span>
+            </div>
+          )}
+
+          {/* 角色覆盖 */}
+          {slot.blockType !== 'history' && (
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">角色覆盖</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setForm(f => ({ ...f, roleOverride: null }))}
+                  className={`flex-1 py-2 text-xs rounded-xl border font-medium transition-colors ${!form.roleOverride ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-500 border-gray-200'}`}
+                >
+                  默认({slot.defaultRole})
+                </button>
+                {ROLE_OPTIONS.map(r => (
+                  <button key={r.value}
+                    onClick={() => setForm(f => ({ ...f, roleOverride: r.value }))}
+                    className={`flex-1 py-2 text-xs rounded-xl border font-medium transition-colors ${form.roleOverride === r.value ? `${r.badge} border-current` : 'bg-white text-gray-400 border-gray-200'}`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+
+          {/* Token 上限 */}
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-semibold text-gray-500 shrink-0">Token 上限</label>
+            <input
+              type="number" min={0} max={32000} step={100}
+              value={form.maxTokens}
+              onChange={e => setForm(f => ({ ...f, maxTokens: e.target.value }))}
+              placeholder="不限"
+              className="w-24 px-2 py-2 border rounded-lg text-sm text-center focus:outline-none focus:ring-1 focus:ring-gray-300"
+            />
+            <span className="text-xs text-gray-400">留空 = 不限制</span>
+          </div>
+        </div>
+
+        <button
+          onClick={handleSave}
+          className="mt-4 w-full py-3 bg-blue-500 text-white rounded-xl font-semibold text-sm hover:bg-blue-600 transition-colors"
+        >
+          保存修改
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Context Budget Slider ────────────────────────────────────────────────────
+function ContextBudgetSlider({ maxTokens, onChangeMaxTokens, totalEstimatedTokens }) {
+  const PRESETS = [2000, 4000, 8000, 16000, 32000];
+  const ratio = maxTokens > 0 ? Math.min(totalEstimatedTokens / maxTokens, 1) : 0;
+  const barColor = ratio > 0.9 ? 'bg-red-400' : ratio > 0.7 ? 'bg-yellow-400' : 'bg-green-400';
+
+  return (
+    <div className="bg-white border-b px-3 py-2.5 space-y-2 shrink-0">
+      <div className="flex items-center gap-2">
+        <Settings2 size={12} className="text-gray-400 shrink-0" />
+        <span className="text-[11px] font-semibold text-gray-500 flex-1">上下文 Token 预算</span>
+        <span className="text-[11px] font-mono text-gray-600">{maxTokens.toLocaleString()}</span>
+      </div>
+      <input
+        type="range"
+        min={500}
+        max={32000}
+        step={500}
+        value={maxTokens}
+        onChange={e => onChangeMaxTokens(Number(e.target.value))}
+        className="w-full h-1.5 rounded-full accent-blue-500"
+      />
+      <div className="flex gap-1">
+        {PRESETS.map(p => (
+          <button
+            key={p}
+            onClick={() => onChangeMaxTokens(p)}
+            className={`flex-1 text-[10px] py-0.5 rounded font-medium transition-colors ${maxTokens === p ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+          >
+            {p >= 1000 ? `${p / 1000}K` : p}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-1">
+        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${ratio * 100}%` }} />
+        </div>
+        <p className="text-[10px] text-gray-400 text-right">
+          约 {totalEstimatedTokens.toLocaleString()} / {maxTokens.toLocaleString()} tokens
+        </p>
+      </div>
     </div>
   );
 }
@@ -597,9 +655,23 @@ const FilesApp = ({ onBack }) => {
   const [summaryPrompts, setSummaryPrompts] = useState({ segment: '', daily: '', mode: '', periodic: '' });
   const [spSaving, setSpSaving]   = useState(false);
 
-  // edit entry modal
+  // edit entry modal (custom entries)
   const [editEntry, setEditEntry] = useState(null); // null | 'new' | entry object
   const [editForm, setEditForm]   = useState({ name: '', content: '', role: 'system', maxTokens: '' });
+
+  // edit system slot modal
+  const [editSlotItem, setEditSlotItem] = useState(null); // null | { item, slot }
+
+  // context budget
+  const [maxContextTokens, setMaxContextTokens] = useState(4000);
+
+  // resolved content per slot: { [entryId]: { text: string, loading: bool } }
+  const [resolvedContent, setResolvedContent] = useState({});
+  // ref-based guard to prevent duplicate in-flight fetches (avoids stale-closure loop)
+  const resolvedQueueRef = useRef({});
+
+  // active character id (for fetching slot content)
+  const [activeCharId, setActiveCharId] = useState(null);
 
   // token warning threshold
   const TOKEN_WARN = 6000;
@@ -607,39 +679,56 @@ const FilesApp = ({ onBack }) => {
   useEffect(() => {
     (async () => {
       try {
-        const [ps, es, act, sp] = await Promise.all([
+        const [ps, es, act, sp, budget, activeChar] = await Promise.all([
           api.listPresets(), api.listEntries(), api.getActive(), api.getSummaryPrompts(),
+          api.getContextBudget(), api.getActiveChar().catch(() => null),
         ]);
+        if (budget?.maxTokens) setMaxContextTokens(budget.maxTokens);
+        if (activeChar?.id) setActiveCharId(activeChar.id);
         setUserEntries(es);
         setSummaryPrompts(prev => ({ ...prev, ...sp }));
 
         if (ps.length === 0) {
-          // 首次运行：同时创建聊天预设和总结预设
-          const def = await api.createPreset({ name: '默认聊天预设', presetType: 'chat', contextItems: DEFAULT_CHAT_ITEMS });
+          // 首次运行：创建聊天、总结、梦境三个默认预设
+          const def    = await api.createPreset({ name: '默认聊天预设', presetType: 'chat',    contextItems: DEFAULT_CHAT_ITEMS });
           const defSum = await api.createPreset({ name: '默认总结预设', presetType: 'summary', contextItems: DEFAULT_SUMMARY_ITEMS });
-          setPresets([def, defSum]);
+          const defDrm = await api.createPreset({ name: '默认梦境预设', presetType: 'dream',   contextItems: DEFAULT_DREAM_ITEMS });
+          setPresets([def, defSum, defDrm]);
           setActivePresetId(def.id);
           await api.setActive(def.id);
         } else {
-          // 迁移旧版 ID + 补全缺失槽位
+          // 迁移旧版 ID + 补全缺失槽位（feature 预设保持原样，不自动补全）
           const migrated = [];
           for (const p of ps) {
+            // feature 预设（总结/生活/梦境等）有意只包含部分槽位，不做自动合并
+            const isFeature = p.presetType === 'feature';
             const defaultItems = p.presetType === 'summary' ? DEFAULT_SUMMARY_ITEMS : DEFAULT_CHAT_ITEMS;
             if (!p.contextItems || p.contextItems.length === 0) {
+              if (isFeature) { migrated.push(p); continue; }
               const updated = await api.updatePreset(p.id, { contextItems: defaultItems });
               migrated.push(updated);
             } else {
               // 1. 重映射旧 ID
               const remapped = migrateLegacyContextItems(p.contextItems);
-              // 2. 与默认模板合并，补全缺失槽位并保证顺序
-              const merged = mergeWithDefaults(remapped, defaultItems);
               const hasLegacy = p.contextItems.some(i => LEGACY_SLOT_REMAP[i.entryId]);
-              const hasMissing = merged.length !== remapped.length;
-              if (hasLegacy || hasMissing) {
-                const updated = await api.updatePreset(p.id, { contextItems: merged });
-                migrated.push(updated);
+              if (isFeature) {
+                // feature 预设只做 ID 重映射，不补全槽位
+                if (hasLegacy) {
+                  const updated = await api.updatePreset(p.id, { contextItems: remapped });
+                  migrated.push(updated);
+                } else {
+                  migrated.push(p);
+                }
               } else {
-                migrated.push(p);
+                // 2. 与默认模板合并，补全缺失槽位并保证顺序
+                const merged = mergeWithDefaults(remapped, defaultItems);
+                const hasMissing = merged.length !== remapped.length;
+                if (hasLegacy || hasMissing) {
+                  const updated = await api.updatePreset(p.id, { contextItems: merged });
+                  migrated.push(updated);
+                } else {
+                  migrated.push(p);
+                }
               }
             }
           }
@@ -665,15 +754,26 @@ const FilesApp = ({ onBack }) => {
     [userEntries]
   );
 
-  // 估算已启用条目的 token 总量（仅自定义条目可精确估算）
+  // 估算已启用条目的 token 总量（自定义条目 + 已解析的系统槽）
   const estimatedTotal = useMemo(() => {
     return contextItems
-      .filter(item => item.enabled && !SYSTEM_SLOTS[item.entryId])
+      .filter(item => item.enabled)
       .reduce((sum, item) => {
+        const slot = SYSTEM_SLOTS[item.entryId];
+        if (slot) {
+          // Editable slots: count item.content directly (updates live as user types)
+          if (slot.editable) return sum + estimateTokens(item.content || '');
+          // Non-editable system slots: use resolved content
+          const resolved = resolvedContent[item.entryId];
+          if (resolved?.text && resolved.text !== '需选择角色') {
+            return sum + estimateTokens(resolved.text);
+          }
+          return sum;
+        }
         const entry = userEntriesMap[item.entryId];
         return sum + estimateTokens(entry?.content || '');
       }, 0);
-  }, [contextItems, userEntriesMap]);
+  }, [contextItems, userEntriesMap, resolvedContent]);
 
   // ── 预设操作 ──────────────────────────────────────────────────────────
   const patchActivePreset = useCallback(async (updates) => {
@@ -689,8 +789,10 @@ const FilesApp = ({ onBack }) => {
   };
 
   const newPreset = async (type = 'chat') => {
-    const defaultItems = type === 'summary' ? DEFAULT_SUMMARY_ITEMS : DEFAULT_CHAT_ITEMS;
-    const label = type === 'summary' ? '总结预设' : '聊天预设';
+    const defaultItems = type === 'summary' ? DEFAULT_SUMMARY_ITEMS
+                       : type === 'dream'   ? DEFAULT_DREAM_ITEMS
+                       : DEFAULT_CHAT_ITEMS;
+    const label = type === 'summary' ? '总结预设' : type === 'dream' ? '梦境预设' : '聊天预设';
     try {
       const p = await api.createPreset({
         name: `${label} ${presets.length + 1}`,
@@ -750,6 +852,115 @@ const FilesApp = ({ onBack }) => {
       ),
     });
   }, [contextItems, patchActivePreset]);
+
+  const handleSetMaxContextTokens = useCallback(async (val) => {
+    setMaxContextTokens(val);
+    try { await api.setContextBudget(val); } catch {}
+  }, []);
+
+  // Resolve content for a system slot
+  const resolveSlotContent = useCallback(async (entryId, item) => {
+    if (resolvedQueueRef.current[entryId]) return; // already queued or resolved
+    resolvedQueueRef.current[entryId] = true;
+    setResolvedContent(prev => ({ ...prev, [entryId]: { text: null, loading: true } }));
+    try {
+      let text = null;
+      if (entryId === 'sys-char-core' || entryId === 'sys-char-desc' || entryId === 'sys-char-sample') {
+        if (!activeCharId) { text = '需选择角色'; }
+        else {
+          const char = await api.getCharacter(activeCharId).catch(() => null);
+          if (!char) { text = '角色加载失败'; }
+          else if (entryId === 'sys-char-core') text = char.core || char.name || '';
+          else if (entryId === 'sys-char-desc') text = char.persona || char.description || '';
+          else text = char.sample || char.sampleDialogue || '';
+        }
+      } else if (entryId === 'sys-wbpre' || entryId === 'sys-wbpost') {
+        if (!activeCharId) { text = '需选择角色'; }
+        else {
+          const entries = await api.getWbEntries(activeCharId).catch(() => []);
+          text = Array.isArray(entries) ? entries.map(e => e.content || '').filter(Boolean).join('\n---\n') : '';
+        }
+      } else if (entryId === 'sys-memories') {
+        if (!activeCharId) { text = '需选择角色'; }
+        else {
+          const mems = await api.getMemories(activeCharId).catch(() => []);
+          text = Array.isArray(mems) ? mems.map(m => m.content || m.text || '').filter(Boolean).join('\n') : '';
+        }
+      } else if (entryId === 'sys-summaries') {
+        if (!activeCharId) { text = '需选择角色'; }
+        else {
+          const sums = await api.getSummaries(activeCharId).catch(() => []);
+          text = Array.isArray(sums) ? sums.map(s => s.content || s.text || '').filter(Boolean).join('\n---\n') : '';
+        }
+      } else if (entryId === 'sys-user-desc') {
+        const data = await api.getPersonas().catch(() => ({}));
+        const { personas = [], activePersonaId, userProfile } = Array.isArray(data) ? { personas: data } : data;
+        const activePersona = activePersonaId ? personas.find(p => p.id === activePersonaId) : null;
+        if (activePersona) {
+          text = [activePersona.name, activePersona.description].filter(Boolean).join('\n');
+        } else if (userProfile?.name) {
+          text = [userProfile.name, userProfile.description].filter(Boolean).join('\n');
+        } else {
+          text = '（无激活命格）';
+        }
+      } else if (entryId === 'sys-history') {
+        if (!activeCharId) { text = '需选择角色'; }
+        else {
+          const count = item?.historyCount || 20;
+          const msgs = await api.getMessages(activeCharId).catch(() => []);
+          const recent = Array.isArray(msgs)
+            ? msgs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-count)
+            : [];
+          text = recent.map(m => `${m.sender === 'user' ? '用户' : '角色'}：${m.content}`).join('\n');
+        }
+      } else if (entryId === 'sys-life') {
+        if (!activeCharId) { text = '需选择角色'; }
+        else {
+          const logs = await api.getLifeLogs(activeCharId).catch(() => []);
+          text = Array.isArray(logs) ? logs.map(l => l.content || '').filter(Boolean).join('\n---\n') : '';
+          if (!text) text = '（暂无生活记录）';
+        }
+      } else if (entryId === 'sys-dreams') {
+        if (!activeCharId) { text = '需选择角色'; }
+        else {
+          const dreams = await api.getDreams(activeCharId).catch(() => []);
+          text = Array.isArray(dreams) ? dreams.map(d => d.content || d.title || '').filter(Boolean).join('\n---\n') : '';
+          if (!text) text = '（暂无梦境记录）';
+        }
+      } else if (entryId === 'sys-syspre' || entryId === 'sys-syspost' || entryId === 'sys-tools' || entryId === 'sys-scene') {
+        text = item?.content || '（暂无内容）';
+      } else {
+        text = '（系统自动填充）';
+      }
+      setResolvedContent(prev => ({ ...prev, [entryId]: { text: text || '', loading: false } }));
+    } catch (e) {
+      setResolvedContent(prev => ({ ...prev, [entryId]: { text: `加载失败: ${e.message}`, loading: false } }));
+    }
+  }, [activeCharId]);
+
+  const openSlotEdit = useCallback((item, slot) => {
+    setEditSlotItem({ item, slot });
+    resolveSlotContent(item.entryId, item);
+  }, [resolveSlotContent]);
+
+  const saveSlotEdit = useCallback((entryId, patch) => {
+    configItem(entryId, patch);
+    setEditSlotItem(null);
+  }, [configItem]);
+
+  // When active character or active preset changes, reset resolution cache
+  useEffect(() => {
+    resolvedQueueRef.current = {};
+    setResolvedContent({});
+  }, [activeCharId, activePresetId]);
+
+  // Auto-resolve all enabled non-editable system slots (so token total is populated without manual expand)
+  useEffect(() => {
+    if (!activeCharId) return;
+    contextItems
+      .filter(item => item.enabled && SYSTEM_SLOTS[item.entryId] && !SYSTEM_SLOTS[item.entryId].editable)
+      .forEach(item => resolveSlotContent(item.entryId, item));
+  }, [activeCharId, contextItems, resolveSlotContent]);
 
   // ── 自定义条目 CRUD ────────────────────────────────────────────────────
   const openEdit = (entry) => {
@@ -874,8 +1085,11 @@ const FilesApp = ({ onBack }) => {
             {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           {activePreset && (
-            <span className={`text-[10px] px-2 py-1 rounded-full shrink-0 font-medium ${activePreset.presetType === 'summary' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
-              {activePreset.presetType === 'summary' ? '总结' : '聊天'}
+            <span className={`text-[10px] px-2 py-1 rounded-full shrink-0 font-medium ${
+              activePreset.presetType === 'summary' ? 'bg-emerald-100 text-emerald-600'
+            : activePreset.presetType === 'dream'   ? 'bg-indigo-100 text-indigo-600'
+            : 'bg-blue-100 text-blue-600'}`}>
+              {activePreset.presetType === 'summary' ? '总结' : activePreset.presetType === 'dream' ? '梦境' : '聊天'}
             </span>
           )}
         </div>
@@ -905,6 +1119,13 @@ const FilesApp = ({ onBack }) => {
           </span>
         )}
       </div>
+
+      {/* ── Context Budget Slider ── */}
+      <ContextBudgetSlider
+        maxTokens={maxContextTokens}
+        onChangeMaxTokens={handleSetMaxContextTokens}
+        totalEstimatedTokens={estimatedTotal}
+      />
 
       {/* ── Tabs ── */}
       <div className="flex bg-white border-b shrink-0">
@@ -955,21 +1176,21 @@ const FilesApp = ({ onBack }) => {
                         </span>
                         <div className="flex-1 min-w-0">
                           {slot ? (
-                            <SystemSlotCard
+                            <SystemSlotRow
                               item={item}
                               slot={slot}
                               onToggle={toggleEnabled}
                               onRemove={removeFromContext}
-                              onConfigChange={configItem}
+                              onEditOpen={openSlotEdit}
+                              resolvedInfo={resolvedContent[item.entryId]}
                             />
                           ) : entry ? (
-                            <CustomEntryCard
+                            <CustomEntryRow
                               item={item}
                               entry={entry}
                               onToggle={toggleEnabled}
                               onRemove={removeFromContext}
                               onEdit={openEdit}
-                              onConfigChange={configItem}
                             />
                           ) : (
                             <div className="flex items-center justify-between px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-500">
@@ -1009,7 +1230,7 @@ const FilesApp = ({ onBack }) => {
                   const colors = SLOT_COLOR_CLASSES[slot.color] || SLOT_COLOR_CLASSES.indigo;
                   return (
                     <div key={id} className={`flex items-center px-3 py-2.5 bg-white rounded-xl border ${inCtx ? colors.border : 'border-gray-100'} shadow-sm gap-2`}>
-                      <span className="text-base shrink-0">{slot.icon}</span>
+                      {slot.icon && (() => { const Ic = slot.icon; return <Ic size={16} className={`shrink-0 ${colors.text}`} />; })()}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-700">{slot.name}</p>
                         <p className="text-[10px] text-gray-400 truncate">{slot.desc}</p>
@@ -1136,7 +1357,7 @@ const FilesApp = ({ onBack }) => {
                         return (
                           <button key={id} onClick={() => addToContext(id)}
                             className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${colors.border} ${colors.bg} text-left`}>
-                            <span className="text-base">{slot.icon}</span>
+                            {slot.icon && (() => { const Ic = slot.icon; return <Ic size={15} className={`shrink-0 ${colors.text}`} />; })()}
                             <div className="flex-1 min-w-0">
                               <p className={`text-sm font-medium ${colors.text}`}>{slot.name}</p>
                               <p className="text-[10px] text-gray-400 truncate">{slot.desc}</p>
@@ -1264,6 +1485,19 @@ const FilesApp = ({ onBack }) => {
         )}
       </AnimatePresence>
 
+      {/* ════ 系统槽编辑弹窗 ════ */}
+      <AnimatePresence>
+        {editSlotItem && (
+          <SystemSlotEditModal
+            item={editSlotItem.item}
+            slot={editSlotItem.slot}
+            resolvedInfo={resolvedContent[editSlotItem.item.entryId]}
+            onSave={saveSlotEdit}
+            onClose={() => setEditSlotItem(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ════ 新建预设类型选择 ════ */}
       <AnimatePresence>
         {showNewPresetModal && (
@@ -1288,7 +1522,7 @@ const FilesApp = ({ onBack }) => {
                   onClick={() => newPreset('chat')}
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-blue-200 bg-blue-50 text-left hover:bg-blue-100 transition-colors"
                 >
-                  <span className="text-xl">💬</span>
+                  <MessageSquare size={20} className="text-blue-500 shrink-0" />
                   <div>
                     <p className="font-semibold text-blue-700 text-sm">聊天预设</p>
                     <p className="text-[11px] text-blue-400 mt-0.5">15 个槽位 · 包含梦境、近期生活、历史摘要</p>
@@ -1298,10 +1532,20 @@ const FilesApp = ({ onBack }) => {
                   onClick={() => newPreset('summary')}
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-emerald-200 bg-emerald-50 text-left hover:bg-emerald-100 transition-colors"
                 >
-                  <span className="text-xl">📋</span>
+                  <ScrollText size={20} className="text-emerald-500 shrink-0" />
                   <div>
                     <p className="font-semibold text-emerald-700 text-sm">总结预设</p>
                     <p className="text-[11px] text-emerald-400 mt-0.5">12 个槽位 · 历史深度 100 · 为 AI 总结优化</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => newPreset('dream')}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-indigo-200 bg-indigo-50 text-left hover:bg-indigo-100 transition-colors"
+                >
+                  <Moon size={20} className="text-indigo-500 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-indigo-700 text-sm">梦境预设</p>
+                    <p className="text-[11px] text-indigo-400 mt-0.5">6 个槽位 · 聚焦角色内心 · 用于 AI 梦境生成</p>
                   </div>
                 </button>
               </div>

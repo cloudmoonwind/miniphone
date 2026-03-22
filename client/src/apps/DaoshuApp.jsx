@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronDown, Zap, Heart, Shield, Wind, Flame, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Avatar from '../components/Avatar.jsx';
 
 const api = (path, opts) => fetch(`/api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts }).then(r => r.json());
 
@@ -243,9 +244,7 @@ export default function DaoshuApp({ onBack }) {
                 onClick={() => { setChar(c); setShowPicker(false); }}
                 className={`w-full px-4 py-2.5 flex items-center gap-2.5 hover:bg-white/20 transition-colors text-left ${char?.id === c.id ? 'bg-white/15' : ''}`}
               >
-                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-sm shrink-0">
-                  {c.avatar || c.name?.[0] || '?'}
-                </div>
+                <Avatar value={c.avatar} name={c.name} size={28} rounded className="shrink-0" />
                 <span className="text-white text-sm font-medium">{c.name}</span>
               </button>
             ))}

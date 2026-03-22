@@ -10,9 +10,11 @@
 import { Router } from 'express';
 import { lifeStore, characterStore, messageStore, presetStore, activeStore } from '../storage/index.js';
 import { getClient, chatCompletion } from '../services/ai.js';
+import { processLifeLog } from '../services/charSystem.js';
 import { genId } from '../storage/FileStore.js';
 import { getEventPoolEntries } from '../services/worldbook.js';
 import { getCharStats, getMergedStatDefs } from '../services/charstats.js';
+import { getPrompt } from '../services/promptPresets.js';
 
 const router = Router({ mergeParams: true });
 
@@ -110,10 +112,12 @@ router.post('/generate', async (req, res) => {
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
       .slice(-5);
 
-    // 7. 组装 prompt
+    // 7. 组装 prompt（叠加提示词预设中的 systemExtension）
+    const presetSystemExt = await getPrompt('life', 'systemExtension').catch(() => null);
+    const combinedExtraSystem = [extraSystem, presetSystemExt].filter(s => s && s.trim()).join('\n');
     const { systemPrompt, userPrompt } = buildLifePrompt({
       char, stats, statDefs, selectedEvents,
-      recentLogs, recentMsgs, period, extraSystem,
+      recentLogs, recentMsgs, period, extraSystem: combinedExtraSystem,
     });
 
     const messages = [
@@ -143,6 +147,8 @@ router.post('/generate', async (req, res) => {
         statsSnapshot: stats,
         generatedAt: new Date().toISOString(),
       });
+      // 角色系统：从生活日志中提取时间线事件、物品、技能
+      processLifeLog(charId, log).catch(e => console.error('[charSystem]', e.message));
     }
 
     res.status(201).json({

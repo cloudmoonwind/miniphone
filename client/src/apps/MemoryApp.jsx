@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   ChevronLeft, Database, Trash2, Archive, Download, RotateCcw,
   AlertTriangle, X, HardDrive, Zap, Clock, Snowflake, RefreshCw,
-  CheckCircle, Info, ChevronDown, ChevronRight, Settings2,
+  CheckCircle, Info, ChevronDown, ChevronRight, Settings2, Plus, User,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Avatar from '../components/Avatar.jsx';
+import { api } from '../services/api.js';
 
 // ─── 常量 ───────────────────────────────────────────────
 const MAX_STORAGE = 5 * 1024 * 1024; // 5MB 浏览器 localStorage 估算上限
@@ -207,12 +209,14 @@ const AutoTab = ({ settings, save }) => {
       {advOpen && (
         <Card title="预警阈值（%）" icon={<AlertTriangle size={14} />}>
           {[
-            { k: 'warnAt',     label: '⚠️ 黄色预警' },
-            { k: 'orangeAt',   label: '🔶 橙色预警，自动轻量清理' },
-            { k: 'criticalAt', label: '🔴 强制清理，停止新梦境生成' },
-          ].map(({ k, label }) => (
+            { k: 'warnAt',     label: '黄色预警',            dot: 'bg-yellow-400' },
+            { k: 'orangeAt',   label: '橙色预警，自动轻量清理', dot: 'bg-orange-400' },
+            { k: 'criticalAt', label: '强制清理，停止新梦境生成', dot: 'bg-red-500' },
+          ].map(({ k, label, dot }) => (
             <div key={k} className="flex items-center gap-3 mb-3 last:mb-0">
-              <span className="text-xs text-gray-600 flex-1">{label}</span>
+              <span className="flex items-center gap-1.5 text-xs text-gray-600 flex-1">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />{label}
+              </span>
               <input type="number" min={50} max={99} value={settings[k]}
                 onChange={e => save({ [k]: +e.target.value })}
                 className="w-14 text-center text-sm border rounded-lg px-1 py-1" />
@@ -375,7 +379,7 @@ const ManualTab = ({ info, onConfirm, showToast }) => {
         {!scanResult ? (
           <button onClick={runScan} disabled={scanning}
             className="w-full py-3 rounded-xl bg-indigo-500 text-white text-sm font-medium disabled:opacity-50">
-            {scanning ? '扫描中…' : '🔍 开始扫描'}
+            {scanning ? '扫描中…' : '开始扫描'}
           </button>
         ) : (
           <div>
@@ -408,7 +412,7 @@ const ManualTab = ({ info, onConfirm, showToast }) => {
               </div>
             )}
             {scanResult.safe.length === 0 && scanResult.optional.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-4">🎉 暂无可清理内容</p>
+              <p className="text-sm text-gray-400 text-center py-4">暂无可清理内容</p>
             )}
             <button onClick={() => setScanResult(null)} className="text-xs text-indigo-400 mt-1">重新扫描</button>
           </div>
@@ -482,13 +486,13 @@ const ArchiveTab = ({ showToast }) => {
       <Card title="导出数据" icon={<Download size={14} />}>
         <button onClick={() => doExport('全量', null)}
           className="w-full py-3 rounded-xl bg-indigo-500 text-white text-sm font-medium mb-2">
-          📦 导出全量备份
+          导出全量备份
         </button>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: '💬 聊天',  keys: () => Object.keys(localStorage).filter(k => k.startsWith('ics_msgs_')), key: '聊天' },
-            { label: '🌙 梦境',  keys: () => ['ics_dreams'], key: '梦境' },
-            { label: '🗺️ 地图',  keys: () => ['ics_maps', 'ics_active_map'], key: '地图' },
+            { label: '聊天',  keys: () => Object.keys(localStorage).filter(k => k.startsWith('ics_msgs_')), key: '聊天' },
+            { label: '梦境',  keys: () => ['ics_dreams'], key: '梦境' },
+            { label: '地图',  keys: () => ['ics_maps', 'ics_active_map'], key: '地图' },
           ].map(({ label, keys, key }) => (
             <button key={key} onClick={() => doExport(key, keys())}
               className="py-2.5 rounded-xl bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200">
@@ -538,6 +542,139 @@ const ArchiveTab = ({ showToast }) => {
   );
 };
 
+// ─── Tab 4：角色记忆 ─────────────────────────────────────
+const CAT_LABELS = { event: '事件', preference: '偏好', relationship: '关系', fact: '事实' };
+const CAT_KEYS = Object.keys(CAT_LABELS);
+
+const CharMemoriesTab = ({ showToast }) => {
+  const [chars, setChars] = useState([]);
+  const [selCharId, setSelCharId] = useState(null);
+  const [memories, setMemories] = useState([]);
+  const [loadingMem, setLoadingMem] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [form, setForm] = useState({ content: '', importance: 5, category: 'event' });
+
+  useEffect(() => {
+    api.get('/api/characters').then(setChars).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!selCharId) { setMemories([]); return; }
+    setLoadingMem(true);
+    api.get(`/api/characters/${selCharId}/memories`)
+      .then(data => { setMemories(data); setLoadingMem(false); })
+      .catch(() => setLoadingMem(false));
+  }, [selCharId]);
+
+  const addMemory = async () => {
+    if (!form.content.trim() || !selCharId) return;
+    try {
+      const m = await api.post(`/api/characters/${selCharId}/memories`, form);
+      setMemories(prev => [m, ...prev]);
+      setForm({ content: '', importance: 5, category: 'event' });
+      setAddOpen(false);
+      showToast('记忆已保存');
+    } catch { showToast('保存失败'); }
+  };
+
+  const deleteMemory = async (id) => {
+    try {
+      await api.delete(`/api/memories/${id}`);
+      setMemories(prev => prev.filter(m => m.id !== id));
+      showToast('已删除');
+    } catch { showToast('删除失败'); }
+  };
+
+  return (
+    <div className="p-3 space-y-3 pb-6">
+      <Card title="选择角色" icon={<User size={14} />}>
+        <div className="flex gap-2 flex-wrap">
+          {chars.map(c => (
+            <button key={c.id} onClick={() => setSelCharId(c.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border-2 transition-all ${selCharId === c.id ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-transparent bg-gray-100 text-gray-600'}`}>
+              <Avatar value={c.avatar} name={c.name} size={18} rounded />
+              {c.name}
+            </button>
+          ))}
+          {chars.length === 0 && <p className="text-xs text-gray-400">暂无角色，请先在通讯录中创建</p>}
+        </div>
+      </Card>
+
+      {selCharId && (
+        <>
+          <button onClick={() => setAddOpen(o => !o)}
+            className="w-full py-3 rounded-xl bg-indigo-500 text-white text-sm font-medium flex items-center justify-center gap-2">
+            <Plus size={14} /> 添加记忆
+          </button>
+
+          <AnimatePresence>
+            {addOpen && (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+                <p className="text-sm font-semibold text-gray-700">新增记忆</p>
+                <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+                  placeholder="记录角色对用户的记忆内容…" rows={3} autoFocus
+                  className="w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <p className="text-[11px] text-gray-400 mb-1">重要度（≥7 会注入上下文）</p>
+                    <div className="flex items-center gap-2">
+                      <input type="range" min={1} max={10} value={form.importance}
+                        onChange={e => setForm(f => ({ ...f, importance: +e.target.value }))}
+                        className="flex-1 accent-indigo-500" />
+                      <span className={`text-sm font-bold w-5 text-right ${form.importance >= 7 ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        {form.importance}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-400 mb-1">类型</p>
+                    <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                      className="text-sm border rounded-lg px-2 py-1.5 focus:outline-none">
+                      {CAT_KEYS.map(k => <option key={k} value={k}>{CAT_LABELS[k]}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setAddOpen(false)} className="flex-1 py-2 text-sm border rounded-xl text-gray-500">取消</button>
+                  <button onClick={addMemory} disabled={!form.content.trim()}
+                    className="flex-1 py-2 text-sm bg-indigo-500 text-white rounded-xl font-medium disabled:opacity-50">保存</button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {loadingMem ? (
+            <div className="text-center py-8 text-gray-400 text-sm">加载中…</div>
+          ) : memories.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 text-sm">暂无记忆</div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11px] text-gray-400 px-1">
+                共 {memories.length} 条 · 重要度 ≥7 的会注入 AI 上下文
+              </p>
+              {memories.map(m => (
+                <div key={m.id} className="bg-white rounded-2xl shadow-sm p-3 flex gap-3 items-start">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${m.importance >= 7 ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {m.importance}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-700 leading-relaxed">{m.content}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">{CAT_LABELS[m.category] || m.category}</p>
+                  </div>
+                  <button onClick={() => deleteMemory(m.id)} className="text-gray-200 hover:text-red-400 transition-colors shrink-0 pt-0.5">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 // ─── 主组件 ──────────────────────────────────────────────
 const MemoryApp = ({ onBack }) => {
   const [tab, setTab] = useState(0);
@@ -568,7 +705,7 @@ const MemoryApp = ({ onBack }) => {
            : usedPct >= settings.warnAt     ? '#eab308'
            : '#22c55e';
 
-  const TABS = ['自动管理', '手动清理', '归档'];
+  const TABS = ['自动管理', '手动清理', '归档', '角色记忆'];
 
   // Refresh storage info whenever tab changes (manual cleanup may have changed it)
   useEffect(() => { refresh(); }, [tab]);
@@ -641,6 +778,7 @@ const MemoryApp = ({ onBack }) => {
         {tab === 0 && <AutoTab settings={settings} save={save} />}
         {tab === 1 && <ManualTab info={info} onConfirm={onConfirm} showToast={(m) => { showToast(m); refresh(); }} />}
         {tab === 2 && <ArchiveTab showToast={showToast} />}
+        {tab === 3 && <CharMemoriesTab showToast={showToast} />}
       </div>
 
       {/* ── Confirm dialog ── */}

@@ -1,0 +1,786 @@
+[
+  {
+    "id": "dafu_1774203030843_4il4",
+    "status": "completed",
+    "mode": "十八禁",
+    "playType": "线上",
+    "charId": "char_1773377502265_2f2r",
+    "charName": "郁疏澜",
+    "userName": "我",
+    "hostPresetId": null,
+    "charPresetId": null,
+    "wbBookId": "wb_1774203022162_j77a",
+    "cells": [
+      {
+        "id": 0,
+        "name": "起点",
+        "type": "start",
+        "next": [
+          1
+        ],
+        "x": 5,
+        "y": 8,
+        "price": 0,
+        "wbContent": "回到起点，角色用一个热情的欢迎拥抱开场，语气里藏着让人心跳加速的期待。"
+      },
+      {
+        "id": 1,
+        "name": "邂逅广场",
+        "type": "event",
+        "next": [
+          2
+        ],
+        "x": 4,
+        "y": 8,
+        "price": 0,
+        "wbContent": "邂逅广场：两人在人群中相遇，角色靠近低声说了一句让你耳根发热的话。"
+      },
+      {
+        "id": 2,
+        "name": "机遇",
+        "type": "chance",
+        "next": [
+          3
+        ],
+        "x": 3,
+        "y": 8,
+        "price": 0,
+        "wbContent": "机遇卡：命运转盘！主持人随机安排一个大胆的互动请求，测试两人的默契与胆量。"
+      },
+      {
+        "id": 3,
+        "name": "命运",
+        "type": "fate",
+        "next": [
+          4
+        ],
+        "x": 2,
+        "y": 8,
+        "price": 0,
+        "wbContent": "命运卡：命运的玩笑！主持人给出一个大胆的挑战，完成则奖励丰厚。"
+      },
+      {
+        "id": 4,
+        "name": "咖啡厅",
+        "type": "property",
+        "next": [
+          5
+        ],
+        "x": 1,
+        "y": 8,
+        "price": 120,
+        "wbContent": "咖啡厅：角落里的独处，角色刻意靠近，低声在耳边说了一句令你脸红心跳的话。"
+      },
+      {
+        "id": 5,
+        "name": "左下角",
+        "type": "corner",
+        "next": [
+          6
+        ],
+        "x": 0,
+        "y": 8,
+        "price": 0,
+        "wbContent": "左下角：路口，夜晚安静下来，角色的视线落在你身上，带着某种意味。"
+      },
+      {
+        "id": 6,
+        "name": "书店",
+        "type": "property",
+        "next": [
+          7
+        ],
+        "x": 0,
+        "y": 7,
+        "price": 150,
+        "wbContent": "书店：私密角落，角色拉着你看一本\"特别\"的书，两人的距离不知不觉越来越近。"
+      },
+      {
+        "id": 7,
+        "name": "公园",
+        "type": "event",
+        "next": [
+          8
+        ],
+        "x": 0,
+        "y": 6,
+        "price": 0,
+        "wbContent": "公园：夜晚的公园，远离人群，角色主动靠近，月光下气氛越来越暧昧。"
+      },
+      {
+        "id": 8,
+        "name": "十字路口",
+        "type": "branch",
+        "next": [
+          9,
+          14
+        ],
+        "x": 0,
+        "y": 5,
+        "price": 0,
+        "wbContent": "十字路口：角色停下，眼神里有些危险的光：\"你更想往哪边走——刺激的，还是更刺激的？\""
+      },
+      {
+        "id": 9,
+        "name": "图书馆",
+        "type": "property",
+        "next": [
+          10
+        ],
+        "x": 1,
+        "y": 4,
+        "price": 120,
+        "wbContent": "禁区入口：越过这里就没有回头路了，角色用询问的眼神看着你，等待你的选择。"
+      },
+      {
+        "id": 10,
+        "name": "机遇",
+        "type": "chance",
+        "next": [
+          11
+        ],
+        "x": 2,
+        "y": 4,
+        "price": 0,
+        "wbContent": "机遇卡：命运转盘！主持人随机安排一个大胆的互动请求，测试两人的默契与胆量。"
+      },
+      {
+        "id": 11,
+        "name": "车站",
+        "type": "station",
+        "next": [
+          12
+        ],
+        "x": 3,
+        "y": 4,
+        "price": 0,
+        "wbContent": "车站：等车的间隙，角色把你带到了僻静的角落，说有话要悄悄告诉你。"
+      },
+      {
+        "id": 12,
+        "name": "命运",
+        "type": "fate",
+        "next": [
+          13
+        ],
+        "x": 3,
+        "y": 3,
+        "price": 0,
+        "wbContent": "命运卡：命运的玩笑！主持人给出一个大胆的挑战，完成则奖励丰厚。"
+      },
+      {
+        "id": 13,
+        "name": "电影院",
+        "type": "property",
+        "next": [
+          19
+        ],
+        "x": 2,
+        "y": 3,
+        "price": 200,
+        "wbContent": "电影院：黑暗的放映厅里，角色开始了一段超越观影的亲密互动。"
+      },
+      {
+        "id": 14,
+        "name": "禁闭所",
+        "type": "jail",
+        "next": [
+          15
+        ],
+        "x": 0,
+        "y": 4,
+        "price": 0,
+        "wbContent": "惩罚格：被单独关押在一起，必须通过完成一个大胆的挑战才能获释。"
+      },
+      {
+        "id": 15,
+        "name": "餐厅",
+        "type": "property",
+        "next": [
+          16
+        ],
+        "x": 0,
+        "y": 3,
+        "price": 180,
+        "wbContent": "私密包厢：烛光与美食之外，角色的眼神和动作都在传递着强烈的信号。"
+      },
+      {
+        "id": 16,
+        "name": "左上角",
+        "type": "corner",
+        "next": [
+          17
+        ],
+        "x": 0,
+        "y": 2,
+        "price": 0,
+        "wbContent": "左上角：夜晚更深了，角色靠近说\"这里只有我们两个人\"，语气意味深长。"
+      },
+      {
+        "id": 17,
+        "name": "游乐场",
+        "type": "property",
+        "next": [
+          18
+        ],
+        "x": 1,
+        "y": 2,
+        "price": 200,
+        "wbContent": "私密空间：角色拉住你，说\"这里有个秘密地方想带你去看\"，眼神带着邀请。"
+      },
+      {
+        "id": 18,
+        "name": "商场",
+        "type": "property",
+        "next": [
+          19
+        ],
+        "x": 2,
+        "y": 2,
+        "price": 260,
+        "wbContent": "试衣间：角色主动走进来，说要帮你\"参谋一下\"，门在身后悄悄关上。"
+      },
+      {
+        "id": 19,
+        "name": "广场汇合",
+        "type": "event",
+        "next": [
+          20
+        ],
+        "x": 3,
+        "y": 2,
+        "price": 0,
+        "wbContent": "汇合点：两条路在此相遇，角色看着你，氛围在沉默中悄悄升温。"
+      },
+      {
+        "id": 20,
+        "name": "机遇",
+        "type": "chance",
+        "next": [
+          21
+        ],
+        "x": 4,
+        "y": 2,
+        "price": 0,
+        "wbContent": "机遇卡：命运转盘！主持人随机安排一个大胆的互动请求，测试两人的默契与胆量。"
+      },
+      {
+        "id": 21,
+        "name": "酒店",
+        "type": "property",
+        "next": [
+          22
+        ],
+        "x": 5,
+        "y": 2,
+        "price": 300,
+        "wbContent": "酒店：门一关上，角色直接说\"今晚我们不需要那么多规矩\"，眼神专注而直接。"
+      },
+      {
+        "id": 22,
+        "name": "命运",
+        "type": "fate",
+        "next": [
+          23
+        ],
+        "x": 5,
+        "y": 3,
+        "price": 0,
+        "wbContent": "命运卡：命运的玩笑！主持人给出一个大胆的挑战，完成则奖励丰厚。"
+      },
+      {
+        "id": 23,
+        "name": "停车场",
+        "type": "parking",
+        "next": [
+          24
+        ],
+        "x": 5,
+        "y": 4,
+        "price": 0,
+        "wbContent": "停车场：车窗上的哈气越来越浓，两人在黑暗中越来越近。"
+      },
+      {
+        "id": 24,
+        "name": "终点",
+        "type": "end",
+        "next": [],
+        "x": 5,
+        "y": 5,
+        "price": 0,
+        "wbContent": "终点：旅途走到终点，角色用手轻轻托起你的下巴，低声说\"终于走到这里了\"。"
+      }
+    ],
+    "players": [
+      {
+        "id": "user",
+        "name": "我",
+        "position": 2,
+        "score": 0,
+        "skipTurns": 0,
+        "items": [],
+        "color": "#60a5fa",
+        "pendingBranch": null
+      },
+      {
+        "id": "char",
+        "name": "郁疏澜",
+        "position": 4,
+        "score": 0,
+        "skipTurns": 0,
+        "items": [],
+        "color": "#f472b6",
+        "pendingBranch": null
+      }
+    ],
+    "currentPlayerIndex": 1,
+    "round": 1,
+    "phase": "turn_end",
+    "waitingFor": "turn_end",
+    "log": [
+      {
+        "type": "system",
+        "playerId": "system",
+        "text": "郁疏澜 上线了！\"欲望迷宫\"（十八禁模式）开始。",
+        "timestamp": "2026-03-22T18:10:30.843Z"
+      },
+      {
+        "type": "system",
+        "playerId": "system",
+        "text": "游戏开始！十八禁模式 · 线上 · 我先行。",
+        "timestamp": "2026-03-22T18:10:30.843Z"
+      },
+      {
+        "type": "roll",
+        "playerId": "user",
+        "text": "我 掷出 1+1=2，移动到「机遇」。",
+        "timestamp": "2026-03-22T18:10:33.930Z",
+        "dice": [
+          1,
+          1
+        ],
+        "position": 2
+      },
+      {
+        "type": "event",
+        "playerId": "host",
+        "text": "好运降临，前进2格！",
+        "timestamp": "2026-03-22T18:10:33.930Z",
+        "cellId": 2
+      },
+      {
+        "type": "roll",
+        "playerId": "char",
+        "text": "郁疏澜 掷出 2+2=4，移动到「咖啡厅」。",
+        "timestamp": "2026-03-22T18:10:39.931Z",
+        "dice": [
+          2,
+          2
+        ],
+        "position": 4
+      },
+      {
+        "type": "event",
+        "playerId": "host",
+        "text": "来到「咖啡厅」。",
+        "timestamp": "2026-03-22T18:10:39.931Z",
+        "cellId": 4
+      }
+    ],
+    "hostHistory": [],
+    "charHistory": [],
+    "createdAt": "2026-03-22T18:10:30.842Z",
+    "updatedAt": "2026-03-22T18:16:28.280Z",
+    "currentNarrative": null,
+    "currentChoices": null,
+    "completedAt": "2026-03-22T18:16:28.279Z",
+    "winner": "user",
+    "finalScore": {
+      "user": 0,
+      "char": 0
+    }
+  },
+  {
+    "id": "dafu_1774203403102_oeie",
+    "status": "completed",
+    "mode": "十八禁",
+    "playType": "线上",
+    "charId": "char_1773377502265_2f2r",
+    "charName": "郁疏澜",
+    "userName": "我",
+    "hostPresetId": null,
+    "charPresetId": null,
+    "wbBookId": "wb_1774203022162_j77a",
+    "cells": [
+      {
+        "id": 0,
+        "name": "起点",
+        "type": "start",
+        "next": [
+          1
+        ],
+        "x": 5,
+        "y": 8,
+        "price": 0,
+        "wbContent": "回到起点，角色用一个热情的欢迎拥抱开场，语气里藏着让人心跳加速的期待。"
+      },
+      {
+        "id": 1,
+        "name": "邂逅广场",
+        "type": "event",
+        "next": [
+          2
+        ],
+        "x": 4,
+        "y": 8,
+        "price": 0,
+        "wbContent": "邂逅广场：两人在人群中相遇，角色靠近低声说了一句让你耳根发热的话。"
+      },
+      {
+        "id": 2,
+        "name": "机遇",
+        "type": "chance",
+        "next": [
+          3
+        ],
+        "x": 3,
+        "y": 8,
+        "price": 0,
+        "wbContent": "机遇卡：命运转盘！主持人随机安排一个大胆的互动请求，测试两人的默契与胆量。"
+      },
+      {
+        "id": 3,
+        "name": "命运",
+        "type": "fate",
+        "next": [
+          4
+        ],
+        "x": 2,
+        "y": 8,
+        "price": 0,
+        "wbContent": "命运卡：命运的玩笑！主持人给出一个大胆的挑战，完成则奖励丰厚。"
+      },
+      {
+        "id": 4,
+        "name": "咖啡厅",
+        "type": "property",
+        "next": [
+          5
+        ],
+        "x": 1,
+        "y": 8,
+        "price": 120,
+        "wbContent": "咖啡厅：角落里的独处，角色刻意靠近，低声在耳边说了一句令你脸红心跳的话。"
+      },
+      {
+        "id": 5,
+        "name": "左下角",
+        "type": "corner",
+        "next": [
+          6
+        ],
+        "x": 0,
+        "y": 8,
+        "price": 0,
+        "wbContent": "左下角：路口，夜晚安静下来，角色的视线落在你身上，带着某种意味。"
+      },
+      {
+        "id": 6,
+        "name": "书店",
+        "type": "property",
+        "next": [
+          7
+        ],
+        "x": 0,
+        "y": 7,
+        "price": 150,
+        "wbContent": "书店：私密角落，角色拉着你看一本\"特别\"的书，两人的距离不知不觉越来越近。"
+      },
+      {
+        "id": 7,
+        "name": "公园",
+        "type": "event",
+        "next": [
+          8
+        ],
+        "x": 0,
+        "y": 6,
+        "price": 0,
+        "wbContent": "公园：夜晚的公园，远离人群，角色主动靠近，月光下气氛越来越暧昧。"
+      },
+      {
+        "id": 8,
+        "name": "十字路口",
+        "type": "branch",
+        "next": [
+          9,
+          14
+        ],
+        "x": 0,
+        "y": 5,
+        "price": 0,
+        "wbContent": "十字路口：角色停下，眼神里有些危险的光：\"你更想往哪边走——刺激的，还是更刺激的？\""
+      },
+      {
+        "id": 9,
+        "name": "图书馆",
+        "type": "property",
+        "next": [
+          10
+        ],
+        "x": 1,
+        "y": 4,
+        "price": 120,
+        "wbContent": "禁区入口：越过这里就没有回头路了，角色用询问的眼神看着你，等待你的选择。"
+      },
+      {
+        "id": 10,
+        "name": "机遇",
+        "type": "chance",
+        "next": [
+          11
+        ],
+        "x": 2,
+        "y": 4,
+        "price": 0,
+        "wbContent": "机遇卡：命运转盘！主持人随机安排一个大胆的互动请求，测试两人的默契与胆量。"
+      },
+      {
+        "id": 11,
+        "name": "车站",
+        "type": "station",
+        "next": [
+          12
+        ],
+        "x": 3,
+        "y": 4,
+        "price": 0,
+        "wbContent": "车站：等车的间隙，角色把你带到了僻静的角落，说有话要悄悄告诉你。"
+      },
+      {
+        "id": 12,
+        "name": "命运",
+        "type": "fate",
+        "next": [
+          13
+        ],
+        "x": 3,
+        "y": 3,
+        "price": 0,
+        "wbContent": "命运卡：命运的玩笑！主持人给出一个大胆的挑战，完成则奖励丰厚。"
+      },
+      {
+        "id": 13,
+        "name": "电影院",
+        "type": "property",
+        "next": [
+          19
+        ],
+        "x": 2,
+        "y": 3,
+        "price": 200,
+        "wbContent": "电影院：黑暗的放映厅里，角色开始了一段超越观影的亲密互动。"
+      },
+      {
+        "id": 14,
+        "name": "禁闭所",
+        "type": "jail",
+        "next": [
+          15
+        ],
+        "x": 0,
+        "y": 4,
+        "price": 0,
+        "wbContent": "惩罚格：被单独关押在一起，必须通过完成一个大胆的挑战才能获释。"
+      },
+      {
+        "id": 15,
+        "name": "餐厅",
+        "type": "property",
+        "next": [
+          16
+        ],
+        "x": 0,
+        "y": 3,
+        "price": 180,
+        "wbContent": "私密包厢：烛光与美食之外，角色的眼神和动作都在传递着强烈的信号。"
+      },
+      {
+        "id": 16,
+        "name": "左上角",
+        "type": "corner",
+        "next": [
+          17
+        ],
+        "x": 0,
+        "y": 2,
+        "price": 0,
+        "wbContent": "左上角：夜晚更深了，角色靠近说\"这里只有我们两个人\"，语气意味深长。"
+      },
+      {
+        "id": 17,
+        "name": "游乐场",
+        "type": "property",
+        "next": [
+          18
+        ],
+        "x": 1,
+        "y": 2,
+        "price": 200,
+        "wbContent": "私密空间：角色拉住你，说\"这里有个秘密地方想带你去看\"，眼神带着邀请。"
+      },
+      {
+        "id": 18,
+        "name": "商场",
+        "type": "property",
+        "next": [
+          19
+        ],
+        "x": 2,
+        "y": 2,
+        "price": 260,
+        "wbContent": "试衣间：角色主动走进来，说要帮你\"参谋一下\"，门在身后悄悄关上。"
+      },
+      {
+        "id": 19,
+        "name": "广场汇合",
+        "type": "event",
+        "next": [
+          20
+        ],
+        "x": 3,
+        "y": 2,
+        "price": 0,
+        "wbContent": "汇合点：两条路在此相遇，角色看着你，氛围在沉默中悄悄升温。"
+      },
+      {
+        "id": 20,
+        "name": "机遇",
+        "type": "chance",
+        "next": [
+          21
+        ],
+        "x": 4,
+        "y": 2,
+        "price": 0,
+        "wbContent": "机遇卡：命运转盘！主持人随机安排一个大胆的互动请求，测试两人的默契与胆量。"
+      },
+      {
+        "id": 21,
+        "name": "酒店",
+        "type": "property",
+        "next": [
+          22
+        ],
+        "x": 5,
+        "y": 2,
+        "price": 300,
+        "wbContent": "酒店：门一关上，角色直接说\"今晚我们不需要那么多规矩\"，眼神专注而直接。"
+      },
+      {
+        "id": 22,
+        "name": "命运",
+        "type": "fate",
+        "next": [
+          23
+        ],
+        "x": 5,
+        "y": 3,
+        "price": 0,
+        "wbContent": "命运卡：命运的玩笑！主持人给出一个大胆的挑战，完成则奖励丰厚。"
+      },
+      {
+        "id": 23,
+        "name": "停车场",
+        "type": "parking",
+        "next": [
+          24
+        ],
+        "x": 5,
+        "y": 4,
+        "price": 0,
+        "wbContent": "停车场：车窗上的哈气越来越浓，两人在黑暗中越来越近。"
+      },
+      {
+        "id": 24,
+        "name": "终点",
+        "type": "end",
+        "next": [],
+        "x": 5,
+        "y": 5,
+        "price": 0,
+        "wbContent": "终点：旅途走到终点，角色用手轻轻托起你的下巴，低声说\"终于走到这里了\"。"
+      }
+    ],
+    "players": [
+      {
+        "id": "user",
+        "name": "我",
+        "position": 3,
+        "score": -50,
+        "skipTurns": 0,
+        "items": [],
+        "color": "#60a5fa",
+        "pendingBranch": null
+      },
+      {
+        "id": "char",
+        "name": "郁疏澜",
+        "position": 0,
+        "score": 0,
+        "skipTurns": 0,
+        "items": [],
+        "color": "#f472b6"
+      }
+    ],
+    "currentPlayerIndex": 0,
+    "round": 1,
+    "phase": "narrative",
+    "waitingFor": "turn_end",
+    "log": [
+      {
+        "type": "system",
+        "playerId": "system",
+        "text": "郁疏澜 上线了！\"欲望迷宫\"（十八禁模式）开始。",
+        "timestamp": "2026-03-22T18:16:43.102Z"
+      },
+      {
+        "type": "system",
+        "playerId": "system",
+        "text": "游戏开始！十八禁模式 · 线上 · 我先行。",
+        "timestamp": "2026-03-22T18:16:43.102Z"
+      },
+      {
+        "type": "roll",
+        "playerId": "user",
+        "text": "我 掷出 2+1=3，移动到「命运」。",
+        "timestamp": "2026-03-22T18:16:46.604Z",
+        "dice": [
+          2,
+          1
+        ],
+        "position": 3
+      },
+      {
+        "type": "event",
+        "playerId": "host",
+        "text": "命运不佳，扣分。",
+        "timestamp": "2026-03-22T18:16:46.604Z",
+        "cellId": 3
+      }
+    ],
+    "hostHistory": [],
+    "charHistory": [],
+    "maxRounds": 15,
+    "createdAt": "2026-03-22T18:16:43.102Z",
+    "updatedAt": "2026-03-22T18:20:46.733Z",
+    "currentNarrative": null,
+    "currentChoices": null,
+    "completedAt": "2026-03-22T18:20:46.732Z",
+    "winner": "char",
+    "finalScore": {
+      "user": -50,
+      "char": 0
+    }
+  }
+]

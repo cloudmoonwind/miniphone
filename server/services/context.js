@@ -26,11 +26,24 @@ import {
   characterStore, messageStore, summaryStore, memoryStore,
   activeStore, promptStore, personaStore, lifeStore, dreamStore,
 } from '../storage/index.js';
-import { getActiveNonEventEntries } from './worldbook.js';
+import { getActivatedEntries } from './worldbook.js';
 
 const HOT_COUNT  = 20;
 const WARM_COUNT = 5;
 const MEMORY_MIN_IMPORTANCE = 7;
+
+// ── Token 估算与截断 ──────────────────────────────────────────────────────────
+// 中英混合约3字符/token，粗估够用
+function estimateTokens(text) {
+  return Math.ceil(text.length / 3);
+}
+
+function truncateToTokens(text, maxTokens) {
+  if (!maxTokens || maxTokens <= 0) return text;
+  if (estimateTokens(text) <= maxTokens) return text;
+  const cutLen = Math.floor(maxTokens * 3 * 0.95); // 留5%余量避免边界抖动
+  return text.slice(0, cutLen) + '\n…（已按 maxTokens 截断）';
+}
 
 // 消息合并分隔符
 export const MSG_SEP = '\u001E';
@@ -142,24 +155,11 @@ export async function assembleMessages(charId, personaId, newUserContent, option
     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
     .slice(-3);
 
-  // 世界书条目（always / keyword 模式）
+  // 世界书条目（always / keyword 模式，支持级联激活）
   let activatedWb = { 'system-top': [], 'system-bottom': [], 'before-chat': [], 'after-chat': [] };
   try {
-    const wbEntries = await getActiveNonEventEntries(charId);
-    const recentText = allMsgs
-      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-      .slice(-HOT_COUNT)
-      .map(m => m.content)
-      .join(' ')
-      .toLowerCase();
-
-    const activated = wbEntries.filter(e => {
-      if (e.activationMode === 'always') return true;
-      if (e.activationMode === 'keyword')
-        return (e.keywords || []).some(kw => recentText.includes(kw.toLowerCase()));
-      return false;
-    });
-
+    const sortedMsgs = [...allMsgs].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const activated = await getActivatedEntries(charId, sortedMsgs);
     for (const e of activated) {
       const pos = e.insertionPosition || 'system-bottom';
       if (!activatedWb[pos]) activatedWb['system-bottom'].push(e);
@@ -214,20 +214,28 @@ export async function assembleMessages(charId, personaId, newUserContent, option
 
   function buildHotMessages(count) {
     const hot = sortedMsgs.slice(-count);
-    const nowMs = Date.now();
-    const ONE_HOUR_MS = 60 * 60 * 1000;
+
+    // "热区"：最近3条 user 层 + 最近3条 char 层（层 = 一条 DB 记录，可能含 MSG_SEP 合并的多短消息）
+    const userMsgs = sortedMsgs.filter(m => m.sender === 'user');
+    const charMsgs = sortedMsgs.filter(m => m.sender !== 'user');
+    const hotIds = new Set([
+      ...userMsgs.slice(-3).map(m => m.id),
+      ...charMsgs.slice(-3).map(m => m.id),
+    ]);
 
     let lastMarkedDay    = null; // 已打标的最后一个日期 key (YYYY-MM-DD)
     let lastMarkedBucket = null; // 已打标的最后一个2小时段 key (YYYY-MM-DD-H)
 
-    // 每条 DB 记录 → 一条 role content（多层合并，保持逻辑完整性）
-    return hot.map(m => {
+    const result = [];
+
+    for (const m of hot) {
       const layers = m.content.includes(MSG_SEP)
         ? m.content.split(MSG_SEP).filter(Boolean)
         : [m.content];
 
-      const role = m.sender === 'user' ? 'user' : 'assistant';
-      const ts   = m.userTimestamp || m.timestamp;
+      const role   = m.sender === 'user' ? 'user' : 'assistant';
+      const ts     = m.userTimestamp || m.timestamp;
+      const isHot  = hotIds.has(m.id);
 
       let metaTs = null;
 
@@ -236,32 +244,42 @@ export async function assembleMessages(charId, personaId, newUserContent, option
         const tsLocal = new Date(tsMs + tzOffsetMs);
         const dayKey  = `${tsLocal.getUTCFullYear()}-${_pad(tsLocal.getUTCMonth()+1)}-${_pad(tsLocal.getUTCDate())}`;
         const isToday = dayKey === todayKey;
-        const age     = nowMs - tsMs;
 
-        if (!isToday) {
+        if (m.mode === 'offline') {
+          // 线下消息：只按自然日打日期标记，不打精确时间
+          if (dayKey !== lastMarkedDay) {
+            metaTs = dayKey;
+            lastMarkedDay = dayKey;
+          }
+        } else if (isHot) {
+          // 线上热区（user/char各最近3层）：每层打精确时间
+          metaTs = formatTimestampForAI(ts, charTz, false);
+        } else if (!isToday) {
           // 今天之前：每个自然日仅在第一条记录打日期
           if (dayKey !== lastMarkedDay) {
             metaTs = dayKey;
             lastMarkedDay = dayKey;
           }
-        } else if (age > ONE_HOUR_MS) {
-          // 今天但超过1小时：每2小时段仅在第一条记录打时间
+        } else {
+          // 今天但不在热区：每2小时段仅打一次
           const bucketHour = Math.floor(tsLocal.getUTCHours() / 2) * 2;
           const bucketKey  = `${dayKey}-${bucketHour}`;
           if (bucketKey !== lastMarkedBucket) {
-            metaTs = formatTimestampForAI(ts, charTz, m.mode === 'offline');
+            metaTs = formatTimestampForAI(ts, charTz, false);
             lastMarkedBucket = bucketKey;
           }
-        } else if (hotTsEnabled) {
-          // 最近1小时内：每条记录都打时间（开关控制）
-          metaTs = formatTimestampForAI(ts, charTz, m.mode === 'offline');
         }
       }
 
-      const merged  = layers.join('\n');
-      const content = metaTs ? `<meta timestamp="${metaTs}"/>\n${merged}` : merged;
-      return { role, content };
-    });
+      // 时间戳作为独立 user 消息，插在对话消息之前（避免嵌入 content 干扰模型）
+      if (metaTs) {
+        result.push({ role: 'user', content: `<meta timestamp="${metaTs}"/>` });
+      }
+
+      result.push({ role, content: layers.join('\n') });
+    }
+
+    return result;
   }
 
   // 近期摘要（从旧到新）
@@ -287,7 +305,21 @@ export async function assembleMessages(charId, personaId, newUserContent, option
     // 特殊：history 展开为多条消息
     if (blockType === 'history') {
       const count = item.historyCount || HOT_COUNT;
-      messages.push(...buildHotMessages(count));
+      const histMsgs = buildHotMessages(count);
+      if (item.maxTokens) {
+        // 从最新往最旧累计 token，直到超限
+        let tokens = 0;
+        const filtered = [];
+        for (let i = histMsgs.length - 1; i >= 0; i--) {
+          const t = estimateTokens(histMsgs[i].content);
+          if (tokens + t > item.maxTokens) break;
+          tokens += t;
+          filtered.unshift(histMsgs[i]);
+        }
+        messages.push(...filtered);
+      } else {
+        messages.push(...histMsgs);
+      }
       continue;
     }
 
@@ -307,7 +339,7 @@ export async function assembleMessages(charId, personaId, newUserContent, option
         // 角色核心：名字 + core + 时间戳说明（仅 chat 模式需要）
         const parts = [`你是${char.name}。`];
         if (char.core) parts.push(char.core);
-        if (injectTsHint) parts.push('\n【消息时间标记说明】部分消息前附有 <meta timestamp="..."/> 标签，这是系统注入的时间元数据，表示该消息的发送时间。你应利用这些时间信息感知对话时间线，但不要在回复中输出或引用 <meta> 标签本身。');
+        if (injectTsHint) parts.push('\n【消息时间标记说明】对话中会穿插 role=user 的独立 <meta timestamp="..."/> 消息，这是系统注入的时间元数据，表示其后消息的发送时间。你应利用这些时间信息感知对话时间线，但不要在回复中输出或引用 <meta> 标签本身。');
         content = parts.filter(Boolean).join('\n');
         break;
       }
@@ -376,7 +408,7 @@ export async function assembleMessages(charId, personaId, newUserContent, option
         const parts = [`你是${char.name}。`];
         if (char.core)    parts.push(char.core);
         if (char.persona) parts.push(char.persona);
-        if (injectTsHint) parts.push('\n【消息时间标记说明】部分消息前附有 <meta timestamp="..."/> 标签，这是系统注入的时间元数据，表示该消息的发送时间。你应利用这些时间信息感知对话时间线，但不要在回复中输出或引用 <meta> 标签本身。');
+        if (injectTsHint) parts.push('\n【消息时间标记说明】对话中会穿插 role=user 的独立 <meta timestamp="..."/> 消息，这是系统注入的时间元数据，表示其后消息的发送时间。你应利用这些时间信息感知对话时间线，但不要在回复中输出或引用 <meta> 标签本身。');
         content = parts.filter(Boolean).join('\n');
         break;
       }
@@ -402,7 +434,8 @@ export async function assembleMessages(charId, personaId, newUserContent, option
     }
 
     if (content.trim()) {
-      messages.push({ role, content });
+      const finalContent = item.maxTokens ? truncateToTokens(content, item.maxTokens) : content;
+      messages.push({ role, content: finalContent });
     }
   }
 

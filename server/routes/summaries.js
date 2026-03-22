@@ -2,21 +2,25 @@ import { Router } from 'express';
 import { messageStore, summaryStore, presetStore, activeStore } from '../storage/index.js';
 import { getClient, chatCompletion } from '../services/ai.js';
 import { genId } from '../storage/FileStore.js';
+import { evaluateSummaryForTimeline } from '../services/charSystem.js';
+import { getPrompt, BUILTIN_PROMPT_PRESETS } from '../services/promptPresets.js';
 
-// ── 各类型默认提示词（用户未自定义时使用）──────────────────────────
-const DEFAULT_PROMPTS = {
+// ── 各类型内置默认提示词（兜底用）──────────────────────────────────
+const _builtinSummaries = BUILTIN_PROMPT_PRESETS.find(p => p.id === 'builtin-summaries-default');
+const DEFAULT_PROMPTS = _builtinSummaries?.prompts || {
   segment:  '你是一个对话总结助手。请用简洁的中文总结以下对话段的关键信息，重点记录情感变化、重要事件和关键细节，100字以内。',
   daily:    '你是一个对话总结助手。请用中文为以下对话生成一份日记式总结，记录当天的重要互动、情感变化和关键事件，200字以内。',
   mode:     '你是一个对话总结助手。请用简洁中文总结以下模式段（线上/线下）对话的关键内容，80字以内。',
   periodic: '你是一个对话总结助手。请用简洁中文总结以下这段对话的核心事件和情感状态，100字以内。',
 };
 
-/** 读取自定义提示词，空时 fallback 默认 */
+/** 读取活跃提示词预设中的对应 key，fallback 到内置默认 */
 async function getSummaryPrompt(type) {
   try {
-    const active = await activeStore.getObject();
-    const custom = active?.summaryPrompts?.[type];
-    return (custom && custom.trim()) ? custom.trim() : DEFAULT_PROMPTS[type] || DEFAULT_PROMPTS.segment;
+    const val = await getPrompt('summaries', type);
+    // getPrompt returns null for empty string (life.systemExtension), but for summaries we want actual text
+    if (val !== null && val !== '') return val;
+    return DEFAULT_PROMPTS[type] || DEFAULT_PROMPTS.segment;
   } catch {
     return DEFAULT_PROMPTS[type] || DEFAULT_PROMPTS.segment;
   }
@@ -53,6 +57,8 @@ router.post('/', async (req, res) => {
       importance: Math.min(10, Math.max(1, +importance)),
       keywords,
     });
+    // 角色系统：评估是否值得记入时间线
+    evaluateSummaryForTimeline(charId, summary).catch(e => console.error('[charSystem]', e.message));
     res.status(201).json(summary);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -112,6 +118,8 @@ router.post('/generate', async (req, res) => {
       content, period, importance: 5, keywords: [],
     });
 
+    // 角色系统：评估是否值得记入时间线
+    evaluateSummaryForTimeline(charId, summary).catch(e => console.error('[charSystem]', e.message));
     res.status(201).json(summary);
   } catch (err) {
     console.error('[summaries/generate]', err.message);
@@ -175,16 +183,15 @@ router.post('/generate-daily', async (req, res) => {
     const sorted = allMsgs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
     // 解析 AI 客户端
-    let aiKey, aiBase, aiModel;
+    let aiPreset = null;
     const active = await activeStore.getObject();
     const featurePresetId = active?.featurePresets?.summaries;
     const primaryId       = active?.primaryPresetId ?? active?.activePresetId;
     const resolvedId      = featurePresetId || primaryId;
     if (resolvedId) {
-      const preset = await presetStore.getById(resolvedId);
-      if (preset) { aiKey = preset.apiKey; aiBase = preset.baseURL; aiModel = preset.model; }
+      aiPreset = await presetStore.getById(resolvedId);
     }
-    if (!aiKey) return res.status(400).json({ error: '未配置 API Key' });
+    if (!aiPreset?.apiKey) return res.status(400).json({ error: '未配置 API Key' });
 
     const systemPrompt = await getSummaryPrompt('daily');
     const convText = sorted.map(m => `${m.sender === 'user' ? '用户' : '角色'}：${m.content}`).join('\n');
@@ -193,9 +200,8 @@ router.post('/generate-daily', async (req, res) => {
       { role: 'user', content: convText },
     ];
 
-    const { getClient: _getClient, chatCompletion: _chat } = await import('../services/ai.js');
-    const client  = _getClient({ apiKey: aiKey, baseURL: aiBase });
-    const content = await _chat(client, promptMessages, { model: aiModel || 'gpt-3.5-turbo', max_tokens: 500 });
+    const client  = getClient(aiPreset);
+    const content = await chatCompletion(client, promptMessages, { model: aiPreset.model || 'gpt-3.5-turbo', max_tokens: 500 });
 
     const summary = await summaryStore.create({
       id: genId('sum'), charId, personaId: null,
@@ -207,6 +213,8 @@ router.post('/generate-daily', async (req, res) => {
       createdAt: new Date().toISOString(),
     });
 
+    // 角色系统：日总结通常值得记入时间线
+    evaluateSummaryForTimeline(charId, { ...summary, importance: 7 }).catch(e => console.error('[charSystem]', e.message));
     res.status(201).json(summary);
   } catch (err) {
     console.error('[generate-daily]', err.message);

@@ -33,7 +33,7 @@ router.post('/', async (req, res) => {
     const char = await characterStore.create({
       id: genId('char'),
       name: name.trim(),
-      avatar: avatar || '✨',
+      avatar: avatar || '',
       tags: tags || [],
       group: group || '',
       core: core || '',

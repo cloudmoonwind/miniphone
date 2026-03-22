@@ -16,6 +16,7 @@ import { Router } from 'express';
 import { charStatStore, statDefStore } from '../storage/index.js';
 import { genId } from '../storage/FileStore.js';
 import { getMergedStatDefs, getCharStats } from '../services/charstats.js';
+import { checkStatThresholds } from '../services/charSystem.js';
 export { getMergedStatDefs, getCharStats, DEFAULT_STAT_DEFS } from '../services/charstats.js';
 
 const router = Router();
@@ -75,14 +76,26 @@ router.get('/:charId', async (req, res) => {
 router.put('/:charId', async (req, res) => {
   try {
     const { charId } = req.params;
-    const { stats } = req.body;
-    if (!stats || typeof stats !== 'object') return res.status(400).json({ error: 'stats 对象不能为空' });
+    const { stats, statusInfo } = req.body;
     const existing = await charStatStore.getAll(s => s.charId === charId);
+    let patch = {};
+    if (stats && typeof stats === 'object') {
+      patch.stats = existing.length ? { ...existing[0].stats, ...stats } : stats;
+    }
+    if (statusInfo && typeof statusInfo === 'object') {
+      patch.statusInfo = { ...(existing[0]?.statusInfo || {}), ...statusInfo, lastUpdated: new Date().toISOString() };
+    }
+    if (!Object.keys(patch).length) return res.status(400).json({ error: 'stats 或 statusInfo 至少提供一个' });
+    const prevStats = existing.length ? { ...existing[0].stats } : {};
     let record;
     if (existing.length) {
-      record = await charStatStore.update(existing[0].id, { stats: { ...existing[0].stats, ...stats } });
+      record = await charStatStore.update(existing[0].id, patch);
     } else {
-      record = await charStatStore.create({ id: genId('cst'), charId, stats });
+      record = await charStatStore.create({ id: genId('cst'), charId, stats: stats || {}, ...patch });
+    }
+    // 角色系统：检查数值阈值事件
+    if (patch.stats) {
+      checkStatThresholds(charId, prevStats, patch.stats).catch(e => console.error('[charSystem]', e.message));
     }
     res.json(record);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -110,6 +123,8 @@ router.post('/:charId/delta', async (req, res) => {
     } else {
       record = await charStatStore.create({ id: genId('cst'), charId, stats: newStats });
     }
+    // 角色系统：检查数值阈值事件
+    checkStatThresholds(charId, current, newStats).catch(e => console.error('[charSystem]', e.message));
     res.json({ ...record, changed: { key, prev, next, delta } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

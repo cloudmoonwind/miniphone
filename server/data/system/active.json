@@ -1,0 +1,22 @@
+{
+  "primaryPresetId": "preset_1773397452854_9csr",
+  "activePresetId": "preset_1773397452854_9csr",
+  "activeMapId": null,
+  "timestampSettings": {
+    "sendUserTimestamp": true,
+    "sendCharTimestamp": false,
+    "syncConfirmed": true,
+    "timestampFormat": "metadata"
+  },
+  "activePromptPresetId": "ppr_dafu",
+  "featurePresets": {
+    "summaries": null,
+    "life": null,
+    "dafuHost": null,
+    "dafuChar": null
+  },
+  "summaryPrompts": {
+    "segment": ""
+  },
+  "contextBudget": 32000
+}

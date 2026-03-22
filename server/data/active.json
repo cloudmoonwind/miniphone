@@ -1,20 +1,34 @@
 {
-  "primaryPresetId": "preset_1773397452854_9csr",
-  "activePresetId": "preset_1773397452854_9csr",
+  "primaryPresetId": null,
   "activeMapId": null,
-  "timestampSettings": {
-    "sendUserTimestamp": true,
-    "sendCharTimestamp": false,
-    "syncConfirmed": false,
-    "timestampFormat": "metadata"
-  },
-  "activePromptPresetId": "ppr_default",
   "featurePresets": {
     "summaries": null,
     "dafu": null,
     "life": null
   },
+  "featurePromptPresets": {
+    "summaries": null,
+    "life": null,
+    "charSystem": null
+  },
+  "summarySettings": {
+    "periodicEnabled": false,
+    "periodicInterval": 20,
+    "modeSummaryEnabled": false,
+    "dailyEnabled": false
+  },
   "summaryPrompts": {
-    "segment": ""
-  }
+    "segment": "",
+    "daily": "",
+    "mode": "",
+    "periodic": ""
+  },
+  "contextBudget": 4000,
+  "timestampSettings": {
+    "sendUserTimestamp": true,
+    "sendCharTimestamp": false,
+    "syncConfirmed": false,
+    "timestampFormat": "bracket"
+  },
+  "activePromptPresetId": "ppr_1774178678739_ema0"
 }

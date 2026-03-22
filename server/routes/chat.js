@@ -3,6 +3,7 @@ import { messageStore, summaryStore, presetStore, activeStore } from '../storage
 import { getClient, chatCompletion, chatCompletionStream, logStreamCompletion } from '../services/ai.js';
 import { assembleMessages, MSG_SEP } from '../services/context.js';
 import { genId } from '../storage/FileStore.js';
+import { triggerExtraction } from '../services/extraction.js';
 
 // 同一发送者 5 分钟内的消息合并为一条
 const GROUP_TIMEOUT_MS = 5 * 60 * 1000;
@@ -193,6 +194,7 @@ router.post('/respond', async (req, res) => {
       const { stream, model: usedModel, t0 } = await chatCompletionStream(client, messages, {
         model: aiModel || 'gpt-3.5-turbo',
         temperature: aiParams?.temperature ?? 0.8,
+        max_tokens: aiPreset?.maxReplyTokens ?? 3000,
       });
 
       let fullContent = '';
@@ -230,6 +232,7 @@ router.post('/respond', async (req, res) => {
       res.write(`data: ${JSON.stringify({ done: true, id: aiMsg.id, timestamp: aiMsg.timestamp })}\n\n`);
       res.end();
       triggerAutoSummaries(characterId);
+      triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
       return;
     }
 
@@ -237,6 +240,7 @@ router.post('/respond', async (req, res) => {
     const aiContent = await chatCompletion(client, messages, {
       model: aiModel || 'gpt-3.5-turbo',
       temperature: aiParams?.temperature ?? 0.8,
+      max_tokens: aiPreset?.maxReplyTokens ?? 3000,
     });
 
     const aiNow = new Date().toISOString();
@@ -247,6 +251,7 @@ router.post('/respond', async (req, res) => {
     });
 
     triggerAutoSummaries(characterId);
+    triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
     res.json({ id: aiMsg.id, sender: 'character', content: aiContent, mode, timestamp: aiMsg.timestamp });
   } catch (err) {
     console.error('[chat/respond]', err.message);
@@ -314,8 +319,9 @@ router.post('/', async (req, res) => {
         timestamp: aiNow, userTimestamp: aiNow, charTimestamp: null,
       });
 
-      // 异步触发自动总结，不等待（不影响响应速度）
+      // 异步触发自动总结 + 数据提取，不等待
       triggerAutoSummaries(characterId);
+      triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
 
       return res.json({ id: aiMsg.id, sender: 'character', content: aiContent, mode, timestamp: aiMsg.timestamp });
     }

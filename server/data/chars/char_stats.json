@@ -1,0 +1,38 @@
+[
+  {
+    "id": "cst_ally_init",
+    "charId": "char_legacy_ally",
+    "stats": {
+      "mood": 0,
+      "energy": 2,
+      "relationship": 55,
+      "trust": 100,
+      "stress": 78
+    },
+    "createdAt": "2026-03-16T00:00:00.000Z",
+    "updatedAt": "2026-03-21T12:50:59.229Z"
+  },
+  {
+    "id": "cst_ysl_001",
+    "charId": "char_1773377502265_2f2r",
+    "stats": {
+      "mood": 45,
+      "energy": 60,
+      "relationship": 38,
+      "trust": 30,
+      "stress": 55
+    },
+    "statusInfo": {
+      "moodColors": [
+        "#5C6BC0",
+        "#37474F"
+      ],
+      "location": "公寓·书房",
+      "outfit": "黑色卫衣，灰色运动裤",
+      "statusDesc": "坐在电脑前，屏幕的蓝光映在脸上。窗外已经天黑了，但他没有开灯。",
+      "innerThoughts": "……算了。",
+      "lastUpdated": "2026-03-21T08:00:00.000Z"
+    },
+    "createdAt": "2026-03-21T00:00:00.000Z"
+  }
+]

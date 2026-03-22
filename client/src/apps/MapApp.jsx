@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronDown, Pencil, Settings, X, Check, Plus, Package, Tag, Eraser, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Avatar from '../components/Avatar.jsx';
+import { api } from '../services/api.js';
 
 // --- 组件：地图 App ---
 const MAP_TILE_PX = 20;
@@ -47,19 +49,9 @@ const genMapTiles = (template) => {
   return tiles;
 };
 
-const mkMap = (name, template = null) => ({
-  id: `map-${Date.now()}`,
-  name,
-  tiles: genMapTiles(template),
-  charPositions: {},
-  tileLabels: {},
-});
-
 const MapApp = ({ onBack }) => {
-  const [maps, setMaps] = useState(() => {
-    try { const d = JSON.parse(localStorage.getItem('ics_maps') || '[]'); return d.length ? d : [mkMap('主世界', 'village')]; }
-    catch { return [mkMap('主世界', 'village')]; }
-  });
+  const [maps, setMaps] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeMapId, setActiveMapId] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [tool, setTool] = useState('brush');
@@ -78,9 +70,7 @@ const MapApp = ({ onBack }) => {
   const dragRef = useRef(null);
   const mapContainerRef = useRef(null);
 
-  const chars = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem('ics_characters') || '[]'); } catch { return []; }
-  }, []);
+  const [chars, setChars] = useState([]);
 
   const activeMapIdResolved = activeMapId || maps[0]?.id;
   const activeMap = useMemo(
@@ -88,7 +78,24 @@ const MapApp = ({ onBack }) => {
     [maps, activeMapIdResolved]
   );
 
-  useEffect(() => { localStorage.setItem('ics_maps', JSON.stringify(maps)); }, [maps]);
+  // 初始化：从后端加载地图和角色
+  useEffect(() => {
+    Promise.all([api.get('/api/maps'), api.get('/api/characters')])
+      .then(async ([mapsData, charsData]) => {
+        setChars(charsData);
+        if (mapsData.length === 0) {
+          // 首次使用，自动创建默认地图
+          const m = await api.post('/api/maps', {
+            name: '主世界', tiles: genMapTiles('village'), charPositions: {}, labels: {},
+          });
+          setMaps([{ ...m, tileLabels: m.labels || {} }]);
+        } else {
+          setMaps(mapsData.map(m => ({ ...m, tileLabels: m.labels || {} })));
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const mutateTiles = useCallback((fn) => {
     setMaps(prev => prev.map(m => m.id !== activeMapIdResolved ? m : { ...m, tiles: fn(m.tiles) }));
@@ -169,19 +176,48 @@ const MapApp = ({ onBack }) => {
     setTileEditModal(null);
   };
 
-  const createNewMap = (name, template = null) => {
-    const m = mkMap(name || '新地图', template);
-    setMaps(prev => [...prev, m]);
-    setActiveMapId(m.id);
+  const createNewMap = async (name, template = null) => {
+    try {
+      const m = await api.post('/api/maps', {
+        name: name || '新地图', tiles: genMapTiles(template), charPositions: {}, labels: {},
+      });
+      setMaps(prev => [...prev, { ...m, tileLabels: m.labels || {} }]);
+      setActiveMapId(m.id);
+    } catch (err) { console.error('创建地图失败:', err); }
     setMapSwitchOpen(false);
     setTemplateModal(false);
   };
 
-  const deleteActiveMap = () => {
-    const remaining = maps.filter(m => m.id !== activeMapIdResolved);
-    if (!remaining.length) return;
-    setMaps(remaining);
-    setActiveMapId(remaining[0].id);
+  const saveMap = async () => {
+    const map = maps.find(m => m.id === activeMapIdResolved);
+    if (!map) return;
+    try {
+      await api.put(`/api/maps/${map.id}`, {
+        name: map.name, tiles: map.tiles,
+        charPositions: map.charPositions || {},
+        labels: map.tileLabels || {},
+      });
+      setSavedMsg(true);
+      setTimeout(() => setSavedMsg(false), 1500);
+      setEditMode(false);
+    } catch (err) { console.error('保存地图失败:', err); }
+  };
+
+  const deleteActiveMap = async () => {
+    try {
+      await api.delete(`/api/maps/${activeMapIdResolved}`);
+      const remaining = maps.filter(m => m.id !== activeMapIdResolved);
+      if (!remaining.length) {
+        const m = await api.post('/api/maps', {
+          name: '主世界', tiles: genMapTiles('village'), charPositions: {}, labels: {},
+        });
+        setMaps([{ ...m, tileLabels: m.labels || {} }]);
+        setActiveMapId(m.id);
+      } else {
+        setMaps(remaining);
+        setActiveMapId(remaining[0].id);
+      }
+    } catch (err) { console.error('删除地图失败:', err); }
     setConfirmDelete(false);
     setMapSettingsOpen(false);
   };
@@ -235,7 +271,7 @@ const MapApp = ({ onBack }) => {
           <>
             <button onClick={() => setEditMode(false)} className="text-sm text-gray-500 px-2">取消</button>
             <button
-              onClick={() => { setSavedMsg(true); setTimeout(() => setSavedMsg(false), 1500); setEditMode(false); }}
+              onClick={saveMap}
               className={`text-sm font-semibold px-3 py-1.5 rounded-lg transition-all ${savedMsg ? 'bg-green-500 text-white' : 'bg-[#5EAAA8] text-white'}`}
             >
               {savedMsg ? '✓ 保存' : '保存'}
@@ -310,7 +346,7 @@ const MapApp = ({ onBack }) => {
               >
                 {tileChars?.length > 0 && (() => {
                   const ch = chars.find(x => x.id === tileChars[0]);
-                  return ch ? <span style={{ lineHeight: 1, fontSize: tpx * 0.52 }}>{ch.avatar || ch.name?.[0] || '？'}</span> : null;
+                  return ch ? <span style={{ lineHeight: 1, fontSize: tpx * 0.52, fontWeight: 700, color: '#6d28d9' }}>{ch.name?.[0] || '？'}</span> : null;
                 })()}
                 {!tileChars?.length && labelMeta?.label && zoom >= 1.5 && (
                   <span style={{ fontSize: 7, color: 'rgba(0,0,0,0.38)', fontWeight: 600 }} className="truncate px-0.5 text-center leading-tight">
@@ -329,9 +365,7 @@ const MapApp = ({ onBack }) => {
           <div className="flex gap-2 overflow-x-auto">
             {charsOnMap.map(char => (
               <button key={char.id} onClick={() => focusOnChar(char.id)} className="flex flex-col items-center gap-1 shrink-0 hover:opacity-75 transition-opacity">
-                <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center text-sm border-2 border-white shadow-sm">
-                  {char.avatar || char.name?.[0] || '？'}
-                </div>
+                <Avatar value={char.avatar} name={char.name} size={36} rounded className="border-2 border-white shadow-sm" />
                 <span className="text-[9px] text-gray-500 max-w-[36px] truncate">{char.name}</span>
               </button>
             ))}
@@ -365,7 +399,7 @@ const MapApp = ({ onBack }) => {
                   <p className="text-xs text-gray-400 font-semibold mb-2">当前在此</p>
                   {tileInfoData.chars.map(ch => (
                     <div key={ch.id} className="flex items-center gap-2.5 py-1.5">
-                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-sm">{ch.avatar || ch.name?.[0]}</div>
+                      <Avatar value={ch.avatar} name={ch.name} size={32} rounded />
                       <span className="text-sm font-medium text-[#2D3748]">{ch.name}</span>
                       <span className="text-xs text-gray-400 ml-auto">在此一段时间</span>
                     </div>

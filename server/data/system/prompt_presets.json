@@ -1,0 +1,172 @@
+[
+  {
+    "id": "ppr_default",
+    "name": "默认聊天预设",
+    "type": "preset",
+    "presetType": "chat",
+    "description": "主聊天预设，包含角色完整人设 + 记忆 + 生活 + 历史",
+    "contextItems": [
+      { "entryId": "sys-syspre", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null, "content": null },
+      { "entryId": "sys-tools", "enabled": false, "roleOverride": null, "maxTokens": null, "historyCount": null, "content": null },
+      { "entryId": "sys-wbpre", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null },
+      { "entryId": "sys-char-core", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null },
+      { "entryId": "sys-char-desc", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null, "content": null },
+      { "entryId": "sys-char-sample", "enabled": false, "roleOverride": null, "maxTokens": null, "historyCount": null, "content": null },
+      { "entryId": "sys-user-desc", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null },
+      { "entryId": "sys-memories", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null },
+      { "entryId": "sys-wbpost", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null },
+      { "entryId": "sys-scene", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null, "content": null },
+      { "entryId": "sys-life", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null, "content": null },
+      { "entryId": "sys-dreams", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null, "content": null },
+      { "entryId": "sys-summaries", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null },
+      { "entryId": "sys-history", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": 20 },
+      { "entryId": "sys-syspost", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null, "content": null }
+    ],
+    "createdAt": "2026-03-16T00:00:00.000Z",
+    "updatedAt": "2026-03-22T00:00:00.000Z"
+  },
+  {
+    "id": "ppr_summaries",
+    "name": "总结预设",
+    "type": "preset",
+    "presetType": "feature",
+    "description": "对话摘要生成：角色人设+记忆+历史摘要+待总结对话",
+    "contextItems": [
+      {
+        "entryId": "sys-syspre",
+        "enabled": true,
+        "roleOverride": "system",
+        "maxTokens": null,
+        "historyCount": null,
+        "content": "你是一个专业的对话总结助手，深度理解角色性格后进行总结。\n\n总结要求：\n- 保留情感细节和性格体现，不仅仅是事件罗列\n- 保留关键对话的语气和氛围\n- 记录情感变化和关系进展\n- 100-200字，确保连续性"
+      },
+      { "entryId": "sys-char-core", "enabled": true, "roleOverride": null, "maxTokens": 500, "historyCount": null },
+      { "entryId": "sys-char-desc", "enabled": true, "roleOverride": null, "maxTokens": 800, "historyCount": null, "content": null },
+      { "entryId": "sys-memories", "enabled": true, "roleOverride": null, "maxTokens": 400, "historyCount": null },
+      { "entryId": "sys-summaries", "enabled": true, "roleOverride": null, "maxTokens": 600, "historyCount": null },
+      { "entryId": "sys-history", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": 30 },
+      { "entryId": "sys-syspost", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": null, "content": "请为以上对话生成摘要：" }
+    ],
+    "createdAt": "2026-03-22T00:00:00.000Z",
+    "updatedAt": "2026-03-22T00:00:00.000Z"
+  },
+  {
+    "id": "ppr_life",
+    "name": "生活生成预设",
+    "type": "preset",
+    "presetType": "feature",
+    "description": "角色日常生活生成：角色人设+当前状态+近期生活，生成今日日程",
+    "contextItems": [
+      {
+        "entryId": "sys-syspre",
+        "enabled": true,
+        "roleOverride": "system",
+        "maxTokens": null,
+        "historyCount": null,
+        "content": "你现在扮演角色的内心视角，基于角色性格和当前状态，生成一段真实、自然的日常生活片段。\n\n要求：\n- 符合角色性格，有细节，有情绪\n- 体现日常感，而非戏剧性事件\n- 100-200字，第一人称或第三人称均可"
+      },
+      { "entryId": "sys-char-core", "enabled": true, "roleOverride": null, "maxTokens": 600, "historyCount": null },
+      { "entryId": "sys-char-desc", "enabled": true, "roleOverride": null, "maxTokens": 800, "historyCount": null, "content": null },
+      { "entryId": "sys-scene", "enabled": true, "roleOverride": null, "maxTokens": 300, "historyCount": null, "content": null },
+      { "entryId": "sys-life", "enabled": true, "roleOverride": null, "maxTokens": 500, "historyCount": null, "content": null },
+      {
+        "entryId": "sys-syspost",
+        "enabled": true,
+        "roleOverride": "user",
+        "maxTokens": null,
+        "historyCount": null,
+        "content": "请生成角色今天的一段生活片段："
+      }
+    ],
+    "createdAt": "2026-03-22T00:00:00.000Z",
+    "updatedAt": "2026-03-22T00:00:00.000Z"
+  },
+  {
+    "id": "ppr_dreams",
+    "name": "梦境预设",
+    "type": "preset",
+    "presetType": "feature",
+    "description": "梦境解读：角色人设+历史梦境，对新梦境进行分析和续写",
+    "contextItems": [
+      {
+        "entryId": "sys-syspre",
+        "enabled": true,
+        "roleOverride": "system",
+        "maxTokens": null,
+        "historyCount": null,
+        "content": "你是角色的梦境解读者。基于角色性格和情感状态，为角色的梦境内容提供深度解读或续写。\n\n要求：\n- 语言风格与角色性格一致\n- 解读要联系角色的现实情感和经历\n- 充满意象感，不生硬"
+      },
+      { "entryId": "sys-char-core", "enabled": true, "roleOverride": null, "maxTokens": 500, "historyCount": null },
+      { "entryId": "sys-char-desc", "enabled": true, "roleOverride": null, "maxTokens": 600, "historyCount": null, "content": null },
+      { "entryId": "sys-dreams", "enabled": true, "roleOverride": null, "maxTokens": 800, "historyCount": null, "content": null },
+      { "entryId": "sys-summaries", "enabled": true, "roleOverride": null, "maxTokens": 400, "historyCount": null },
+      {
+        "entryId": "sys-syspost",
+        "enabled": true,
+        "roleOverride": "user",
+        "maxTokens": null,
+        "historyCount": null,
+        "content": "请解读或续写以上梦境："
+      }
+    ],
+    "createdAt": "2026-03-22T00:00:00.000Z",
+    "updatedAt": "2026-03-22T00:00:00.000Z"
+  },
+  {
+    "id": "ppr_dafu",
+    "name": "大富翁旁白预设",
+    "type": "preset",
+    "presetType": "feature",
+    "description": "大富翁AI旁白：角色扮演游戏主持人，生成幽默旁白",
+    "contextItems": [
+      {
+        "entryId": "sys-syspre",
+        "enabled": true,
+        "roleOverride": "system",
+        "maxTokens": null,
+        "historyCount": null,
+        "content": "你是一位风趣幽默的大富翁游戏主持人。根据当前游戏局面，生成简短（30-60字）、有趣的旁白或评论。\n\n风格：轻松、幽默、有点调侃，像综艺节目解说员。"
+      },
+      { "entryId": "sys-char-core", "enabled": false, "roleOverride": null, "maxTokens": null, "historyCount": null },
+      {
+        "entryId": "sys-syspost",
+        "enabled": true,
+        "roleOverride": "user",
+        "maxTokens": null,
+        "historyCount": null,
+        "content": "（游戏事件由系统实时插入）"
+      }
+    ],
+    "createdAt": "2026-03-22T00:00:00.000Z",
+    "updatedAt": "2026-03-22T00:00:00.000Z"
+  },
+  {
+    "id": "ppr_extraction",
+    "name": "数据提取预设",
+    "type": "preset",
+    "presetType": "feature",
+    "description": "聊天后从对话提取角色状态/物品/关系变化",
+    "contextItems": [
+      {
+        "entryId": "sys-syspre",
+        "enabled": true,
+        "roleOverride": "system",
+        "maxTokens": null,
+        "historyCount": null,
+        "content": "你是一个数据提取助手。从角色对话中提取结构化信息，返回严格JSON格式。\n\n提取规则：只提取对话中明确提到的内容，不推测，不编造。"
+      },
+      { "entryId": "sys-char-core", "enabled": true, "roleOverride": null, "maxTokens": 300, "historyCount": null },
+      { "entryId": "sys-history", "enabled": true, "roleOverride": null, "maxTokens": null, "historyCount": 6 },
+      {
+        "entryId": "sys-syspost",
+        "enabled": true,
+        "roleOverride": "user",
+        "maxTokens": null,
+        "historyCount": null,
+        "content": "请从以上对话提取角色状态、物品、关系和事件变化，返回JSON："
+      }
+    ],
+    "createdAt": "2026-03-22T00:00:00.000Z",
+    "updatedAt": "2026-03-22T00:00:00.000Z"
+  }
+]

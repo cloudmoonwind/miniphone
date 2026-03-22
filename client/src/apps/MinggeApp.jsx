@@ -10,6 +10,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Plus, Check, Trash2, Edit3, X, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AvatarUpload from '../components/AvatarUpload.jsx';
+import Avatar from '../components/Avatar.jsx';
 
 const api = (path, opts) => fetch(`/api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts }).then(r => r.json());
 
@@ -17,8 +19,6 @@ const PRESET_COLORS = [
   '#6366f1', '#ec4899', '#f59e0b', '#10b981',
   '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4',
 ];
-
-const EMOJI_PICKS = ['🙂', '😎', '🌸', '🦊', '🐱', '🌙', '⭐', '🎭', '🔥', '🍀', '🎨', '🦋'];
 
 // ── 马甲卡片 ──────────────────────────────────────────────────────────────────
 const PersonaCard = ({ persona, isActive, onActivate, onEdit, onDelete }) => {
@@ -49,12 +49,7 @@ const PersonaCard = ({ persona, isActive, onActivate, onEdit, onDelete }) => {
         }`}
         style={isActive ? { backgroundColor: persona.color + '22', borderColor: persona.color } : {}}
       >
-        <div
-          className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-sm"
-          style={{ backgroundColor: persona.color + '33' }}
-        >
-          {persona.avatar}
-        </div>
+        <Avatar value={persona.avatar} name={persona.name} size={56} />
         <p className="text-sm font-semibold text-gray-800 text-center leading-tight">{persona.name}</p>
         {persona.description && (
           <p className="text-[10px] text-gray-500 text-center line-clamp-2 leading-relaxed">{persona.description}</p>
@@ -104,41 +99,60 @@ const PersonaCard = ({ persona, isActive, onActivate, onEdit, onDelete }) => {
   );
 };
 
-// ── 无马甲卡片（纯净模式） ─────────────────────────────────────────────────────
-const NoneCard = ({ isActive, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`w-full rounded-2xl p-4 flex flex-col items-center gap-2 border-2 transition-all active:scale-95 ${
-      isActive
-        ? 'border-gray-400 bg-gray-100'
-        : 'border-dashed border-gray-200 bg-white/40 hover:bg-white/60'
-    }`}
-  >
-    <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-      <User size={24} className="text-gray-400" />
-    </div>
-    <p className="text-sm font-semibold text-gray-500">无马甲</p>
-    <p className="text-[10px] text-gray-400 text-center">以真实身份与角色互动</p>
-    {isActive && (
-      <div className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-300 text-gray-700">
-        <Check size={10} /> 使用中
-      </div>
-    )}
-  </button>
-);
+// ── 用户本体卡片 ──────────────────────────────────────────────────────────────
+const UserBaseCard = ({ profile, isActive, onClick, onEdit }) => {
+  const pressTimer = useRef(null);
+  const hasProfile = profile?.name?.trim();
+  const startPress = () => { pressTimer.current = setTimeout(() => onEdit(), 600); };
+  const endPress   = () => { clearTimeout(pressTimer.current); };
+
+  return (
+    <button
+      onClick={onClick}
+      onPointerDown={startPress}
+      onPointerUp={endPress}
+      onPointerLeave={endPress}
+      className={`w-full rounded-2xl p-4 flex flex-col items-center gap-2 border-2 transition-all active:scale-95 relative ${
+        isActive
+          ? 'border-gray-500 bg-gray-100 shadow-sm'
+          : 'border-dashed border-gray-200 bg-white/40 hover:bg-white/60'
+      }`}
+    >
+      <Avatar value={profile?.avatar} name={profile?.name} size={56} />
+      <p className="text-sm font-semibold text-gray-700">{hasProfile ? profile.name : '用户本体'}</p>
+      <p className="text-[10px] text-gray-400 text-center line-clamp-2">
+        {profile?.description || '长按编辑你的真实身份'}
+      </p>
+      {isActive && (
+        <div className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-400 text-white">
+          <Check size={10} /> 使用中
+        </div>
+      )}
+      <button
+        onClick={e => { e.stopPropagation(); onEdit(); }}
+        className="absolute top-2 right-2 p-1 rounded-full hover:bg-gray-200 text-gray-400"
+      >
+        <Edit3 size={12} />
+      </button>
+    </button>
+  );
+};
 
 // ── 创建/编辑表单 (Sheet Modal) ────────────────────────────────────────────────
-const PersonaForm = ({ initial, onSave, onClose }) => {
+const PersonaForm = ({ initial, onSave, onClose, isUserBase = false }) => {
   const [name, setName]         = useState(initial?.name || '');
-  const [avatar, setAvatar]     = useState(initial?.avatar || '🙂');
+  const [avatar, setAvatar]     = useState(initial?.avatar || '');
   const [desc, setDesc]         = useState(initial?.description || '');
   const [color, setColor]       = useState(initial?.color || PRESET_COLORS[0]);
   const [saving, setSaving]     = useState(false);
 
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!isUserBase && !name.trim()) return;
     setSaving(true);
-    try { await onSave({ name, avatar, description: desc, color }); }
+    try {
+      if (isUserBase) await onSave({ name, avatar, description: desc });
+      else await onSave({ name, avatar, description: desc, color });
+    }
     finally { setSaving(false); }
   };
 
@@ -151,23 +165,16 @@ const PersonaForm = ({ initial, onSave, onClose }) => {
       className="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl z-30 px-5 pt-4 pb-8"
     >
       <div className="flex items-center mb-4">
-        <span className="text-base font-bold text-gray-800 flex-1">{initial ? '编辑马甲' : '新建马甲'}</span>
+        <span className="text-base font-bold text-gray-800 flex-1">{isUserBase ? '编辑用户本体' : (initial ? '编辑马甲' : '新建马甲')}</span>
         <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
           <X size={18} className="text-gray-500" />
         </button>
       </div>
 
-      {/* Emoji 选择 */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {EMOJI_PICKS.map(e => (
-          <button
-            key={e}
-            onClick={() => setAvatar(e)}
-            className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
-              avatar === e ? 'bg-indigo-100 ring-2 ring-indigo-400' : 'bg-gray-100 hover:bg-gray-200'
-            }`}
-          >{e}</button>
-        ))}
+      {/* 头像上传 */}
+      <div className="flex items-center gap-4 mb-4">
+        <AvatarUpload value={avatar} onChange={setAvatar} size={64} />
+        <p className="text-xs text-gray-400 leading-relaxed">点击头像区域<br />上传图片</p>
       </div>
 
       {/* 名称 */}
@@ -217,13 +224,16 @@ const PersonaForm = ({ initial, onSave, onClose }) => {
 export default function MinggeApp({ onBack }) {
   const [personas, setPersonas]     = useState([]);
   const [activeId, setActiveId]     = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [showForm, setShowForm]     = useState(false);
   const [editing, setEditing]       = useState(null);
+  const [editingUserBase, setEditingUserBase] = useState(false);
 
   const load = async () => {
     const data = await api('/personas');
     setPersonas(data.personas || []);
     setActiveId(data.activePersonaId || null);
+    setUserProfile(data.userProfile || { name: '', avatar: '', description: '' });
   };
 
   useEffect(() => { load(); }, []);
@@ -241,6 +251,12 @@ export default function MinggeApp({ onBack }) {
   const handleDeactivateAll = async () => {
     await api('/personas/deactivate', { method: 'POST' });
     setActiveId(null);
+  };
+
+  const handleSaveUserProfile = async (data) => {
+    await api('/personas/user-profile', { method: 'PUT', body: JSON.stringify(data) });
+    setEditingUserBase(false);
+    await load();
   };
 
   const handleSave = async (data) => {
@@ -277,9 +293,10 @@ export default function MinggeApp({ onBack }) {
 
       {/* 当前状态提示 */}
       <div className="mx-4 mt-3 mb-1 bg-white/60 rounded-2xl px-4 py-2.5 flex items-center gap-2">
-        <div className="text-lg shrink-0">
-          {activeId ? (personas.find(p => p.id === activeId)?.avatar || '🙂') : '👤'}
-        </div>
+        {(() => {
+          const ap = activeId ? personas.find(p => p.id === activeId) : null;
+          return <Avatar value={ap?.avatar} name={ap?.name || userProfile?.name} size={32} rounded />;
+        })()}
         <div className="flex-1">
           <p className="text-xs text-gray-500">当前以</p>
           <p className="text-sm font-bold text-gray-800">
@@ -292,7 +309,12 @@ export default function MinggeApp({ onBack }) {
       {/* 卡片网格 */}
       <div className="flex-1 overflow-y-auto px-4 py-2">
         <div className="grid grid-cols-2 gap-3">
-          <NoneCard isActive={!activeId} onClick={handleDeactivateAll} />
+          <UserBaseCard
+            profile={userProfile}
+            isActive={!activeId}
+            onClick={handleDeactivateAll}
+            onEdit={() => setEditingUserBase(true)}
+          />
           {personas.map(p => (
             <PersonaCard
               key={p.id}
@@ -314,7 +336,24 @@ export default function MinggeApp({ onBack }) {
         </div>
       </div>
 
-      {/* 创建/编辑表单 */}
+      {/* 用户本体编辑表单 */}
+      <AnimatePresence>
+        {editingUserBase && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/30 z-20"
+              onClick={() => setEditingUserBase(false)} />
+            <PersonaForm
+              initial={userProfile}
+              onSave={handleSaveUserProfile}
+              onClose={() => setEditingUserBase(false)}
+              isUserBase={true}
+            />
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 创建/编辑马甲表单 */}
       <AnimatePresence>
         {showForm && (
           <>
