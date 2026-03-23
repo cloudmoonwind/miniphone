@@ -26,15 +26,6 @@
     "createdAt": "2026-03-21T00:00:00.000Z"
   },
   {
-    "id": "wb_1774203021991_2tjz",
-    "name": "大富翁·益智棋盘（华尔街征途）",
-    "description": "益智模式专用棋盘格子内容",
-    "enabled": true,
-    "scanDepth": 20,
-    "charId": null,
-    "createdAt": "2026-03-22T18:10:21.992Z"
-  },
-  {
     "id": "wb_1774203021991_huaz",
     "name": "大富翁·益智棋盘（华尔街征途）",
     "description": "益智模式专用棋盘格子内容",
@@ -44,15 +35,6 @@
     "createdAt": "2026-03-22T18:10:21.993Z"
   },
   {
-    "id": "wb_1774203022067_89zf",
-    "name": "大富翁·恋爱棋盘（约会之旅）",
-    "description": "恋爱模式专用棋盘格子内容",
-    "enabled": true,
-    "scanDepth": 20,
-    "charId": null,
-    "createdAt": "2026-03-22T18:10:22.068Z"
-  },
-  {
     "id": "wb_1774203022069_1skc",
     "name": "大富翁·恋爱棋盘（约会之旅）",
     "description": "恋爱模式专用棋盘格子内容",
@@ -60,15 +42,6 @@
     "scanDepth": 20,
     "charId": null,
     "createdAt": "2026-03-22T18:10:22.069Z"
-  },
-  {
-    "id": "wb_1774203022162_j77a",
-    "name": "大富翁·十八禁棋盘（欲望迷宫）",
-    "description": "十八禁模式专用棋盘格子内容",
-    "enabled": true,
-    "scanDepth": 20,
-    "charId": null,
-    "createdAt": "2026-03-22T18:10:22.163Z"
   },
   {
     "id": "wb_1774203022165_s9r2",

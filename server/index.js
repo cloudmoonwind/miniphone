@@ -9,6 +9,7 @@ import settingsRouter    from './routes/settings.js';
 import memoriesRouter    from './routes/memories.js';
 import summariesRouter   from './routes/summaries.js';
 import dreamsRouter      from './routes/dreams.js';
+import { dreamStore }   from './storage/index.js';
 import mapsRouter        from './routes/maps.js';
 import lifeRouter        from './routes/life.js';
 import debugRouter       from './routes/debug.js';
@@ -39,6 +40,16 @@ app.use('/api/settings',                     settingsRouter);
 // Backward-compat aliases (old client calls /api/models, /api/test-connection)
 app.use('/api/models',          (req, res, next) => { req.url = '/models';          settingsRouter(req, res, next); });
 app.use('/api/test-connection', (req, res, next) => { req.url = '/test-connection'; settingsRouter(req, res, next); });
+
+// GET /api/dreams — 所有角色梦境（全局聚合，max 100 条，按时间倒序）
+app.get('/api/dreams', async (req, res) => {
+  try {
+    const all = await dreamStore.getAll();
+    res.json(all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 100));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Character-scoped sub-resources
 app.use('/api/characters/:charId/memories',  memoriesRouter);

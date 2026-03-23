@@ -19,6 +19,7 @@ import { DreamCard } from './DreamCard.jsx';
 export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }) => {
   const [phase, setPhase] = useState('idle');
   const [showCard, setShowCard] = useState(false);
+  const [flashVisible, setFlashVisible] = useState(false);
   const [scope, animate] = useAnimate();
   const centerOffset = useRef({ x: 0, y: 0 });
 
@@ -62,12 +63,14 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
       scale: 5,
     }, { duration: 0.65, ease: [0.22, 0, 0.1, 1] });
 
-    // 3. 白光爆闪（星星消失在光里）
+    // 3. 星星收缩消融（不扩大，直接淡出，避免白屏）
     setPhase('flash');
+    setFlashVisible(true);
     await animate(scope.current, {
-      scale:   9,
-      opacity: 0,
-    }, { duration: 0.22, ease: 'easeOut' });
+      scale:   [5, 3.5, 2],
+      opacity: [1, 0.2, 0],
+    }, { duration: 0.3, ease: 'easeIn', times: [0, 0.4, 1] });
+    setFlashVisible(false);
 
     // 4. 展示卡片
     setShowCard(true);
@@ -135,6 +138,27 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
 
   return (
     <>
+      {/* ── 光爆 flash overlay（纯色系，无白色，不造成白屏）── */}
+      <AnimatePresence>
+        {flashVisible && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.55, 0.3, 0] }}
+            transition={{ duration: 0.35, times: [0, 0.15, 0.5, 1], ease: 'easeOut' }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 55,
+              pointerEvents: 'none',
+              background: `radial-gradient(circle at 50% 55%,
+                rgba(${r},${g},${b},0.6) 0%,
+                rgba(${r},${g},${b},0.25) 40%,
+                transparent 75%)`,
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ── 天空中的星星 ── */}
       <motion.button
         ref={scope}
@@ -149,6 +173,7 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
           padding:    0,
           cursor:     phase === 'idle' ? 'pointer' : 'default',
           zIndex:     phase === 'card' || phase === 'flash' ? 50 : 5,
+          pointerEvents: 'auto',
           // 漂浮动画仅在 idle 时生效
           animation: phase === 'idle'
             ? `drm-float-${dream.id} ${11 + dreamSeedFloat(dream.id) * 8}s ease-in-out ${dreamSeedFloat(dream.id) * 5}s infinite`
@@ -157,21 +182,6 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
         whileHover={phase === 'idle' ? { scale: 1.3 } : {}}
         initial={{ scale: 1, opacity: 1 }}
       >
-        {/* 外层呼吸光晕 */}
-        <motion.div
-          style={{
-            position: 'absolute',
-            inset: -starSize * 0.8,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, rgba(${r},${g},${b},0.25) 0%, transparent 70%)`,
-            pointerEvents: 'none',
-          }}
-          animate={phase === 'idle' ? {
-            scale: [1, 1.4, 1],
-            opacity: [0.6, 1, 0.6],
-          } : {}}
-          transition={{ duration: 3 + dreamSeedFloat(dream.id) * 2, repeat: Infinity, ease: 'easeInOut' }}
-        />
         <StarSVG size={starSize} color={color} />
       </motion.button>
 

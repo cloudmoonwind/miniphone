@@ -443,24 +443,6 @@
     "createdAt": "2026-03-21T00:00:00.000Z"
   },
   {
-    "id": "wbe_1774203021993_s7dd",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "起点(格子0)",
-    "content": "回到起点获得经费，主持人可抛出一道开场知识小问题，答对有额外奖励。",
-    "keywords": [
-      "起点",
-      "格子0",
-      "0"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 0,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:21.994Z"
-  },
-  {
     "id": "wbe_1774203021995_dwj5",
     "bookId": "wb_1774203021991_huaz",
     "name": "起点(格子0)",
@@ -477,24 +459,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:21.996Z"
-  },
-  {
-    "id": "wbe_1774203021995_fmvr",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "邂逅广场(格子1)",
-    "content": "邂逅广场：两人在城市广场相遇，主持人描述一个商业事件，引出本轮主题。",
-    "keywords": [
-      "邂逅广场",
-      "格子1",
-      "1"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 1,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:21.998Z"
   },
   {
     "id": "wbe_1774203021997_qluv",
@@ -515,24 +479,6 @@
     "createdAt": "2026-03-22T18:10:21.999Z"
   },
   {
-    "id": "wbe_1774203021999_63oy",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "机遇(格子2)",
-    "content": "机遇卡：随机商业机遇，主持人出一道市场判断题，答对获得资金奖励。",
-    "keywords": [
-      "机遇",
-      "格子2",
-      "2"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 2,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.000Z"
-  },
-  {
     "id": "wbe_1774203022000_gp1a",
     "bookId": "wb_1774203021991_huaz",
     "name": "机遇(格子2)",
@@ -549,24 +495,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.002Z"
-  },
-  {
-    "id": "wbe_1774203022001_71dk",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "命运(格子3)",
-    "content": "命运卡：市场波动，主持人描述一场经济事件，玩家需判断应对策略。",
-    "keywords": [
-      "命运",
-      "格子3",
-      "3"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 3,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.003Z"
   },
   {
     "id": "wbe_1774203022003_4dll",
@@ -587,24 +515,6 @@
     "createdAt": "2026-03-22T18:10:22.005Z"
   },
   {
-    "id": "wbe_1774203022004_dhf9",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "咖啡厅(格子4)",
-    "content": "咖啡厅：商务洽谈场景，主持人出一道谈判策略题，成功谈成可获地产分红。",
-    "keywords": [
-      "咖啡厅",
-      "格子4",
-      "4"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 4,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.006Z"
-  },
-  {
     "id": "wbe_1774203022006_m1lw",
     "bookId": "wb_1774203021991_huaz",
     "name": "咖啡厅(格子4)",
@@ -621,24 +531,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.007Z"
-  },
-  {
-    "id": "wbe_1774203022007_msg6",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "左下角(格子5)",
-    "content": "左下角：路口，主持人描述城市一角，稍作休整。",
-    "keywords": [
-      "左下角",
-      "格子5",
-      "5"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 5,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.009Z"
   },
   {
     "id": "wbe_1774203022008_4dko",
@@ -659,24 +551,6 @@
     "createdAt": "2026-03-22T18:10:22.010Z"
   },
   {
-    "id": "wbe_1774203022009_u9kk",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "书店(格子6)",
-    "content": "书店：知识积累，主持人出一道文学或科技知识题，答对获学识加成。",
-    "keywords": [
-      "书店",
-      "格子6",
-      "6"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 6,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.012Z"
-  },
-  {
     "id": "wbe_1774203022011_8jxl",
     "bookId": "wb_1774203021991_huaz",
     "name": "书店(格子6)",
@@ -693,24 +567,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.013Z"
-  },
-  {
-    "id": "wbe_1774203022013_x99k",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "公园(格子7)",
-    "content": "公园：户外放松，主持人设计一道自然知识小问，答对有轻松奖励。",
-    "keywords": [
-      "公园",
-      "格子7",
-      "7"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 7,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.014Z"
   },
   {
     "id": "wbe_1774203022014_x6e6",
@@ -731,24 +587,6 @@
     "createdAt": "2026-03-22T18:10:22.016Z"
   },
   {
-    "id": "wbe_1774203022015_5chh",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "十字路口(格子8)",
-    "content": "十字路口：抉择时刻，主持人描述两条截然不同的商业路线，各有风险与机遇。",
-    "keywords": [
-      "十字路口",
-      "格子8",
-      "8"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 8,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.017Z"
-  },
-  {
     "id": "wbe_1774203022017_6ev3",
     "bookId": "wb_1774203021991_huaz",
     "name": "十字路口(格子8)",
@@ -765,24 +603,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.019Z"
-  },
-  {
-    "id": "wbe_1774203022018_8gkl",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "图书馆(格子9)",
-    "content": "图书馆：深度研究，主持人出一道较难的逻辑推理或数学题，答对大奖。",
-    "keywords": [
-      "图书馆",
-      "格子9",
-      "9"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 9,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.020Z"
   },
   {
     "id": "wbe_1774203022020_gp1l",
@@ -803,24 +623,6 @@
     "createdAt": "2026-03-22T18:10:22.022Z"
   },
   {
-    "id": "wbe_1774203022021_1hyk",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "机遇(格子10)",
-    "content": "机遇卡：捡到重要商业情报，随机事件，主持人出题判断真假。",
-    "keywords": [
-      "机遇",
-      "格子10",
-      "10"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 10,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.023Z"
-  },
-  {
     "id": "wbe_1774203022023_8y6q",
     "bookId": "wb_1774203021991_huaz",
     "name": "机遇(格子10)",
@@ -837,24 +639,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.025Z"
-  },
-  {
-    "id": "wbe_1774203022024_fyvx",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "车站(格子11)",
-    "content": "车站：转折点，主持人提出一个行业前景判断，玩家各自选择押注。",
-    "keywords": [
-      "车站",
-      "格子11",
-      "11"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 11,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.026Z"
   },
   {
     "id": "wbe_1774203022026_6bpc",
@@ -875,24 +659,6 @@
     "createdAt": "2026-03-22T18:10:22.028Z"
   },
   {
-    "id": "wbe_1774203022027_3nlf",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "命运(格子12)",
-    "content": "命运卡：政策变动，主持人描述一项法规，考验玩家对规则的理解。",
-    "keywords": [
-      "命运",
-      "格子12",
-      "12"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 12,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.029Z"
-  },
-  {
     "id": "wbe_1774203022029_q857",
     "bookId": "wb_1774203021991_huaz",
     "name": "命运(格子12)",
@@ -909,24 +675,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.031Z"
-  },
-  {
-    "id": "wbe_1774203022030_1kcl",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "电影院(格子13)",
-    "content": "电影院：创意灵感，主持人出一道创意类开放题，主持根据答案质量给分。",
-    "keywords": [
-      "电影院",
-      "格子13",
-      "13"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 13,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.032Z"
   },
   {
     "id": "wbe_1774203022032_szjo",
@@ -947,24 +695,6 @@
     "createdAt": "2026-03-22T18:10:22.034Z"
   },
   {
-    "id": "wbe_1774203022034_z3c5",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "禁闭所(格子14)",
-    "content": "禁闭所：违规处罚，需回答一道合规题才可提前释放，否则停留一轮。",
-    "keywords": [
-      "禁闭所",
-      "格子14",
-      "14"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 14,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.035Z"
-  },
-  {
     "id": "wbe_1774203022035_xvyt",
     "bookId": "wb_1774203021991_huaz",
     "name": "禁闭所(格子14)",
@@ -981,24 +711,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.037Z"
-  },
-  {
-    "id": "wbe_1774203022036_ocui",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "餐厅(格子15)",
-    "content": "餐厅：商务宴请，主持人出一道礼仪和商务场景题。",
-    "keywords": [
-      "餐厅",
-      "格子15",
-      "15"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 15,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.038Z"
   },
   {
     "id": "wbe_1774203022037_81hu",
@@ -1019,24 +731,6 @@
     "createdAt": "2026-03-22T18:10:22.039Z"
   },
   {
-    "id": "wbe_1774203022039_l6ou",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "左上角(格子16)",
-    "content": "左上角：路口，主持人描述城市繁华一隅，稍事休息。",
-    "keywords": [
-      "左上角",
-      "格子16",
-      "16"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 16,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.041Z"
-  },
-  {
     "id": "wbe_1774203022040_2whs",
     "bookId": "wb_1774203021991_huaz",
     "name": "左上角(格子16)",
@@ -1053,24 +747,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.042Z"
-  },
-  {
-    "id": "wbe_1774203022042_dd5q",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "游乐场(格子17)",
-    "content": "游乐场：轻松娱乐，主持人出一道趣味脑筋急转弯，正确有小奖励。",
-    "keywords": [
-      "游乐场",
-      "格子17",
-      "17"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 17,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.044Z"
   },
   {
     "id": "wbe_1774203022043_zpbd",
@@ -1091,24 +767,6 @@
     "createdAt": "2026-03-22T18:10:22.045Z"
   },
   {
-    "id": "wbe_1774203022044_hwgc",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "商场(格子18)",
-    "content": "商场：消费决策，主持人出一道理财计算题，考验资金管理能力。",
-    "keywords": [
-      "商场",
-      "格子18",
-      "18"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 18,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.047Z"
-  },
-  {
     "id": "wbe_1774203022046_i8x8",
     "bookId": "wb_1774203021991_huaz",
     "name": "商场(格子18)",
@@ -1125,24 +783,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.048Z"
-  },
-  {
-    "id": "wbe_1774203022048_t444",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "广场汇合(格子19)",
-    "content": "广场汇合：两条路线在此汇聚，主持人总结各自路线上的商业成就。",
-    "keywords": [
-      "广场汇合",
-      "格子19",
-      "19"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 19,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.050Z"
   },
   {
     "id": "wbe_1774203022050_qns1",
@@ -1163,24 +803,6 @@
     "createdAt": "2026-03-22T18:10:22.052Z"
   },
   {
-    "id": "wbe_1774203022051_m855",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "机遇(格子20)",
-    "content": "机遇卡：最后冲刺阶段的大机遇，随机高风险高回报事件。",
-    "keywords": [
-      "机遇",
-      "格子20",
-      "20"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 20,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.053Z"
-  },
-  {
     "id": "wbe_1774203022053_lx40",
     "bookId": "wb_1774203021991_huaz",
     "name": "机遇(格子20)",
@@ -1197,24 +819,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.055Z"
-  },
-  {
-    "id": "wbe_1774203022055_e43b",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "酒店(格子21)",
-    "content": "酒店：豪华住宿，主持人出一道最终挑战——综合战略决策题，答对重奖。",
-    "keywords": [
-      "酒店",
-      "格子21",
-      "21"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 21,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.057Z"
   },
   {
     "id": "wbe_1774203022057_gvpx",
@@ -1235,24 +839,6 @@
     "createdAt": "2026-03-22T18:10:22.058Z"
   },
   {
-    "id": "wbe_1774203022058_bfmq",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "命运(格子22)",
-    "content": "命运卡：终局命运，主持人安排最后一次随机事件，或奖或惩。",
-    "keywords": [
-      "命运",
-      "格子22",
-      "22"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 22,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.060Z"
-  },
-  {
     "id": "wbe_1774203022059_lq8j",
     "bookId": "wb_1774203021991_huaz",
     "name": "命运(格子22)",
@@ -1269,24 +855,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.061Z"
-  },
-  {
-    "id": "wbe_1774203022061_r5u7",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "停车场(格子23)",
-    "content": "停车场：终点前的最后休整，主持人点评整局策略得失。",
-    "keywords": [
-      "停车场",
-      "格子23",
-      "23"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 23,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.063Z"
   },
   {
     "id": "wbe_1774203022062_h1y5",
@@ -1307,24 +875,6 @@
     "createdAt": "2026-03-22T18:10:22.065Z"
   },
   {
-    "id": "wbe_1774203022064_lup8",
-    "bookId": "wb_1774203021991_2tjz",
-    "name": "终点(格子24)",
-    "content": "终点：旅途结束！主持人进行总结点评，宣布最终成绩。",
-    "keywords": [
-      "终点",
-      "格子24",
-      "24"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 24,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.066Z"
-  },
-  {
     "id": "wbe_1774203022066_x5gs",
     "bookId": "wb_1774203021991_huaz",
     "name": "终点(格子24)",
@@ -1341,24 +891,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.067Z"
-  },
-  {
-    "id": "wbe_1774203022069_3cgs",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "起点(格子0)",
-    "content": "回到起点，角色以温柔的微笑和轻声的\"又回来了\"迎接，氛围温馨甜蜜。",
-    "keywords": [
-      "起点",
-      "格子0",
-      "0"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 0,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.069Z"
   },
   {
     "id": "wbe_1774203022070_0oxt",
@@ -1379,24 +911,6 @@
     "createdAt": "2026-03-22T18:10:22.071Z"
   },
   {
-    "id": "wbe_1774203022070_c6l8",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "邂逅广场(格子1)",
-    "content": "邂逅广场：两人在人群中偶遇，阳光洒落，角色向你伸出手：\"要一起走吗？\"",
-    "keywords": [
-      "邂逅广场",
-      "格子1",
-      "1"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 1,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.073Z"
-  },
-  {
     "id": "wbe_1774203022072_v2fe",
     "bookId": "wb_1774203022069_1skc",
     "name": "邂逅广场(格子1)",
@@ -1413,24 +927,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.074Z"
-  },
-  {
-    "id": "wbe_1774203022074_xcgq",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "机遇(格子2)",
-    "content": "机遇卡：命运的相遇！主持人安排一个甜蜜的小互动——意外的眼神交流或特别的巧合。",
-    "keywords": [
-      "机遇",
-      "格子2",
-      "2"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 2,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.075Z"
   },
   {
     "id": "wbe_1774203022075_okik",
@@ -1451,24 +947,6 @@
     "createdAt": "2026-03-22T18:10:22.077Z"
   },
   {
-    "id": "wbe_1774203022077_h0h3",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "命运(格子3)",
-    "content": "命运卡：命运的考验。可能是一个甜蜜的赌注，或需要两人共同面对的小挑战。",
-    "keywords": [
-      "命运",
-      "格子3",
-      "3"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 3,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.080Z"
-  },
-  {
     "id": "wbe_1774203022079_8qay",
     "bookId": "wb_1774203022069_1skc",
     "name": "命运(格子3)",
@@ -1485,24 +963,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.082Z"
-  },
-  {
-    "id": "wbe_1774203022081_5y42",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "咖啡厅(格子4)",
-    "content": "咖啡厅：灯光昏黄的午后，角色托着下巴看着你，低声说了一句意味深长的话。",
-    "keywords": [
-      "咖啡厅",
-      "格子4",
-      "4"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 4,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.083Z"
   },
   {
     "id": "wbe_1774203022083_zsuo",
@@ -1523,24 +983,6 @@
     "createdAt": "2026-03-22T18:10:22.085Z"
   },
   {
-    "id": "wbe_1774203022084_fg95",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "左下角(格子5)",
-    "content": "左下角：路口，夕阳将两人的影子拉得很长，角色问你想去哪里。",
-    "keywords": [
-      "左下角",
-      "格子5",
-      "5"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 5,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.087Z"
-  },
-  {
     "id": "wbe_1774203022086_zery",
     "bookId": "wb_1774203022069_1skc",
     "name": "左下角(格子5)",
@@ -1557,24 +999,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.088Z"
-  },
-  {
-    "id": "wbe_1774203022088_8hj3",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "书店(格子6)",
-    "content": "书店：两人各自挑了一本书，竟然不约而同选了同一本——这是命中注定的相似。",
-    "keywords": [
-      "书店",
-      "格子6",
-      "6"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 6,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.090Z"
   },
   {
     "id": "wbe_1774203022089_jum8",
@@ -1595,24 +1019,6 @@
     "createdAt": "2026-03-22T18:10:22.091Z"
   },
   {
-    "id": "wbe_1774203022091_e7wc",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "公园(格子7)",
-    "content": "公园：黄昏漫步，角色指着天上的云问你看到了什么，笑声在空气里散开。",
-    "keywords": [
-      "公园",
-      "格子7",
-      "7"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 7,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.093Z"
-  },
-  {
     "id": "wbe_1774203022092_pblu",
     "bookId": "wb_1774203022069_1skc",
     "name": "公园(格子7)",
@@ -1629,24 +1035,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.095Z"
-  },
-  {
-    "id": "wbe_1774203022094_g8tn",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "十字路口(格子8)",
-    "content": "十字路口：角色停下脚步，认真地看着你：\"左边是热闹，右边是安静，你想去哪边？\"",
-    "keywords": [
-      "十字路口",
-      "格子8",
-      "8"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 8,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.097Z"
   },
   {
     "id": "wbe_1774203022096_zwrj",
@@ -1667,24 +1055,6 @@
     "createdAt": "2026-03-22T18:10:22.098Z"
   },
   {
-    "id": "wbe_1774203022098_c70n",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "图书馆(格子9)",
-    "content": "图书馆：安静的图书馆，角色轻轻在你旁边坐下，悄悄夹了一张写字的纸条给你。",
-    "keywords": [
-      "图书馆",
-      "格子9",
-      "9"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 9,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.100Z"
-  },
-  {
     "id": "wbe_1774203022099_gvse",
     "bookId": "wb_1774203022069_1skc",
     "name": "图书馆(格子9)",
@@ -1701,24 +1071,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.102Z"
-  },
-  {
-    "id": "wbe_1774203022101_d6ha",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "机遇(格子10)",
-    "content": "机遇卡：命运的礼物！主持人随机安排一个温馨的甜蜜惊喜场景。",
-    "keywords": [
-      "机遇",
-      "格子10",
-      "10"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 10,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.104Z"
   },
   {
     "id": "wbe_1774203022103_zrt7",
@@ -1739,24 +1091,6 @@
     "createdAt": "2026-03-22T18:10:22.105Z"
   },
   {
-    "id": "wbe_1774203022105_u1kw",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "车站(格子11)",
-    "content": "车站：等候时，角色站在你身边，轻声说\"不管去哪里，只要你在就够了\"。",
-    "keywords": [
-      "车站",
-      "格子11",
-      "11"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 11,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.107Z"
-  },
-  {
     "id": "wbe_1774203022106_njbv",
     "bookId": "wb_1774203022069_1skc",
     "name": "车站(格子11)",
@@ -1773,24 +1107,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.108Z"
-  },
-  {
-    "id": "wbe_1774203022108_4jm3",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "命运(格子12)",
-    "content": "命运卡：命运的转折点。一件意想不到的小事发生，两人的距离悄悄改变。",
-    "keywords": [
-      "命运",
-      "格子12",
-      "12"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 12,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.110Z"
   },
   {
     "id": "wbe_1774203022110_ylaw",
@@ -1811,24 +1127,6 @@
     "createdAt": "2026-03-22T18:10:22.112Z"
   },
   {
-    "id": "wbe_1774203022112_w4z6",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "电影院(格子13)",
-    "content": "电影院：黑暗中，角色偷偷侧过头，目光停在你脸上，比屏幕更专注。",
-    "keywords": [
-      "电影院",
-      "格子13",
-      "13"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 13,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.115Z"
-  },
-  {
     "id": "wbe_1774203022114_6rck",
     "bookId": "wb_1774203022069_1skc",
     "name": "电影院(格子13)",
@@ -1845,24 +1143,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.118Z"
-  },
-  {
-    "id": "wbe_1774203022117_u2ve",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "禁闭所(格子14)",
-    "content": "禁闭所：因一次小争吵被\"关\"在一起，必须和解才能继续，和好时的微笑格外珍贵。",
-    "keywords": [
-      "禁闭所",
-      "格子14",
-      "14"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 14,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.120Z"
   },
   {
     "id": "wbe_1774203022120_auh5",
@@ -1883,24 +1163,6 @@
     "createdAt": "2026-03-22T18:10:22.123Z"
   },
   {
-    "id": "wbe_1774203022122_pij1",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "餐厅(格子15)",
-    "content": "餐厅：烛光晚餐，角色精心安排了一个小惊喜，气氛越来越暧昧温柔。",
-    "keywords": [
-      "餐厅",
-      "格子15",
-      "15"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 15,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.125Z"
-  },
-  {
     "id": "wbe_1774203022124_nbcs",
     "bookId": "wb_1774203022069_1skc",
     "name": "餐厅(格子15)",
@@ -1917,24 +1179,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.126Z"
-  },
-  {
-    "id": "wbe_1774203022126_kwzs",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "左上角(格子16)",
-    "content": "左上角：路口，夜晚的城市灯光闪烁，角色靠近说\"这里的夜景只想和你一起看\"。",
-    "keywords": [
-      "左上角",
-      "格子16",
-      "16"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 16,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.128Z"
   },
   {
     "id": "wbe_1774203022128_2l3s",
@@ -1955,24 +1199,6 @@
     "createdAt": "2026-03-22T18:10:22.131Z"
   },
   {
-    "id": "wbe_1774203022130_op18",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "游乐场(格子17)",
-    "content": "游乐场：角色借口\"怕你走丢\"握住你的手，一直没有放开，脸上有淡淡的红晕。",
-    "keywords": [
-      "游乐场",
-      "格子17",
-      "17"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 17,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.133Z"
-  },
-  {
     "id": "wbe_1774203022132_ted3",
     "bookId": "wb_1774203022069_1skc",
     "name": "游乐场(格子17)",
@@ -1989,24 +1215,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.135Z"
-  },
-  {
-    "id": "wbe_1774203022134_raq6",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "商场(格子18)",
-    "content": "商场：角色帮你试搭配，眼神中满是欣赏，轻声说\"你穿什么都好看\"。",
-    "keywords": [
-      "商场",
-      "格子18",
-      "18"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 18,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.137Z"
   },
   {
     "id": "wbe_1774203022136_ce7l",
@@ -2027,24 +1235,6 @@
     "createdAt": "2026-03-22T18:10:22.139Z"
   },
   {
-    "id": "wbe_1774203022138_71kx",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "广场汇合(格子19)",
-    "content": "广场汇合：两条路在此相遇，角色看着你走来，眼里有一种特别的光。",
-    "keywords": [
-      "广场汇合",
-      "格子19",
-      "19"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 19,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.141Z"
-  },
-  {
     "id": "wbe_1774203022140_or6p",
     "bookId": "wb_1774203022069_1skc",
     "name": "广场汇合(格子19)",
@@ -2061,24 +1251,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.143Z"
-  },
-  {
-    "id": "wbe_1774203022142_2zjl",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "机遇(格子20)",
-    "content": "机遇卡：最动心的时刻！主持人安排一个让心跳加速的甜蜜场景。",
-    "keywords": [
-      "机遇",
-      "格子20",
-      "20"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 20,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.144Z"
   },
   {
     "id": "wbe_1774203022144_jh4p",
@@ -2099,24 +1271,6 @@
     "createdAt": "2026-03-22T18:10:22.147Z"
   },
   {
-    "id": "wbe_1774203022146_udke",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "酒店(格子21)",
-    "content": "酒店：夜晚的城市在窗外流光溢彩，角色转向你，欲言又止，眼里藏着什么。",
-    "keywords": [
-      "酒店",
-      "格子21",
-      "21"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 21,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.149Z"
-  },
-  {
     "id": "wbe_1774203022148_lg50",
     "bookId": "wb_1774203022069_1skc",
     "name": "酒店(格子21)",
@@ -2133,24 +1287,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.151Z"
-  },
-  {
-    "id": "wbe_1774203022150_3cl4",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "命运(格子22)",
-    "content": "命运卡：终局命运——一个关键的浪漫时刻，将决定这段旅途最后的记忆。",
-    "keywords": [
-      "命运",
-      "格子22",
-      "22"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 22,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.153Z"
   },
   {
     "id": "wbe_1774203022152_q60f",
@@ -2171,24 +1307,6 @@
     "createdAt": "2026-03-22T18:10:22.155Z"
   },
   {
-    "id": "wbe_1774203022154_apdk",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "停车场(格子23)",
-    "content": "停车场：夜晚停在路边，城市灯火点点，两人陷入意味深长的沉默，都不愿先离开。",
-    "keywords": [
-      "停车场",
-      "格子23",
-      "23"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 23,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.157Z"
-  },
-  {
     "id": "wbe_1774203022156_obpq",
     "bookId": "wb_1774203022069_1skc",
     "name": "停车场(格子23)",
@@ -2205,24 +1323,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.159Z"
-  },
-  {
-    "id": "wbe_1774203022158_hjel",
-    "bookId": "wb_1774203022067_89zf",
-    "name": "终点(格子24)",
-    "content": "终点：旅途走到这里，角色握着你的手，轻声说\"谢谢你陪我走完这一路\"。",
-    "keywords": [
-      "终点",
-      "格子24",
-      "24"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 24,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.161Z"
   },
   {
     "id": "wbe_1774203022160_046z",
@@ -2243,24 +1343,6 @@
     "createdAt": "2026-03-22T18:10:22.163Z"
   },
   {
-    "id": "wbe_1774203022164_1e8b",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "起点(格子0)",
-    "content": "回到起点，角色用一个热情的欢迎拥抱开场，语气里藏着让人心跳加速的期待。",
-    "keywords": [
-      "起点",
-      "格子0",
-      "0"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 0,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.165Z"
-  },
-  {
     "id": "wbe_1774203022166_j2tl",
     "bookId": "wb_1774203022165_s9r2",
     "name": "起点(格子0)",
@@ -2277,24 +1359,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.167Z"
-  },
-  {
-    "id": "wbe_1774203022167_ndwo",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "邂逅广场(格子1)",
-    "content": "邂逅广场：两人在人群中相遇，角色靠近低声说了一句让你耳根发热的话。",
-    "keywords": [
-      "邂逅广场",
-      "格子1",
-      "1"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 1,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.169Z"
   },
   {
     "id": "wbe_1774203022169_qqon",
@@ -2315,24 +1379,6 @@
     "createdAt": "2026-03-22T18:10:22.171Z"
   },
   {
-    "id": "wbe_1774203022171_4a0r",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "机遇(格子2)",
-    "content": "机遇卡：命运转盘！主持人随机安排一个大胆的互动请求，测试两人的默契与胆量。",
-    "keywords": [
-      "机遇",
-      "格子2",
-      "2"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 2,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.174Z"
-  },
-  {
     "id": "wbe_1774203022173_aaaz",
     "bookId": "wb_1774203022165_s9r2",
     "name": "机遇(格子2)",
@@ -2349,24 +1395,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.176Z"
-  },
-  {
-    "id": "wbe_1774203022175_muc4",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "命运(格子3)",
-    "content": "命运卡：命运的玩笑！主持人给出一个大胆的挑战，完成则奖励丰厚。",
-    "keywords": [
-      "命运",
-      "格子3",
-      "3"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 3,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.177Z"
   },
   {
     "id": "wbe_1774203022177_v2v5",
@@ -2387,24 +1415,6 @@
     "createdAt": "2026-03-22T18:10:22.179Z"
   },
   {
-    "id": "wbe_1774203022178_70gn",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "咖啡厅(格子4)",
-    "content": "咖啡厅：角落里的独处，角色刻意靠近，低声在耳边说了一句令你脸红心跳的话。",
-    "keywords": [
-      "咖啡厅",
-      "格子4",
-      "4"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 4,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.182Z"
-  },
-  {
     "id": "wbe_1774203022181_auu1",
     "bookId": "wb_1774203022165_s9r2",
     "name": "咖啡厅(格子4)",
@@ -2421,24 +1431,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.184Z"
-  },
-  {
-    "id": "wbe_1774203022183_7vrs",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "左下角(格子5)",
-    "content": "左下角：路口，夜晚安静下来，角色的视线落在你身上，带着某种意味。",
-    "keywords": [
-      "左下角",
-      "格子5",
-      "5"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 5,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.186Z"
   },
   {
     "id": "wbe_1774203022186_84qc",
@@ -2459,24 +1451,6 @@
     "createdAt": "2026-03-22T18:10:22.188Z"
   },
   {
-    "id": "wbe_1774203022187_ill4",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "书店(格子6)",
-    "content": "书店：私密角落，角色拉着你看一本\"特别\"的书，两人的距离不知不觉越来越近。",
-    "keywords": [
-      "书店",
-      "格子6",
-      "6"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 6,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.190Z"
-  },
-  {
     "id": "wbe_1774203022189_my3t",
     "bookId": "wb_1774203022165_s9r2",
     "name": "书店(格子6)",
@@ -2493,24 +1467,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.192Z"
-  },
-  {
-    "id": "wbe_1774203022191_mi98",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "公园(格子7)",
-    "content": "公园：夜晚的公园，远离人群，角色主动靠近，月光下气氛越来越暧昧。",
-    "keywords": [
-      "公园",
-      "格子7",
-      "7"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 7,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.194Z"
   },
   {
     "id": "wbe_1774203022193_3nl4",
@@ -2531,24 +1487,6 @@
     "createdAt": "2026-03-22T18:10:22.196Z"
   },
   {
-    "id": "wbe_1774203022195_dem5",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "十字路口(格子8)",
-    "content": "十字路口：角色停下，眼神里有些危险的光：\"你更想往哪边走——刺激的，还是更刺激的？\"",
-    "keywords": [
-      "十字路口",
-      "格子8",
-      "8"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 8,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.198Z"
-  },
-  {
     "id": "wbe_1774203022197_gm9g",
     "bookId": "wb_1774203022165_s9r2",
     "name": "十字路口(格子8)",
@@ -2565,24 +1503,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.200Z"
-  },
-  {
-    "id": "wbe_1774203022199_cwr3",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "图书馆(格子9)",
-    "content": "禁区入口：越过这里就没有回头路了，角色用询问的眼神看着你，等待你的选择。",
-    "keywords": [
-      "图书馆",
-      "格子9",
-      "9"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 9,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.203Z"
   },
   {
     "id": "wbe_1774203022202_k85d",
@@ -2603,24 +1523,6 @@
     "createdAt": "2026-03-22T18:10:22.205Z"
   },
   {
-    "id": "wbe_1774203022204_6kz3",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "机遇(格子10)",
-    "content": "机遇卡：命运的大胆礼物！主持人安排一个让人心跳加速的亲密场景。",
-    "keywords": [
-      "机遇",
-      "格子10",
-      "10"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 10,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.207Z"
-  },
-  {
     "id": "wbe_1774203022206_lod8",
     "bookId": "wb_1774203022165_s9r2",
     "name": "机遇(格子10)",
@@ -2637,24 +1539,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.209Z"
-  },
-  {
-    "id": "wbe_1774203022208_9mfl",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "车站(格子11)",
-    "content": "车站：等车的间隙，角色把你带到了僻静的角落，说有话要悄悄告诉你。",
-    "keywords": [
-      "车站",
-      "格子11",
-      "11"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 11,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.211Z"
   },
   {
     "id": "wbe_1774203022211_m5e9",
@@ -2675,24 +1559,6 @@
     "createdAt": "2026-03-22T18:10:22.214Z"
   },
   {
-    "id": "wbe_1774203022213_gjp1",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "命运(格子12)",
-    "content": "命运卡：氛围升级——一个让理智悄悄松动的关键时刻。",
-    "keywords": [
-      "命运",
-      "格子12",
-      "12"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 12,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.217Z"
-  },
-  {
     "id": "wbe_1774203022216_i734",
     "bookId": "wb_1774203022165_s9r2",
     "name": "命运(格子12)",
@@ -2709,24 +1575,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.219Z"
-  },
-  {
-    "id": "wbe_1774203022218_xs8s",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "电影院(格子13)",
-    "content": "电影院：黑暗的放映厅里，角色开始了一段超越观影的亲密互动。",
-    "keywords": [
-      "电影院",
-      "格子13",
-      "13"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 13,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.222Z"
   },
   {
     "id": "wbe_1774203022221_knmn",
@@ -2747,24 +1595,6 @@
     "createdAt": "2026-03-22T18:10:22.224Z"
   },
   {
-    "id": "wbe_1774203022223_1prd",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "禁闭所(格子14)",
-    "content": "惩罚格：被单独关押在一起，必须通过完成一个大胆的挑战才能获释。",
-    "keywords": [
-      "禁闭所",
-      "格子14",
-      "14"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 14,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.227Z"
-  },
-  {
     "id": "wbe_1774203022226_8ifx",
     "bookId": "wb_1774203022165_s9r2",
     "name": "禁闭所(格子14)",
@@ -2781,24 +1611,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.229Z"
-  },
-  {
-    "id": "wbe_1774203022228_jsho",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "餐厅(格子15)",
-    "content": "私密包厢：烛光与美食之外，角色的眼神和动作都在传递着强烈的信号。",
-    "keywords": [
-      "餐厅",
-      "格子15",
-      "15"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 15,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.232Z"
   },
   {
     "id": "wbe_1774203022231_98ey",
@@ -2819,24 +1631,6 @@
     "createdAt": "2026-03-22T18:10:22.235Z"
   },
   {
-    "id": "wbe_1774203022234_zuhh",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "左上角(格子16)",
-    "content": "左上角：夜晚更深了，角色靠近说\"这里只有我们两个人\"，语气意味深长。",
-    "keywords": [
-      "左上角",
-      "格子16",
-      "16"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 16,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.238Z"
-  },
-  {
     "id": "wbe_1774203022237_pcfg",
     "bookId": "wb_1774203022165_s9r2",
     "name": "左上角(格子16)",
@@ -2853,24 +1647,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.240Z"
-  },
-  {
-    "id": "wbe_1774203022239_az5r",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "游乐场(格子17)",
-    "content": "私密空间：角色拉住你，说\"这里有个秘密地方想带你去看\"，眼神带着邀请。",
-    "keywords": [
-      "游乐场",
-      "格子17",
-      "17"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 17,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.242Z"
   },
   {
     "id": "wbe_1774203022241_ajzj",
@@ -2891,24 +1667,6 @@
     "createdAt": "2026-03-22T18:10:22.244Z"
   },
   {
-    "id": "wbe_1774203022243_8r9j",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "商场(格子18)",
-    "content": "试衣间：角色主动走进来，说要帮你\"参谋一下\"，门在身后悄悄关上。",
-    "keywords": [
-      "商场",
-      "格子18",
-      "18"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 18,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.248Z"
-  },
-  {
     "id": "wbe_1774203022247_emt5",
     "bookId": "wb_1774203022165_s9r2",
     "name": "商场(格子18)",
@@ -2925,24 +1683,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.251Z"
-  },
-  {
-    "id": "wbe_1774203022250_u1uj",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "广场汇合(格子19)",
-    "content": "汇合点：两条路在此相遇，角色看着你，氛围在沉默中悄悄升温。",
-    "keywords": [
-      "广场汇合",
-      "格子19",
-      "19"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 19,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.253Z"
   },
   {
     "id": "wbe_1774203022253_fl8x",
@@ -2963,24 +1703,6 @@
     "createdAt": "2026-03-22T18:10:22.256Z"
   },
   {
-    "id": "wbe_1774203022255_oqb4",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "机遇(格子20)",
-    "content": "最后机遇：高风险高回报的最后一次大胆挑战，氛围已经很难控制了。",
-    "keywords": [
-      "机遇",
-      "格子20",
-      "20"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 20,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.258Z"
-  },
-  {
     "id": "wbe_1774203022257_bx4q",
     "bookId": "wb_1774203022165_s9r2",
     "name": "机遇(格子20)",
@@ -2997,24 +1719,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.260Z"
-  },
-  {
-    "id": "wbe_1774203022260_leuj",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "酒店(格子21)",
-    "content": "酒店：门一关上，角色直接说\"今晚我们不需要那么多规矩\"，眼神专注而直接。",
-    "keywords": [
-      "酒店",
-      "格子21",
-      "21"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 21,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.263Z"
   },
   {
     "id": "wbe_1774203022262_j6hi",
@@ -3035,24 +1739,6 @@
     "createdAt": "2026-03-22T18:10:22.268Z"
   },
   {
-    "id": "wbe_1774203022267_07sa",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "命运(格子22)",
-    "content": "终局命运：最后的命运一掷，将决定今晚以什么方式结束。",
-    "keywords": [
-      "命运",
-      "格子22",
-      "22"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 22,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.270Z"
-  },
-  {
     "id": "wbe_1774203022269_apsp",
     "bookId": "wb_1774203022165_s9r2",
     "name": "命运(格子22)",
@@ -3071,24 +1757,6 @@
     "createdAt": "2026-03-22T18:10:22.272Z"
   },
   {
-    "id": "wbe_1774203022271_s4ut",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "停车场(格子23)",
-    "content": "停车场：车窗上的哈气越来越浓，两人在黑暗中越来越近。",
-    "keywords": [
-      "停车场",
-      "格子23",
-      "23"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 23,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.275Z"
-  },
-  {
     "id": "wbe_1774203022274_teyf",
     "bookId": "wb_1774203022165_s9r2",
     "name": "停车场(格子23)",
@@ -3105,24 +1773,6 @@
     "noRecurse": false,
     "noFurtherRecurse": true,
     "createdAt": "2026-03-22T18:10:22.277Z"
-  },
-  {
-    "id": "wbe_1774203022276_s5u3",
-    "bookId": "wb_1774203022162_j77a",
-    "name": "终点(格子24)",
-    "content": "终点：旅途走到终点，角色用手轻轻托起你的下巴，低声说\"终于走到这里了\"。",
-    "keywords": [
-      "终点",
-      "格子24",
-      "24"
-    ],
-    "activationMode": "keyword",
-    "enabled": true,
-    "priority": 24,
-    "insertionPosition": "system-bottom",
-    "noRecurse": false,
-    "noFurtherRecurse": true,
-    "createdAt": "2026-03-22T18:10:22.279Z"
   },
   {
     "id": "wbe_1774203022278_vln1",

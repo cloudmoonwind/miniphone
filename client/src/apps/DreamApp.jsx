@@ -36,13 +36,16 @@ const CharPicker = ({ open, selected, allChars, onSelect, onClose }) => (
             <button
               onClick={() => onSelect(null)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl"
-              style={{ background: !selected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: selected === null ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                <Moon size={16} style={{ color: 'rgba(255,255,255,0.4)' }} />
+                <Sparkles size={16} style={{ color: 'rgba(180,160,255,0.7)' }} />
               </div>
-              <span className="text-sm" style={{ color: !selected ? 'white' : 'rgba(255,255,255,0.5)' }}>不选择（空夜空）</span>
-              {!selected && <span className="ml-auto text-xs" style={{ color: 'rgba(180,160,255,0.8)' }}>✓ 当前</span>}
+              <div className="flex flex-col items-start">
+                <span className="text-sm" style={{ color: selected === null ? 'white' : 'rgba(255,255,255,0.5)' }}>全部角色</span>
+                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.28)' }}>展示所有梦境</span>
+              </div>
+              {selected === null && <span className="ml-auto text-xs" style={{ color: 'rgba(180,160,255,0.8)' }}>✓ 当前</span>}
             </button>
             {allChars.length === 0 && (
               <p className="text-center py-6 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>暂无角色，去结缘添加</p>
@@ -177,9 +180,13 @@ const SkyView = ({ skyRef, containerRef, uninterpreted, interpreted, loading, se
 
 // ── 主入口 ─────────────────────────────────────────────────────────────────
 const DreamApp = ({ onBack, char: initChar }) => {
+  // null = 全部角色模式（默认），object = 单角色
   const [selectedChar, setSelectedChar] = useState(() => {
     if (initChar) return initChar;
-    try { return JSON.parse(localStorage.getItem('ics_dream_char') || 'null'); } catch { return null; }
+    try {
+      const saved = localStorage.getItem('ics_dream_char');
+      return saved && saved !== 'null' ? JSON.parse(saved) : null;
+    } catch { return null; }
   });
   const [allChars, setAllChars]     = useState([]);
   const [showPicker, setShowPicker] = useState(false);
@@ -230,7 +237,7 @@ const DreamApp = ({ onBack, char: initChar }) => {
               <span className="font-bold text-white text-sm truncate">{selectedChar.name} 的梦境</span>
             </>
           ) : (
-            <span className="font-bold text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>梦境</span>
+            <span className="font-bold text-sm" style={{ color: 'rgba(180,160,255,0.85)' }}>全部梦境</span>
           )}
           <ChevronDown size={13} style={{ color: 'rgba(255,255,255,0.35)', flexShrink: 0 }} />
         </button>

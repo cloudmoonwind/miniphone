@@ -1,5 +1,5 @@
 import { AnimeStar } from './AnimeStar.jsx';
-import { Moon, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { SKY_RATIO } from './dreamUtils.jsx';
 
 /**
@@ -30,23 +30,13 @@ export const DreamStars = ({
     ))}
 
     {/* 空 / 加载状态（天空区域） */}
-    {!loading && !selectedChar && (
-      <div className="absolute flex flex-col items-center justify-center gap-4"
-        style={{ top: 0, left: 0, right: 0, height: `${SKY_RATIO * 100}%`, pointerEvents: 'none' }}>
-        <Moon size={26} style={{ color: 'rgba(160,180,255,0.3)' }} />
-        <p className="text-sm text-center leading-relaxed tracking-wide"
-          style={{ color: 'rgba(180,200,255,0.3)' }}>
-          选择一位角色<br />让TA的梦出现在夜空里
-        </p>
-      </div>
-    )}
     {loading && (
       <div className="absolute flex items-center justify-center"
         style={{ top: 0, left: 0, right: 0, height: `${SKY_RATIO * 100}%`, pointerEvents: 'none' }}>
         <Loader2 size={20} className="animate-spin" style={{ color: 'rgba(160,180,255,0.4)' }} />
       </div>
     )}
-    {!loading && selectedChar && uninterpreted.length === 0 && (
+    {!loading && uninterpreted.length === 0 && (
       <div className="absolute flex flex-col items-center justify-center gap-3"
         style={{ top: 0, left: 0, right: 0, height: `${SKY_RATIO * 100}%`, pointerEvents: 'none' }}>
         <p className="text-sm text-center leading-relaxed tracking-wide"
@@ -55,7 +45,7 @@ export const DreamStars = ({
         </p>
       </div>
     )}
-    {!loading && selectedChar && interpreted.length === 0 && (
+    {!loading && interpreted.length === 0 && (
       <div className="absolute flex items-center justify-center pointer-events-none"
         style={{ bottom: 0, left: 0, right: 0, height: `${(1 - SKY_RATIO) * 100}%` }}>
         <p className="text-[11px] tracking-wider" style={{ color: 'rgba(120,160,255,0.18)' }}>
