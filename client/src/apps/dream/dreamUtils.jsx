@@ -1,4 +1,5 @@
 // 梦境工具函数和常量
+import { useRef, useEffect } from 'react';
 
 export const SKY_RATIO = 0.62; // 天空占整体高度比例
 
@@ -30,71 +31,138 @@ export const dreamSeed = (id) => {
 
 export const getStarSize = (imp) => imp >= 8 ? 28 : imp >= 5 ? 22 : 16;
 
-/**
- * 二次元四叉尖刺星星 SVG
- * 用 Q 二次贝塞尔，控制点靠近中心，形成内凹弧线
- * outer: 尖端长度, inner: 内凹半径
- */
-export const AnimeStar = ({ size, color, opacity = 1, className, style }) => {
-  const id = color.replace('#', '');
+// ── 单臂亮度：高斯横截面，sigma 随距离收窄 ──────────────────────────────────
+// rpar : 沿臂正方向距离（0~L）
+// rperp: 垂直于臂的距离
+// L    : 臂长
+// sig0 : 根部高斯 sigma（控制根部宽度）
+// tapS : sigma 收窄指数（<1 → 越远越快变细）
+const armBright = (rpar, rperp, L, sig0, tapS) => {
+  const t = rpar / L;
+  if (t <= 0 || t >= 1) return 0;
+  const sig = sig0 * Math.pow(1 - t, tapS);          // sigma 随距离收窄
+  const bAlong  = Math.pow(1 - t, 0.4);              // 沿臂亮度：慢衰减
+  const bAcross = Math.exp(-rperp * rperp / (sig * sig)); // 高斯横截面，无硬边
+  return bAlong * bAcross;
+};
 
-  // 深内凹四叉星：控制点落在对角象限，曲线腰部极细
-  // 从 top(50,2) → right(98,50)，控制点(38,62) 在左下象限 → 强内凹
-  const path = 'M 50 2 Q 38 62, 98 50 Q 38 38, 50 98 Q 62 38, 2 50 Q 62 62, 50 2 Z';
+// ── N 射线不等长星：各臂独立计算，取最大值 ─────────────────────────────────
+// rayLengths[k]：第 k 条臂（角度 k*2π/N）的长度
+// sig0 / tapS  ：传入 armBright 的宽度参数
+const starLayerN = (x, y, rayLengths, sig0, tapS) => {
+  const r = Math.sqrt(x * x + y * y);
+  if (r < 1e-9) return 1;
+  const N = rayLengths.length;
+  let maxB = 0;
+  for (let k = 0; k < N; k++) {
+    const alpha = k * 2 * Math.PI / N;
+    const rpar  = x * Math.cos(alpha) + y * Math.sin(alpha);
+    if (rpar <= 0) continue;
+    const rperp = Math.abs(-x * Math.sin(alpha) + y * Math.cos(alpha));
+    const b = armBright(rpar, rperp, rayLengths[k], sig0, tapS);
+    if (b > maxB) maxB = b;
+  }
+  return maxB;
+};
 
-  // 光芒矩形：从 x=-220 到 x=320（宽540），中心 x=50 在 50% 处
-  // 纵向同理。用 objectBoundingBox 渐变，白点在 50%。
+export const AnimeStar = ({ size, color, opacity = 1, className, style, rays = 4 }) => {
+  const canvasRef = useRef(null);
+  const [r, g, b] = hexRgb(color);
+  const DISPLAY = size * 8;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const S = 400;
+    canvas.width = S;
+    canvas.height = S;
+    const ctx = canvas.getContext('2d');
+
+    // 4射线：短的缩至原来3/4，长:短 = 1.5:1
+    const Lh = 0.25;   // 横轴（短）
+    const Lv = 0.38;   // 纵轴（长），Lv/Lh ≈ 1.52
+
+    // 5/6/8射线：长臂 / 短臂
+    const Ll = 0.55;
+    const Ls = 0.40;
+
+    const sig0 = 0.08;   // 臂根部高斯 sigma（根部宽度）
+    const tapS = 2.5;    // sigma 收窄指数：>1 → 近端快收、远端慢收
+    const wPow = 2.5;    // 白色衰减：越大星色越靠外
+
+    // 各角数的臂长数组（0° 起顺序排列）
+    // 4角：右/上/左/下；6角：3长3短交替；8角：4长4短交替
+    const RAY_LENGTHS = {
+      4: [Lh, Lv, Lh, Lv],
+      5: [Ll, Ll, Ls, Ll, Ls],
+      6: [Ll, Ls, Ll, Ls, Ll, Ls],
+      8: [Ll, Ls, Ll, Ls, Ll, Ls, Ll, Ls],
+    };
+
+    const drawFrame = (ts) => {
+      const img = ctx.createImageData(S, S);
+      const d   = img.data;
+      const base = RAY_LENGTHS[rays] || RAY_LENGTHS[4];
+
+      // N>4：各臂独立呼吸（0.9+0.1*sin → 0.8~1.0 范围）
+      const curLen = rays === 4 ? base : base.map((L, i) => {
+        const phase = (i / base.length) * Math.PI * 2;
+        return L * (0.9 + 0.1 * Math.sin(ts * 0.0015 + phase));
+      });
+
+      for (let px = 0; px < S; px++) {
+        for (let py = 0; py < S; py++) {
+          const x = (px - S * 0.5) / (S * 0.5);
+          const y = (py - S * 0.5) / (S * 0.5);
+
+          const rN   = Math.sqrt(x * x + y * y);
+          const core = Math.exp(-rN * rN / 0.004);           // 紧密高斯核（sigma≈0.045）
+          const arms = starLayerN(x, y, curLen, sig0, tapS); // 臂附近的体积光场
+          const bright = Math.min(1, arms + core * 0.5);
+          if (bright < 0.004) { d[(py * S + px) * 4 + 3] = 0; continue; }
+
+          const w = Math.pow(bright, wPow);
+          const i = (py * S + px) * 4;
+          d[i]   = Math.round(r * (1 - w) + 255 * w);
+          d[i+1] = Math.round(g * (1 - w) + 255 * w);
+          d[i+2] = Math.round(b * (1 - w) + 255 * w);
+          d[i+3] = Math.min(255, Math.round(bright * 255));
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    };
+
+    if (rays === 4) {
+      drawFrame(0);
+      return;
+    }
+
+    // N>4：RAF 约 6fps 呼吸动画
+    let animId;
+    let lastDraw = -999;
+    const loop = (ts) => {
+      if (ts - lastDraw >= 160) { lastDraw = ts; drawFrame(ts); }
+      animId = requestAnimationFrame(loop);
+    };
+    animId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animId);
+  }, [color, r, g, b, rays]);
+
   return (
-    <svg
-      width={size} height={size}
-      viewBox="0 0 100 100"
-      style={{ overflow: 'visible', opacity, ...style }}
+    <canvas
+      ref={canvasRef}
       className={className}
-    >
-      <defs>
-        {/* 横向光芒 */}
-        <linearGradient id={`hs-${id}`} x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%"   stopColor={color} stopOpacity="0" />
-          <stop offset="44%"  stopColor={color} stopOpacity="0.18" />
-          <stop offset="49%"  stopColor="white" stopOpacity="0.85" />
-          <stop offset="50%"  stopColor="white" stopOpacity="1" />
-          <stop offset="51%"  stopColor="white" stopOpacity="0.85" />
-          <stop offset="56%"  stopColor={color} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-        {/* 纵向光芒 */}
-        <linearGradient id={`vs-${id}`} x1="50%" y1="0%" x2="50%" y2="100%">
-          <stop offset="0%"   stopColor={color} stopOpacity="0" />
-          <stop offset="44%"  stopColor={color} stopOpacity="0.18" />
-          <stop offset="49%"  stopColor="white" stopOpacity="0.85" />
-          <stop offset="50%"  stopColor="white" stopOpacity="1" />
-          <stop offset="51%"  stopColor="white" stopOpacity="0.85" />
-          <stop offset="56%"  stopColor={color} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-        {/* 星体填充 */}
-        <radialGradient id={`sf-${id}`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="white" stopOpacity="1" />
-          <stop offset="22%"  stopColor="white" stopOpacity="0.95" />
-          <stop offset="52%"  stopColor={color} stopOpacity="0.80" />
-          <stop offset="82%"  stopColor={color} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-        </radialGradient>
-      </defs>
-
-      {/* 主光芒：宽8，延伸至±220 */}
-      <rect x="-220" y="46"   width="540" height="8"   rx="4"   fill={`url(#hs-${id})`} />
-      <rect x="46"   y="-220" width="8"   height="540" rx="4"   fill={`url(#vs-${id})`} />
-      {/* 细光芒：宽3，略短，叠加亮度 */}
-      <rect x="-170" y="48.5" width="440" height="3"   rx="1.5" fill={`url(#hs-${id})`} opacity="0.55" />
-      <rect x="48.5" y="-170" width="3"   height="440" rx="1.5" fill={`url(#vs-${id})`} opacity="0.55" />
-
-      {/* 星体 */}
-      <path d={path} fill={`url(#sf-${id})`} />
-
-      {/* 核心亮点：小而极亮 */}
-      <circle cx="50" cy="50" r="3.5" fill="white" opacity="0.95" />
-      <circle cx="50" cy="50" r="1.5" fill="white" opacity="1" />
-    </svg>
+      style={{
+        position: 'absolute',
+        width: DISPLAY,
+        height: DISPLAY,
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        opacity,
+        pointerEvents: 'none',
+        ...style,
+      }}
+    />
   );
 };

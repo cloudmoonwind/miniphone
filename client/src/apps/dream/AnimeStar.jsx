@@ -26,6 +26,7 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
   const color   = DREAM_TYPES[dream.type]?.color || '#C0B8D8';
   const [r, g, b] = hexRgb(color);
   const starSize  = getStarSize(dream.importance);
+  const rays      = { emotion: 4, omen: 8, memory: 6, desire: 5 }[dream.type] ?? 4;
 
   // 计算当前星星到容器中心的像素偏移
   const calcOffset = useCallback(() => {
@@ -171,6 +172,8 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
           background: 'none',
           border:     'none',
           padding:    0,
+          width:      starSize,
+          height:     starSize,
           cursor:     phase === 'idle' ? 'pointer' : 'default',
           zIndex:     phase === 'card' || phase === 'flash' ? 50 : 5,
           pointerEvents: 'auto',
@@ -182,7 +185,7 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
         whileHover={phase === 'idle' ? { scale: 1.3 } : {}}
         initial={{ scale: 1, opacity: 1 }}
       >
-        <StarSVG size={starSize} color={color} />
+        <StarSVG size={starSize} color={color} rays={rays} />
       </motion.button>
 
       {/* ── 浮动动画 keyframe（每颗星不同） ── */}
