@@ -58,15 +58,17 @@ function buildNebulaTexture(w, h) {
       const dens = Math.max(0, (raw - 0.34) / 0.55);   // 0.34 以下透明
       if (dens < 0.001) continue;
 
-      const t   = Math.min(1, dens * dens * 2.4);       // 非线性，中心浓边缘淡
-      const alpha = Math.round(t * 195);                // max ~195/255
+      const t   = Math.min(1, dens * dens * 2.0);       // 非线性，中心浓边缘淡
+      const alpha = Math.round(t * 130);                // max ~130/255，更通透
 
       // 颜色：n2 决定冷暖偏向（深紫 ↔ 冷蓝），n3 添加细节亮度
       const warm  = Math.max(0, Math.min(1, n2 * 1.4 - 0.2));
       const bright = n3 * 0.25;
-      const r = Math.round((18  + warm * 55  + bright * 30) );
-      const g = Math.round((10  + warm * 30  + bright * 40) );
-      const b = Math.round((110 + warm * 90  + bright * 50) );
+      // 高 warm 区（>0.62）偏向玫瑰金，增加星云色彩层次
+      const heat = warm > 0.62 ? (warm - 0.62) / 0.38 : 0;
+      const r = Math.round((18  + warm * 55  + bright * 30  + heat * 65) );
+      const g = Math.round((10  + warm * 30  + bright * 40  - heat *  8) );
+      const b = Math.round((110 + warm * 90  + bright * 50  - heat * 50) );
 
       const idx = (py * nw + px) * 4;
       d[idx]   = Math.min(255, r);
@@ -78,6 +80,15 @@ function buildNebulaTexture(w, h) {
   octx.putImageData(img, 0, 0);
   return oc;
 }
+
+// ─── 极光光柱（模块级常量，参数稳定）────────────────────────────────────────
+// x: 天空横向位置(0-1)；ph: 相位偏移；rgb: 颜色；w: 列宽（占屏宽比例）
+const AURORA_COLS = [
+  { x: 0.13, ph: 0.0,  rgb: [20, 185, 148], w: 0.07 },
+  { x: 0.36, ph: 2.5,  rgb: [32, 150, 210], w: 0.09 },
+  { x: 0.61, ph: 1.4,  rgb: [12, 168, 155], w: 0.08 },
+  { x: 0.83, ph: 3.8,  rgb: [28, 178, 168], w: 0.06 },
+];
 
 // ─── 预计算稳定背景星场 ───────────────────────────────────────────────────
 const BG_STARS = Array.from({ length: 320 }, (_, i) => {
@@ -182,11 +193,11 @@ const DreamSky = forwardRef(({ interpreted = [] }, ref) => {
 
       // ── 底色 ───────────────────────────────────────────────────────────
       const bg = ctx.createLinearGradient(0, 0, 0, h);
-      bg.addColorStop(0,    '#040110');
-      bg.addColorStop(0.22, '#0b0620');
-      bg.addColorStop(0.50, '#110a32');
-      bg.addColorStop(0.72, '#0e0d28');
-      bg.addColorStop(1,    '#060410');
+      bg.addColorStop(0,    '#0a0325');
+      bg.addColorStop(0.22, '#140a35');
+      bg.addColorStop(0.50, '#1c1048');
+      bg.addColorStop(0.72, '#16113c');
+      bg.addColorStop(1,    '#0d081e');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, w, h);
 
@@ -199,6 +210,42 @@ const DreamSky = forwardRef(({ interpreted = [] }, ref) => {
         ctx.drawImage(nebulaRef.current, 0, 0, w, skyH);
         ctx.restore();
       }
+
+      // ── 极光（多层软椭圆叠加，无矩形硬边）─────────────────────────────
+      // 每列由3个大小/位置各异的椭圆叠合，形成有机不规则光晕
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      AURORA_COLS.forEach(a => {
+        const baseCx = (a.x + Math.sin(now * 0.00022 + a.ph) * 0.03) * w;
+        const aw     = a.w * w;
+        const pls    = 0.40 + 0.60 * Math.sin(now * 0.00062 + a.ph * 1.7);
+        // 3个椭圆子层：主体 + 上偏亮区 + 下偏散区
+        const subs = [
+          { dxR:  0.00, ycF: 0.64, yhrF: 0.48, rF: 1.00, aS: 1.00 },
+          { dxR:  0.25, ycF: 0.54, yhrF: 0.30, rF: 0.65, aS: 0.50 },
+          { dxR: -0.20, ycF: 0.75, yhrF: 0.36, rF: 0.75, aS: 0.40 },
+        ];
+        subs.forEach((s, si) => {
+          const subPls = 0.35 + 0.65 * Math.sin(now * 0.00054 + a.ph * 1.4 + si * 2.2);
+          const alpha  = 0.11 * pls * s.aS * subPls;
+          const ecx    = baseCx + s.dxR * aw + Math.sin(now * 0.00019 + a.ph + si * 1.3) * aw * 0.18;
+          const rx     = aw * s.rF;
+          const ry     = skyH * s.yhrF;
+
+          ctx.save();
+          ctx.translate(ecx, skyH * s.ycF);
+          ctx.scale(1, ry / rx);   // 拉成椭圆（无矩形边界）
+          const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+          grd.addColorStop(0, `rgba(${a.rgb[0]},${a.rgb[1]},${a.rgb[2]},${alpha.toFixed(3)})`);
+          grd.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = grd;
+          ctx.beginPath();
+          ctx.arc(0, 0, rx, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
+      });
+      ctx.restore();
 
       // ── 背景星场 ────────────────────────────────────────────────────────
       BG_STARS.forEach(s => {

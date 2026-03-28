@@ -41,7 +41,9 @@
       "Bash(find d:/Project/personal/miniphone/server/data -name *.json)",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(p.get\\(''''id''''\\), p.get\\(''''name''''\\), p.get\\(''''provider''''\\), p.get\\(''''baseURL''''\\), p.get\\(''''model''''\\), bool\\(p.get\\(''''apiKey''''\\)\\)\\) for p in d]\")",
       "Bash(python -c \"import json; d=json.load\\(open\\(''d:/Project/personal/miniphone/server/data/presets.json''\\)\\); print\\(json.dumps\\(d[0], indent=2, ensure_ascii=False\\)\\)\")",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(python -c \"import json,sys; chars=json.load\\(sys.stdin\\); [print\\(c[''''id''''], c[''''name'''']\\) for c in chars]\")",
+      "Bash(python -c \"import json,sys; chars=json.load\\(sys.stdin\\); [print\\(c[''''id''''], c[''''name'''']\\) for c in \\(chars if isinstance\\(chars,list\\) else []\\)]\")"
     ]
   }
 }
