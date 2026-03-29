@@ -29,7 +29,7 @@ export const dreamSeed = (id) => {
   return h / 0xffffffff;
 };
 
-export const getStarSize = (imp) => imp >= 8 ? 28 : imp >= 5 ? 22 : 16;
+export const getStarSize = (imp) => imp >= 8 ? 224 : imp >= 5 ? 176 : 128;
 
 // ── 光场：24日 Lamé 曲线推广到 N 臂 ─────────────────────────────────────────
 // 把像素分解到扇区两臂方向：(x,y) = s·Pk + t·Pk+1
@@ -56,7 +56,7 @@ const starField = (x, y, rayLengths) => {
   const s = (x * Math.sin(ak1) - y * Math.cos(ak1)) / (Lk  * sinDa);
   const t = (y * Math.cos(ak)  - x * Math.sin(ak))  / (Lk1 * sinDa);
 
-  const q   = 0.6;  // 等亮度线曲度（<1 内凹；=1 直线弦）
+  const q   = 0.7;  // 等亮度线曲度（<1 内凹；=1 直线弦）
   const p   = 0.8;  // 颜色衰减速率（越大中心亮区越大）
   const rho = Math.pow(Math.pow(Math.max(0, s), q) + Math.pow(Math.max(0, t), q), 1 / q);
   return Math.max(0, 1 - Math.pow(rho, 1 / p));
@@ -96,10 +96,24 @@ const starLayerN = (x, y, rayLengths, sig0, tapS) => {
   return maxB;
 };
 
-export const AnimeStar = ({ size, color, opacity = 1, className, style, rays = 4 }) => {
+// ── 呼吸动画参数（在这里调整效果）──────────────────────────────────────────
+export const BREATHE_AMPLITUDE = 0.18; // ← 呼吸幅度（值越大越明显；推荐 0.10~0.28）
+const BREATHE_SPEED = 2;            // ← 呼吸周期（秒），越小越快
+
+// 全局注入呼吸 keyframe（只需一次）
+if (typeof document !== 'undefined' && !document.getElementById('drm-star-kf')) {
+  const s = document.createElement('style');
+  s.id = 'drm-star-kf';
+  s.textContent = `@keyframes drm-star-breathe{0%,100%{transform:scale(1)}50%{transform:scale(${1 - BREATHE_AMPLITUDE})}}`;
+  document.head.appendChild(s);
+}
+
+export const AnimeStar = ({ size, color, opacity = 1, className, style, rays = 4, rotation = 0, phase = 0 }) => {
   const canvasRef = useRef(null);
   const [r, g, b] = hexRgb(color);
-  const DISPLAY = size * (rays === 5 ? 16 : 8);
+
+  const L = 0.25;          // ← 基准参数，改这一个数整体缩放所有尺寸类参数
+  const DISPLAY = Math.round(size * L / 0.25);  // CSS 显示尺寸随 L 等比缩放
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -109,26 +123,20 @@ export const AnimeStar = ({ size, color, opacity = 1, className, style, rays = 4
     canvas.height = S;
     const ctx = canvas.getContext('2d');
 
-    const Lh = 0.25;   // 4角横轴（短臂），同时作为 5角等长臂、8角中等臂的基准
-    const Lv = 0.38;   // 4角纵轴（长臂）
+    // ── 尺寸类参数（随 L 缩放） ────────────────────────────────────────────
+    const sig0     = L * 0.24;        // 臂根部宽度（L 的固定比例）
+    const coreSig2 = L * L * 0.064;   // 核心高斯 sigma²（随 L² 缩放）
+    // ── 形状类参数（曲率/渐变，不随尺寸变化） ──────────────────────────────
+    const tapS  = 2.5;   // 臂收窄速率
+    const wPow  = 5.0;   // 白化衰减指数
+    const coreK = 0.5;   // 核心亮度系数
 
-    const Ll = 0.55;   // 6角长臂
-    const Ls = 0.40;   // 6角短臂
-
-    const sig0   = 0.08;  // 臂根部宽度（越大臂越粗，与核应视觉相切）
-    const tapS   = 2.5;   // 臂收窄速率（越大越快变细，越小越均匀）
-    const wPow   = 4.0;   // 白化衰减指数（越大白色区域越小，越集中在中心）
-
-    // 臂长数组（0° 起顺序排列）
-    // 4角：右/上/左/下
-    // 5角：5臂等长 = Lh
-    // 6角：长短交替
-    // 8角：3:2:1，单位=0.125；右/斜/上/斜/左/斜/下/斜 = 0.25/0.125/0.375/0.125/...用户觉得最短臂太短了，手动加长了一点，cc克不用在意
+    // 臂长数组（0° 起顺序排列），所有比例相对于 L
     const RAY_LENGTHS = {
-      4: [Lh, Lv, Lh, Lv],
-      5: [Lh, Lh, Lh, Lh, Lh],
-      6: [Ll, Ls, Ll, Ls, Ll, Ls],
-      8: [0.25, 0.2, 0.375, 0.2, 0.25, 0.2, 0.375, 0.2],
+      4: [L,      L*1.52, L,      L*1.52],            // 十字：短/长交替
+      5: [L,      L,      L,      L,      L     ],    // 五角：等长
+      6: [L,  L,  L,  L,  L, L], // 六角
+      8: [L,      L*0.8,  L*1.5,  L*0.8,  L,     L*0.8, L*1.5, L*0.8], // 八角：长/中/短
     };
 
     const drawFrame = (ts) => {
@@ -136,24 +144,23 @@ export const AnimeStar = ({ size, color, opacity = 1, className, style, rays = 4
       const d   = img.data;
       const base = RAY_LENGTHS[rays] || RAY_LENGTHS[4];
 
-      // N>4：整体同步呼吸（所有臂同相位，整个星星一起扩缩）
-      const breath = rays === 4 ? 1 : (0.9 + 0.1 * Math.sin(ts * 0.0015));
-      const curLen = base.map(L => L * breath);
+      // 整体同步呼吸（所有臂同相位，整个星星一起扩缩）
+      const breath = 0.9 + 0.1 * Math.sin(ts * 0.0015);
+      const curLen = base.map(len => len * breath);
 
+      const cosR = Math.cos(rotation * Math.PI / 180);
+      const sinR = Math.sin(rotation * Math.PI / 180);
       for (let px = 0; px < S; px++) {
         for (let py = 0; py < S; py++) {
           const x = (px - S * 0.5) / (S * 0.5);
           const y = (py - S * 0.5) / (S * 0.5);
+          const xr = x * cosR + y * sinR;
+          const yr = -x * sinR + y * cosR;
 
-          const rN   = Math.sqrt(x * x + y * y);
-          const field = starField(x, y, curLen);          // 星形光场：填充臂间区域，内凹等亮度线
-          const arms  = starLayerN(x, y, curLen, sig0, tapS); // 光臂：沿各臂方向的窄高斯光束
-          // 核心：0.004 = sigma²，控制核半径（越小核越紧）；0.5 = 核强度系数（越大核越亮）
-          // coreSig2：核心高斯 sigma²，越小核越紧（sigma ≈ √coreSig2）
-          // coreK：核心亮度系数，越大核越亮
-          const coreSig2 = 0.004; // 核心半径：sigma = √coreSig2，越小核越紧
-          const coreK    = 0.5;   // 核心强度系数，越大核越亮
-          const core  = Math.exp(-rN * rN / coreSig2);
+          const rN   = Math.sqrt(x * x + y * y);   // 距中心距离，旋转不变
+          const field = starField(xr, yr, curLen);
+          const arms  = starLayerN(xr, yr, curLen, sig0, tapS);
+          const core = Math.exp(-rN * rN / coreSig2);
 
           // ── 图层合成：臂+核 over 场（Porter-Duff，不相加混合）──────────────
           // 场层：纯星色（w=0），alpha = field
@@ -179,37 +186,32 @@ export const AnimeStar = ({ size, color, opacity = 1, className, style, rays = 4
       ctx.putImageData(img, 0, 0);
     };
 
-    if (rays === 4) {
-      drawFrame(0);
-      return;
-    }
+    // 呼吸由 CSS animation 驱动，canvas 只需渲染一次
+    drawFrame(0);
+  }, [color, r, g, b, rays, rotation, L]);
 
-    // N>4：RAF 约 6fps 呼吸动画
-    let animId;
-    let lastDraw = -999;
-    const loop = (ts) => {
-      if (ts - lastDraw >= 160) { lastDraw = ts; drawFrame(ts); }
-      animId = requestAnimationFrame(loop);
-    };
-    animId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animId);
-  }, [color, r, g, b, rays]);
-
+  // 外层 div 负责居中定位，canvas 只做呼吸缩放（避免 transform 冲突）
   return (
-    <canvas
-      ref={canvasRef}
-      className={className}
-      style={{
-        position: 'absolute',
-        width: DISPLAY,
-        height: DISPLAY,
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        opacity,
-        pointerEvents: 'none',
-        ...style,
-      }}
-    />
+    <div style={{
+      position: 'absolute', top: '50%', left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: 0, height: 0, pointerEvents: 'none',
+    }}>
+      <canvas
+        ref={canvasRef}
+        className={className}
+        style={{
+          position: 'absolute',
+          width: DISPLAY,
+          height: DISPLAY,
+          marginLeft: -DISPLAY / 2,
+          marginTop:  -DISPLAY / 2,
+          animation: `drm-star-breathe ${BREATHE_SPEED}s ease-in-out ${-(phase * BREATHE_SPEED).toFixed(2)}s infinite`,
+          opacity,
+          pointerEvents: 'none',
+          ...style,
+        }}
+      />
+    </div>
   );
 };

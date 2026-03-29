@@ -94,8 +94,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-25T01:20:00.000Z",
-    "skyX": 12,
-    "skyY": 10
+    "skyX": 23,
+    "skyY": 18
   },
   {
     "id": "drm_ysl_002",
@@ -107,8 +107,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-25T02:05:00.000Z",
-    "skyX": 32,
-    "skyY": 14
+    "skyX": 67,
+    "skyY": 12
   },
   {
     "id": "drm_ysl_003",
@@ -120,8 +120,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-25T03:10:00.000Z",
-    "skyX": 58,
-    "skyY": 10
+    "skyX": 44,
+    "skyY": 38
   },
   {
     "id": "drm_ysl_004",
@@ -134,7 +134,7 @@
     "interpretation": "",
     "timestamp": "2026-03-25T04:00:00.000Z",
     "skyX": 82,
-    "skyY": 15
+    "skyY": 22
   },
   {
     "id": "drm_ysl_005",
@@ -146,8 +146,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-26T01:30:00.000Z",
-    "skyX": 18,
-    "skyY": 30
+    "skyX": 13,
+    "skyY": 50
   },
   {
     "id": "drm_ysl_006",
@@ -159,8 +159,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-26T02:15:00.000Z",
-    "skyX": 45,
-    "skyY": 25
+    "skyX": 55,
+    "skyY": 9
   },
   {
     "id": "drm_ysl_007",
@@ -172,8 +172,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-26T03:00:00.000Z",
-    "skyX": 68,
-    "skyY": 32
+    "skyX": 76,
+    "skyY": 44
   },
   {
     "id": "drm_ysl_008",
@@ -185,8 +185,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-26T04:20:00.000Z",
-    "skyX": 88,
-    "skyY": 28
+    "skyX": 31,
+    "skyY": 56
   },
   {
     "id": "drm_ysl_009",
@@ -198,8 +198,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-27T01:10:00.000Z",
-    "skyX": 10,
-    "skyY": 45
+    "skyX": 89,
+    "skyY": 33
   },
   {
     "id": "drm_ysl_010",
@@ -211,8 +211,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-27T02:00:00.000Z",
-    "skyX": 35,
-    "skyY": 48
+    "skyX": 19,
+    "skyY": 62
   },
   {
     "id": "drm_ysl_011",
@@ -224,8 +224,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-27T03:40:00.000Z",
-    "skyX": 62,
-    "skyY": 42
+    "skyX": 61,
+    "skyY": 28
   },
   {
     "id": "drm_ysl_012",
@@ -237,8 +237,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-27T04:30:00.000Z",
-    "skyX": 85,
-    "skyY": 50
+    "skyX": 48,
+    "skyY": 16
   },
   {
     "id": "drm_ysl_013",
@@ -250,8 +250,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-28T00:30:00.000Z",
-    "skyX": 25,
-    "skyY": 58
+    "skyX": 72,
+    "skyY": 57
   },
   {
     "id": "drm_ysl_014",
@@ -263,8 +263,8 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-28T01:15:00.000Z",
-    "skyX": 52,
-    "skyY": 55
+    "skyX": 16,
+    "skyY": 27
   },
   {
     "id": "drm_ysl_015",
@@ -276,7 +276,7 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-28T02:00:00.000Z",
-    "skyX": 75,
+    "skyX": 52,
     "skyY": 60
   },
   {
@@ -289,7 +289,7 @@
     "interpreted": false,
     "interpretation": "",
     "timestamp": "2026-03-28T03:10:00.000Z",
-    "skyX": 15,
-    "skyY": 62
+    "skyX": 38,
+    "skyY": 7
   }
 ]

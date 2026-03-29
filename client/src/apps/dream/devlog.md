@@ -107,3 +107,95 @@ r_inner 和 r_outer 的取值使过渡中心（≈ 0.084）约等于核的 1-sig
 | core 贡献系数 | 0.55 | 核光强度 |
 | arm_weight 起点 | rN = 0.06 | 臂光开始参与 |
 | arm_weight 终点 | rN = 0.11 | 臂光完全主导 |
+
+---
+
+## 当前实现状态（2026-03-29）
+
+> 以下为最终落地的实现，与上方设计意图有所简化。
+
+### 渲染架构
+
+每颗星是一个 400×400 Canvas，逐像素计算后 `putImageData` 一次性写入，**只渲染一帧**（静态图）。
+
+两层叠合方式（Porter-Duff over）：
+- **下层 — 颜色光场**（`starField`）：Lamé 曲线推广到 N 臂，填充臂间区域，alpha = field 值
+- **上层 — 臂 + 核**（`starLayerN` + 高斯核）：沿各臂方向的高斯光束，中心加圆形核
+
+白化：`outW = armW·armVal / outAlpha`，仅臂+核层贡献白化，光场保持纯星色。
+
+### 尺寸参数体系
+
+所有尺寸类参数由单一基准 `L` 推导，只改这一个数即可整体缩放：
+
+| 参数 | 当前值 | 推导方式 | 含义 |
+|------|--------|----------|------|
+| `L` | 0.20 | — | 基准参数（画布归一化空间） |
+| `sig0` | `L × 0.24` | 随 L 线性 | 臂根宽度 |
+| `coreSig2` | `L² × 0.064` | 随 L² | 核心高斯 sigma² |
+| `DISPLAY` | `size × L/0.25` | 随 L 线性 | Canvas CSS 尺寸（px） |
+| 臂长 | `L × 各臂比例` | 随 L 线性 | 见 RAY_LENGTHS |
+
+`size` 来自 `getStarSize(importance)`，返回 128/176/224 px（低/中/高重要度），再乘 L/0.25 得实际显示尺寸。
+
+不随 L 变化的形状参数：`tapS=2.5`（臂收窄率）、`wPow=5.0`（白化衰减指数）、`coreK=0.5`（核亮度系数）。
+
+### 各梦境类型的星型
+
+| 类型 | 颜色 | 角数 | 臂长比例 |
+|------|------|------|----------|
+| emotion（情绪梦）| `#C8B0C8` 紫 | 4 | 横臂 L，纵臂 L×1.52 |
+| desire（欲望梦） | `#D0B898` 金 | 5 | 等长 L |
+| memory（回忆梦） | `#98B0D0` 蓝灰 | 6 | 等长 L（六角） |
+| omen（预示梦）  | `#A898D8` 蓝紫 | 8 | L / L×0.8 / L×1.5 三级 |
+
+### 动画
+
+| 动画 | 实现方式 | 特点 |
+|------|----------|------|
+| **呼吸**（scale 0.9↔1.0）| CSS `@keyframes drm-star-breathe`，GPU 驱动 | 周期 4.2s，每颗星由 phase 偏移相位，互不同步 |
+| **漂浮**（位移+微旋转）| CSS `@keyframes drm-float-{id}`，按星生成 | 周期 16-26s，每个关键帧独立 seed，x/y/rotate 互不相关 |
+| **固定偏角** | Canvas 坐标旋转（`cosR/sinR`） | 每星 −45°~45°，Murmur3 finalizer 保证分布均匀 |
+
+### 文件结构
+
+| 文件 | 职责 |
+|------|------|
+| `dreamUtils.jsx` | Canvas 星星渲染（`AnimeStar`）、工具函数、常量 |
+| `AnimeStar.jsx` | 单颗星状态机（idle/excited/approaching/flash/card/departing/drunk/falling/gone）、点击动画、卡片弹窗 |
+| `DreamStars.jsx` | 天空中所有星星的容器，均匀分区选取（最多 20 颗）|
+
+---
+
+## 交互设计：游戏抽卡风格（逐阶段重构）
+
+> 以下为各阶段的目标设计，方便实现前后对比。
+> 标注"✅ 已完成"的为当前已落地实现。
+
+### 阶段一：激活（excited）✅ 已完成
+
+**触发**：点击 idle 状态的星星
+
+**时序**（总约 3 秒，结束后自动回到 idle）：
+
+| 时间 | 动作 |
+|------|------|
+| 0 ~ 0.12s | **爆炸放大**：scale 1 → 1.3，ease-out |
+| 0 ~ 0.9s  | **烟花粒子**：10 个小十字从星星中心向四周弧线飞出，带拖尾渐隐 |
+| 0.12s ~ 2.38s | **强化呼吸 + 左右摆动**：scale 在 0.88~1.12 间弹跳（8 次衰减），同步 rotate ±10°；摆动基准点在星星中心下方约 1.5 臂长（transformOrigin: 50% 65%） |
+| 2.38s ~ 2.88s | **轻微抖动**：随机 x/y 偏移 ±4px，模拟"抖落星尘" |
+| 2.88s ~ 3.0s | **归位**：scale=1, x=0, y=0, rotate=0 |
+
+**关键实现决策**：
+- **位置漂移 bug 修复**：原 `motion.button` 上同时有 `transform: translate(-50%,-50%)` 和 Framer Motion 动画，两者冲突。改为三层结构：位置锚 div（绝对定位）→ float 动画 div（CSS animation）→ motion.div（仅负责 Framer Motion 动画，用 `marginLeft/marginTop` 居中）
+- **摆动基准点**：`transformOrigin: '50% 65%'` ≈ 中心下方 1.5 臂长
+- **CSS 呼吸暂停**：excited 期间给 StarSVG 传 `style={{ animationPlayState: 'paused' }}`，由 Framer Motion 完全接管 scale
+- **粒子实现**：10 个 `motion.div`，内含两个绝对定位 div 构成十字形（8×2 + 2×8 px），初始在星星中心，沿各自角度向外飞出约 52px 后消失
+
+### 阶段二：飞向中心（approaching）— 待设计
+
+### 阶段三：光爆（flash）— 待设计
+
+### 阶段四：卡片（card）— 待设计
+
+### 阶段五：卡片关闭 / 解梦（departing → drunk → falling）— 待设计
