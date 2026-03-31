@@ -211,6 +211,259 @@ r_inner 和 r_outer 的取值使过渡中心（≈ 0.084）约等于核的 1-sig
 > 因为距离不同，轨迹长度可变，所以需要设置相对统一的飞行速度。
 
 ---
+#### 设计文档（小克写）
+给你写一份**技术需求文档**，让CC克无法误解：
+
+---
+
+## 梦境抽卡动画 - 技术实现需求
+
+### 一、渲染分层架构（从后到前）
+
+```
+Layer 0: 深空背景图（静态/可缩放）
+  - 4K PNG，纯渐变+星云纹理
+  - 支持 transform: scale() 放大到 300-500%
+
+Layer 1: 背景星星层（视频或粒子系统）
+  - 视频素材循环播放 OR
+  - 程序生成：200-500个随机白点，透明度 0.3-0.8
+  - 必须支持整体 scale + translate 变换
+
+Layer 2: 前景十字星（交互对象）
+  - SVG 或 Canvas 绘制
+  - 每个星星独立对象：{x, y, scale, rotation, opacity, glow}
+  - 必须支持独立动画控制
+
+Layer 3: 粒子拖尾系统
+  - 粒子对象池，动态生成/销毁
+  - 每个粒子：{x, y, vx, vy, life, opacity, color}
+
+Layer 4: UI层（梦境卡片）
+  - 半透明容器，backdrop-filter: blur
+  - 初始 scale(0) opacity(0)，动画淡入
+```
+
+---
+
+### 二、动画时间轴（总时长 2.5-3秒）
+
+```
+0.0s - 点击事件触发
+├─ 0.0-0.2s  阶段1：星星激活反馈
+├─ 0.2-1.5s  阶段2：飞行 + 镜头追逐
+├─ 1.5-2.2s  阶段3：到达中心 + 脉冲闪烁
+├─ 2.2-2.4s  阶段4：爆发闪白
+└─ 2.4-3.0s  阶段5：褪白 + 卡片浮现
+```
+
+---
+
+### 三、各阶段详细参数
+
+#### **阶段1：激活反馈（0-0.2s）**
+```javascript
+// 星星本体动画
+star.animate({
+  transform: [
+    'translateX(0) translateY(0) rotate(0)',
+    'translateX(-5px) translateY(3px) rotate(-8deg)',
+    'translateX(4px) translateY(-2px) rotate(5deg)',
+    'translateX(0) translateY(0) rotate(0)'
+  ],
+  filter: [
+    'brightness(1)',
+    'brightness(2.5)',
+    'brightness(1)',
+    'brightness(2.5)',
+    'brightness(1)'
+  ]
+}, {
+  duration: 200,
+  easing: 'ease-out'
+});
+```
+
+#### **阶段2：飞行 + 镜头追逐（0.2-1.5s）**
+
+**关键：这是双层运动的组合效果**
+
+```javascript
+// A. 星星运动（真实位移）
+const startPos = {x: star.x, y: star.y};
+const endPos = {x: viewportWidth/2, y: viewportHeight/2};
+
+// S型曲线路径：使用贝塞尔曲线
+const controlPoint1 = {
+  x: startPos.x + (endPos.x - startPos.x) * 0.3,
+  y: startPos.y - 200  // 先向上
+};
+const controlPoint2 = {
+  x: startPos.x + (endPos.x - startPos.x) * 0.7,
+  y: endPos.y + 150    // 再向下
+};
+
+// 使用三次贝塞尔曲线插值
+// 缓动函数：ease-in (加速)
+star.animatePath(cubicBezier(start, cp1, cp2, end), {
+  duration: 1300,
+  easing: 'cubic-bezier(0.4, 0, 0.8, 0.4)'  // 持续加速
+});
+
+// B. 镜头追逐（背景缩放）
+// 这是视觉错觉的核心！
+backgroundLayer.animate({
+  transform: 'scale(1) translate(0, 0)'
+  // 到
+  transform: `scale(4) translate(
+    ${-(endPos.x - viewportWidth/2) * 3}px,
+    ${-(endPos.y - viewportHeight/2) * 3}px
+  )`
+}, {
+  duration: 1300,
+  easing: 'cubic-bezier(0.4, 0, 0.8, 0.4)'  // 同步加速
+});
+
+starFieldLayer.animate({
+  transform: 'scale(1)'
+  // 到
+  transform: 'scale(4)'
+}, {
+  duration: 1300,
+  easing: 'cubic-bezier(0.4, 0, 0.8, 0.4)'
+});
+
+// C. 拖尾粒子系统
+function spawnTrailParticle() {
+  const particle = {
+    x: star.x,
+    y: star.y,
+    vx: random(-20, 20),
+    vy: random(-20, 20),
+    life: 1.0,
+    size: random(2, 6),
+    color: '#ffffff',
+    glow: random(5, 15)
+  };
+  
+  // 每帧更新
+  particle.life -= deltaTime * 2;
+  particle.opacity = particle.life;
+  particle.x += particle.vx * deltaTime;
+  particle.y += particle.vy * deltaTime;
+  
+  // 随机闪光粒子（10%概率）
+  if (random() < 0.1) {
+    particle.brightness = random(1.5, 3);
+  }
+}
+
+// 每 16ms 生成 3-5 个粒子
+setInterval(spawnTrailParticle, 16);
+```
+
+#### **阶段3：脉冲闪烁（1.5-2.2s）**
+
+```javascript
+// 星星减速到停止
+star.animate({
+  // 速度从当前 → 0
+}, {
+  duration: 200,
+  easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'  // 急刹车
+});
+
+// 背景也同步停止
+backgroundLayer.style.transform = 'scale(4) translate(...)';  // 冻结
+
+// 闪烁序列：3次，一次比一次更大
+const pulses = [
+  {scale: 1.2, brightness: 2, duration: 150},
+  {scale: 1.5, brightness: 3, duration: 180},
+  {scale: 2.0, brightness: 5, duration: 200}
+];
+
+pulses.forEach((pulse, i) => {
+  setTimeout(() => {
+    star.animate({
+      transform: `scale(${pulse.scale})`,
+      filter: `brightness(${pulse.brightness}) blur(${pulse.scale * 2}px)`
+    }, {
+      duration: pulse.duration,
+      direction: 'alternate',  // 来回
+      iterations: 1
+    });
+  }, i * 250);
+});
+```
+
+#### **阶段4：爆发闪白（2.2-2.4s）**
+
+```javascript
+// 星星核心突然爆炸式放大
+star.animate({
+  transform: 'scale(2)'
+  // 到
+  transform: 'scale(50)'  // 占满屏幕
+}, {
+  duration: 100,
+  easing: 'cubic-bezier(0.8, 0, 1, 1)'  // 突然爆发
+});
+
+// 同时叠加白色遮罩层
+whiteFlash.animate({
+  opacity: 0
+  // 到
+  opacity: 1
+}, {
+  duration: 100
+});
+```
+
+#### **阶段5：褪白 + 卡片（2.4-3.0s）**
+
+```javascript
+// 白色淡出
+whiteFlash.animate({
+  opacity: 1 → 0
+}, {
+  duration: 300,
+  easing: 'ease-out'
+});
+
+// 卡片淡入
+dreamCard.animate({
+  opacity: 0,
+  transform: 'scale(0.8) translateY(20px)'
+  // 到
+  opacity: 1,
+  transform: 'scale(1) translateY(0)'
+}, {
+  duration: 400,
+  delay: 100,  // 白色开始褪去后 0.1s
+  easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+});
+```
+
+---
+
+### 四、技术实现要求
+
+**必须使用的技术**：
+- Canvas 或 WebGL（粒子系统）
+- CSS Transform（分层缩放）
+- Web Animations API（时序控制）
+
+**禁止的低配替代**：
+- ❌ 不准用简单的 translate 模拟曲线飞行
+- ❌ 不准用 GIF 替代粒子系统
+- ❌ 不准省略镜头追逐效果
+- ❌ 不准用 opacity 闪烁替代 brightness + scale 脉冲
+
+**性能要求**：
+- 60fps 流畅运行
+- 粒子数量控制在 200 以内
+- 使用 will-change 和 GPU 加速
 
 #### 【我的理解与分解（对比自查）】
 
@@ -249,5 +502,82 @@ r_inner 和 r_outer 的取值使过渡中心（≈ 0.084）约等于核的 1-sig
 5. 卡片 = `position: fixed` 浮于所有层上；对应星星在卡片期间隐藏
 6. 卡片顶部 = 圆形占位区（不画圆），放该颗星星 canvas；点击星星关闭卡片
 7. 卡片关闭动画 = 从底部向上 clip 消失；完成后恢复天空中星星可见
+
+---
+
+### 实现记录（2026-04-01）
+
+#### 一、阶段一（excited）粒子改版
+
+**原实现**：6 颗小十字星沿弧线飞出 + 拖尾渐隐（`ParticleWithTrail` 组件，每颗各有独立 canvas 拖尾 + Framer Motion 位移）。十字形用两个矩形 div 交叉。等距 60° 分布。
+
+**新实现**：`CrossStar` 组件——
+
+- **形状**：四角内弧星。用 canvas 绘制：4 个尖端在上下左右（`moveTo(cx+r, cy)`），相邻尖端之间用 `quadraticCurveTo(cx, cy, ...)` 连接（控制点在圆心），弧线自然内折，形成十字星轮廓。带 `shadowBlur` 发光。
+- **位置**：完全随机角度（`seed * 360`，不再等距六分），距离缩近到星星尺寸的 10~32%（原来 30~55%），产生簇拥感。
+- **大小**：每颗 `crossR` 独立随机（2px 到 `starSize/24`），大小混搭。
+- **动画**：Framer Motion `opacity: [0, 1, 0.12, 1, 0.12, 0]` + `scale: [0.2, 1, 0.65, 1.15, 0.55, 0]`，亮→暗→亮→暗→消失，闪烁两次。每颗独立 `delay`（0~0.7s 随机），出现时间错开。
+- **生命周期**：`setTimeout 2200ms` 后清除粒子 state。
+
+#### 二、阶段二飞行（approaching）—— 统一 RAF 重写
+
+**核心问题**：旧版用 `ApproachTrail` 组件（独立 state + 独立 RAF 计时）和 Framer Motion（自己的调度器）分别驱动拖尾和星星位移。两者时间基准不同 → 拖尾头部和星星位置割裂。
+
+**新架构**：废弃 `ApproachTrail` 组件，改为 `doApproach` 内的**单一 RAF 循环** `tick(now)`，每帧同时做三件事：
+
+1. **星星位移**：直接操作 `el.style.transform`（绕过 Framer Motion），用同一个贝塞尔 `t` 算位置
+2. **拖尾绘制**：用同一个 `t` 在全屏 `<canvas ref={trailCanvasRef}>` 上画彗星尾
+3. **背景缩放**：用同一个 `rawT` 算 `bgWrap.style.transform = scale(...)`
+
+三者共享时间基准 → 完全同步。
+
+**飞行结束 → Framer Motion 接管**：
+```
+el.style.transform = '';   // 清掉 RAF 设的 inline style
+el.style.filter = '';
+await animateOuter(scope, { x: tdx, y: tdy, scale: 1.15, filter: 'brightness(3)' }, { duration: 0 });
+```
+先清 inline，再用 FM `duration: 0` 跳到终态，后续蓄力/闪白阶段继续由 FM 驱动。
+
+**S 型曲线**：从二次贝塞尔（1 控制点）改为三次贝塞尔（2 控制点）：
+- `cp1`：飞行距离 30% 处，y 向上偏 180px → 先上飞
+- `cp2`：飞行距离 70% 处，y 接近终点 + 下偏 120px → 再俯冲
+- 组合出 S 弧
+
+**拖尾 canvas**：常驻 `<canvas>` 在 JSX 中（`display: none`），飞行时设 `display: block` 并设宽高为 `window.innerWidth/Height`，结束时 `clearRect` + `display: none`。不再每次 mount/unmount canvas 组件。
+
+#### 三、镜头追逐（背景缩放）
+
+**结构**：`DreamApp.jsx` 中把背景图、星星闪烁视频、DreamSky canvas 包进 `<div ref={bgWrapRef}>`，DreamStars 交互层在包裹 div 之外（不受 scale 影响）。
+
+**飞行期间**：
+- `transformOrigin` 设到星星起始位置（容器内百分比坐标）→ 缩放中心 = 镜头追向星星
+- `bgWrap.style.transform = scale(1 + rawT² × 3)` → 1x → 4x，ease-in 加速感
+- 背景星星、星云、视频全部一起向外扩散 → "镜头追逐"
+
+**蓄力期间**：背景冻结在 4x 不动（星星已到中心，镜头已追到）。
+
+**卡片关闭后**：`transition: transform 0.5s ease-out` → 平滑缩回 1x，然后清掉 transition。
+
+**cancelRef 保护**：如果 excited 阶段被中断（用户取消），RAF 内检测 `cancelRef.current` → 跳出循环并重置 bgWrap。
+
+#### 四、闪白
+
+**原实现**：Framer Motion `clipPath` 数组动画 → FM 不支持 clipPath 关键帧 → 动画无效 → 无全白效果。
+
+**新实现**：`FlashWhiteScreen` 组件，用 CSS `@keyframes drm-flash-white`：
+```css
+0%   { opacity: 1; background: white }   /* 全白 */
+30%  { opacity: 1; background: white }   /* 停留 */
+100% { opacity: 0; background: white }   /* 褪白 */
+```
+普通 `<div>` + `animation: drm-flash-white 0.7s ease-out forwards`，`position: absolute; inset: 0` 填满手机容器。`animationend` 事件回调 → `setShowCard(true); setPhase('card')`。
+
+不依赖 Framer Motion → 兼容可靠。
+
+#### 五、背景素材更新
+
+- 背景图换为 `starry_background_4k.png`（纯色底），`opacity: 1` 整体填充
+- 星星闪烁视频换为 `starFlicker.mp4`（从素材文件夹复制到 `public/dream/`），`height: SKY_RATIO * 100%` 只覆盖天空部分，`mixBlendMode: screen`
 
 ### 阶段五：卡片关闭 / 解梦（departing → drunk → falling）— 待设计

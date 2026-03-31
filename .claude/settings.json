@@ -33,7 +33,8 @@
       "Bash(find d:/Project/personal/miniphone -type f \\\\\\(-name *.json -o -name *seed* -o -name *fixture* -o -name *demo* \\\\\\))"
     ],
     "additionalDirectories": [
-      "d:\\Project\\personal\\miniphone\\client\\src\\core"
+      "d:\\Project\\personal\\miniphone\\client\\src\\core",
+      "d:\\Project\\personal\\miniphone\\client\\src\\apps\\dream\\素材"
     ]
   }
 }

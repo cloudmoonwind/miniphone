@@ -46,6 +46,7 @@ export const DreamStars = ({
   selectedChar,
   containerRef,
   skyRef,
+  bgWrapRef,
   onInterpret,
   onDelete,
 }) => {
@@ -62,6 +63,7 @@ export const DreamStars = ({
           dream={dream}
           containerRef={containerRef}
           skyRef={skyRef}
+          bgWrapRef={bgWrapRef}
           onInterpret={onInterpret}
           onDelete={onDelete}
         />

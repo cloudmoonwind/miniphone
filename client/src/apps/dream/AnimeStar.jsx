@@ -92,260 +92,96 @@ const FlashLines = ({ dur }) => {
   );
 };
 
-// ── ApproachTrail：position:fixed 全屏 canvas，RAF 绘制彗星尾
-const ApproachTrail = ({ starX, starY, P1x, P1y, tdx, tdy, armW, dur, startTime, r, g, b, sparkles }) => {
+// ── ApproachTrail 已移除；拖尾现在由统一 RAF 循环在 doApproach 中直接绘制 ──
+
+// ── FlashWhiteScreen：纯白全屏闪白 → 停留 → 褪白
+// 使用 CSS @keyframes 而非 Framer Motion（FM 不支持 clipPath 数组动画）
+const FLASH_ID = 'drm-flash-white';
+const FlashWhiteScreen = ({ onDone }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handler = () => { if (onDone) onDone(); };
+    el.addEventListener('animationend', handler);
+    return () => el.removeEventListener('animationend', handler);
+  }, [onDone]);
+  return (
+    <>
+      <style>{`
+        @keyframes ${FLASH_ID} {
+          0%   { opacity: 1; background: white; }
+          30%  { opacity: 1; background: white; }
+          100% { opacity: 0; background: white; }
+        }
+      `}</style>
+      <div
+        ref={ref}
+        style={{
+          position: 'absolute', inset: 0, zIndex: 95,
+          pointerEvents: 'none', background: 'white',
+          animation: `${FLASH_ID} 0.7s ease-out forwards`,
+        }}
+      />
+    </>
+  );
+};
+
+// ── CrossStar：四角内弧星，随机延迟出现，亮暗闪烁两次后消失
+const CrossStar = ({ angle, radius, delay, crossR }) => {
   const canvasRef = useRef(null);
+  const S = crossR;
+  const canvasSize = S * 4;
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
     const ctx = canvas.getContext('2d');
+    const cx = canvasSize / 2, cy = canvasSize / 2;
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,1)';
+    ctx.shadowBlur  = S * 2.5;
+    ctx.shadowColor = 'rgba(210,225,255,1)';
+    // 四角内弧星：4个尖端在上下左右，扇形弧线向内折
+    ctx.beginPath();
+    ctx.moveTo(cx + S, cy);
+    ctx.quadraticCurveTo(cx, cy, cx, cy - S);
+    ctx.quadraticCurveTo(cx, cy, cx - S, cy);
+    ctx.quadraticCurveTo(cx, cy, cx, cy + S);
+    ctx.quadraticCurveTo(cx, cy, cx + S, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }, [canvasSize, S]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // 贝塞尔位置（二次）
-    const bezPos = (t) => ({
-      x: starX + 2 * (1 - t) * t * P1x + t * t * tdx,
-      y: starY + 2 * (1 - t) * t * P1y + t * t * tdy,
-    });
-    // 贝塞尔一阶导数（方向）
-    const bezDeriv = (t) => ({
-      dx: 2 * (1 - 2 * t) * P1x + 2 * t * tdx,
-      dy: 2 * (1 - 2 * t) * P1y + 2 * t * tdy,
-    });
-
-    const TRAIL_FRAC = 0.55; // 拖尾追溯的 t 长度
-    const N_SEG = 60;
-    let rafId;
-
-    const draw = (now) => {
-      const rawT = Math.min((now - startTime) / (dur * 1000), 1);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (rawT > 0) {
-        const tHead = rawT;
-        const tTail = Math.max(0, rawT - TRAIL_FRAC);
-
-        // 采样左右两侧多边形顶点
-        const leftPts  = [];
-        const rightPts = [];
-
-        for (let i = 0; i <= N_SEG; i++) {
-          const t = tTail + (tHead - tTail) * (i / N_SEG);
-          const frac = i / N_SEG; // 0=尾，1=头
-          const pos = bezPos(t);
-          const d   = bezDeriv(t);
-          const len = Math.sqrt(d.dx * d.dx + d.dy * d.dy) || 1;
-          // 法线
-          const nx = -d.dy / len;
-          const ny =  d.dx / len;
-          const halfW = (armW * frac) / 2;
-          leftPts.push({  x: pos.x + nx * halfW, y: pos.y + ny * halfW });
-          rightPts.push({ x: pos.x - nx * halfW, y: pos.y - ny * halfW });
-        }
-
-        // 尾到头渐变（沿飞行方向）
-        const tailPos = bezPos(tTail);
-        const headPos = bezPos(tHead);
-        const grad = ctx.createLinearGradient(tailPos.x, tailPos.y, headPos.x, headPos.y);
-        grad.addColorStop(0,    `rgba(${r},${g},${b},0)`);
-        grad.addColorStop(0.45, `rgba(${r},${g},${b},0.35)`);
-        grad.addColorStop(0.78, `rgba(${r},${g},${b},0.75)`);
-        grad.addColorStop(1,    `rgba(${r},${g},${b},0.95)`);
-
-        const gradW = ctx.createLinearGradient(tailPos.x, tailPos.y, headPos.x, headPos.y);
-        gradW.addColorStop(0,    `rgba(255,255,255,0)`);
-        gradW.addColorStop(0.55, `rgba(255,255,255,0.08)`);
-        gradW.addColorStop(0.85, `rgba(255,255,255,0.35)`);
-        gradW.addColorStop(1,    `rgba(255,255,255,0.65)`);
-
-        // 外层扩散晕（加粗多边形，低透明）
-        ctx.save();
-        ctx.shadowBlur  = 18;
-        ctx.shadowColor = `rgba(${r},${g},${b},0.9)`;
-        ctx.beginPath();
-        for (let i = 0; i <= N_SEG; i++) {
-          const t  = tTail + (tHead - tTail) * (i / N_SEG);
-          const pos2 = bezPos(t);
-          const d2   = bezDeriv(t);
-          const len2 = Math.sqrt(d2.dx * d2.dx + d2.dy * d2.dy) || 1;
-          const nx2  = -d2.dy / len2, ny2 = d2.dx / len2;
-          const hw2  = (armW * (i / N_SEG)) * 0.9;
-          if (i === 0) ctx.moveTo(pos2.x + nx2 * hw2, pos2.y + ny2 * hw2);
-          else         ctx.lineTo(pos2.x + nx2 * hw2, pos2.y + ny2 * hw2);
-        }
-        for (let i = N_SEG; i >= 0; i--) {
-          const t  = tTail + (tHead - tTail) * (i / N_SEG);
-          const pos2 = bezPos(t);
-          const d2   = bezDeriv(t);
-          const len2 = Math.sqrt(d2.dx * d2.dx + d2.dy * d2.dy) || 1;
-          const nx2  = -d2.dy / len2, ny2 = d2.dx / len2;
-          const hw2  = (armW * (i / N_SEG)) * 0.9;
-          ctx.lineTo(pos2.x - nx2 * hw2, pos2.y - ny2 * hw2);
-        }
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.restore();
-
-        // 主体色彩多边形
-        ctx.beginPath();
-        ctx.moveTo(leftPts[0].x, leftPts[0].y);
-        for (let i = 1; i <= N_SEG; i++) ctx.lineTo(leftPts[i].x, leftPts[i].y);
-        for (let i = N_SEG; i >= 0; i--) ctx.lineTo(rightPts[i].x, rightPts[i].y);
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        // 中央亮线（白色核心）
-        ctx.beginPath();
-        ctx.moveTo(leftPts[0].x, leftPts[0].y);
-        for (let i = 0; i <= N_SEG; i++) {
-          const t   = tTail + (tHead - tTail) * (i / N_SEG);
-          const pos2 = bezPos(t);
-          if (i === 0) ctx.moveTo(pos2.x, pos2.y);
-          else         ctx.lineTo(pos2.x, pos2.y);
-        }
-        ctx.save();
-        ctx.shadowBlur  = 6;
-        ctx.shadowColor = 'rgba(255,255,255,0.9)';
-        ctx.strokeStyle = gradW;
-        ctx.lineWidth   = 2;
-        ctx.stroke();
-        ctx.restore();
-
-        // 绘制预计算的小亮点
-        for (const sp of sparkles) {
-          if (sp.tf < tTail || sp.tf > tHead) continue;
-          const localFrac = (sp.tf - tTail) / Math.max(tHead - tTail, 1e-6);
-          const opacity = 0.4 + localFrac * 0.6;
-          const pos = bezPos(sp.tf);
-          const d   = bezDeriv(sp.tf);
-          const len = Math.sqrt(d.dx * d.dx + d.dy * d.dy) || 1;
-          const nx = -d.dy / len;
-          const ny =  d.dx / len;
-          const halfW = (armW * localFrac) / 2;
-          const sx = pos.x + nx * halfW * sp.pf;
-          const sy = pos.y + ny * halfW * sp.pf;
-          ctx.globalAlpha = opacity;
-          ctx.shadowBlur  = sp.size * 4;
-          ctx.shadowColor = 'rgba(255,255,255,0.95)';
-          ctx.fillStyle   = 'white';
-          ctx.beginPath();
-          ctx.arc(sx, sy, sp.size, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-          ctx.globalAlpha = 1;
-        }
-      }
-
-      if (rawT < 1) {
-        rafId = requestAnimationFrame(draw);
-      }
-    };
-
-    rafId = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafId);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const rad = angle * Math.PI / 180;
+  const x = Math.cos(rad) * radius;
+  const y = Math.sin(rad) * radius;
 
   return (
-    <canvas
-      ref={canvasRef}
+    <motion.div
       style={{
-        position: 'fixed', top: 0, left: 0,
-        width: '100vw', height: '100vh',
+        position: 'absolute',
+        left: x - canvasSize / 2,
+        top:  y - canvasSize / 2,
+        width: canvasSize, height: canvasSize,
         pointerEvents: 'none',
-        zIndex: 30,
       }}
-    />
-  );
-};
-
-// ── 粒子拖尾（保留不动）
-const ParticleWithTrail = ({ p, starSize }) => {
-  const trailRef = useRef(null);
-  const ARM_PX = starSize * 0.115;
-  const RANGE  = ARM_PX * 1.5;
-  const CP   = RANGE * 0.88;
-  const END  = RANGE;
-  const GRAV = RANGE * 1.1;
-  const crossHalf  = Math.max(4, Math.round(starSize / 60));
-  const crossThick = Math.max(2, Math.round(crossHalf * 0.20));
-  const TRAIL_SIZE = Math.ceil(starSize * 0.6);
-  const TRAIL_HALF = TRAIL_SIZE / 2;
-  const dirX  = Math.cos(p.angle * Math.PI / 180);
-  const dirY  = Math.sin(p.angle * Math.PI / 180);
-  const perpX = -dirY, perpY = dirX;
-  const cpX = dirX * CP + p.curve * perpX;
-  const cpY = dirY * CP + p.curve * perpY;
-  const ex  = dirX * END + p.curve * 0.08 * perpX;
-  const ey  = dirY * END + p.curve * 0.08 * perpY + GRAV;
-  const bez = u => ({ x: 2*(1-u)*u*cpX + u*u*ex, y: 2*(1-u)*u*cpY + u*u*ey });
-  const bezAt = t => bez(1 - Math.sqrt(Math.max(0, 1 - t)));
-  const ANIM_DUR = 0.82;
-  const N        = 12;
-  const frames   = Array.from({ length: N+1 }, (_, i) => bez(i/N));
-  const xs       = frames.map(f => f.x);
-  const ys       = frames.map(f => f.y);
-  const kfTimes  = Array.from({ length: N+1 }, (_, i) => 1 - (1 - i/N)**2);
-  useEffect(() => {
-    const canvas = trailRef.current;
-    if (!canvas) return;
-    const ctx       = canvas.getContext('2d');
-    const startTime = performance.now();
-    const DUR_MS    = ANIM_DUR * 1000;
-    const TRAIL_LEN = 0.30;
-    const N_SEG     = 40;
-    let rafId;
-    const draw = (now) => {
-      const rawT = Math.min((now - startTime) / DUR_MS, 1);
-      ctx.clearRect(0, 0, TRAIL_SIZE, TRAIL_SIZE);
-      if (rawT < 1) {
-        const tHead = rawT;
-        const tTail = Math.max(0, rawT - TRAIL_LEN);
-        const partOpacity = rawT < 0.55 ? 1 : 1 - (rawT - 0.55) / 0.45;
-        ctx.lineCap  = 'round';
-        ctx.lineJoin = 'round';
-        for (let i = 0; i < N_SEG; i++) {
-          const ta   = tTail + (tHead - tTail) * (i / N_SEG);
-          const tb   = tTail + (tHead - tTail) * ((i + 1) / N_SEG);
-          const frac = (i + 1) / N_SEG;
-          const pa   = bezAt(ta);
-          const pb   = bezAt(tb);
-          ctx.globalAlpha = frac * 0.75 * partOpacity;
-          ctx.lineWidth   = 0.5 + frac * 0.9;
-          ctx.strokeStyle = 'white';
-          ctx.beginPath();
-          ctx.moveTo(pa.x + TRAIL_HALF, pa.y + TRAIL_HALF);
-          ctx.lineTo(pb.x + TRAIL_HALF, pb.y + TRAIL_HALF);
-          ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-        rafId = requestAnimationFrame(draw);
-      }
-    };
-    rafId = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafId);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  return (
-    <>
-      <canvas ref={trailRef} width={TRAIL_SIZE} height={TRAIL_SIZE}
-        style={{ position: 'absolute', left: -TRAIL_HALF, top: -TRAIL_HALF, pointerEvents: 'none' }} />
-      <motion.div
-        initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-        animate={{ x: xs, y: ys, opacity: [1, 1, 0], scale: [1, 1, 0.1] }}
-        transition={{
-          x:       { duration: ANIM_DUR, ease: 'linear', times: kfTimes },
-          y:       { duration: ANIM_DUR, ease: 'linear', times: kfTimes },
-          opacity: { duration: ANIM_DUR, times: [0, 0.55, 1], ease: 'easeIn' },
-          scale:   { duration: ANIM_DUR, times: [0, 0.55, 1], ease: 'easeIn' },
-        }}
-        style={{ position: 'absolute', pointerEvents: 'none' }}
-      >
-        <div style={{ position: 'absolute', width: crossHalf*2, height: crossThick, background: 'white', top: -crossThick/2, left: -crossHalf, borderRadius: '50%' }} />
-        <div style={{ position: 'absolute', width: crossThick, height: crossHalf*2, background: 'white', top: -crossHalf, left: -crossThick/2, borderRadius: '50%' }} />
-      </motion.div>
-    </>
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{
+        opacity: [0, 1, 0.12, 1, 0.12, 0],
+        scale:   [0.2, 1, 0.65, 1.15, 0.55, 0],
+      }}
+      transition={{
+        delay,
+        duration: 0.72,
+        times: [0, 0.14, 0.36, 0.56, 0.76, 1.0],
+        ease: 'easeOut',
+      }}
+    >
+      <canvas ref={canvasRef} width={canvasSize} height={canvasSize} style={{ display: 'block' }} />
+    </motion.div>
   );
 };
 
@@ -396,11 +232,10 @@ const ChargingGlow = ({ r, g, b }) => (
 
 const L_BASE = 0.25;
 
-export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }) => {
+export const AnimeStar = ({ dream, containerRef, skyRef, bgWrapRef, onInterpret, onDelete }) => {
   const [phase, setPhase]               = useState('idle');
   const [showCard, setShowCard]         = useState(false);
   const [particles, setParticles]       = useState([]);
-  const [approachTrail, setApproachTrail] = useState(null);
   const [outerScope, animateOuter]      = useAnimate();
   const [innerScope, animateInner]      = useAnimate();
 
@@ -409,6 +244,7 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
   const pulseAnimRef      = useRef(null);
   const wasInterpretedRef = useRef(false);
   const doApproachRef     = useRef(null);
+  const trailCanvasRef    = useRef(null);
 
   const color     = DREAM_TYPES[dream.type]?.color || '#C0B8D8';
   const [r, g, b] = hexRgb(color);
@@ -443,122 +279,247 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
     animateOuter(outerScope.current, { scale: 1 }, { duration: 0.25, ease: 'easeOut' });
   }, [phase, animateOuter, outerScope]);
 
-  // ── doApproach：飞向中心
+  // ── doApproach：统一 RAF 驱动飞行 + 拖尾 + 背景缩放
   const doApproach = useCallback(async () => {
     // snap 到初始状态
     await animateOuter(outerScope.current, { scale: 1, x: 0, y: 0, opacity: 1, filter: 'brightness(1)' }, { duration: 0 });
     await animateInner(innerScope.current, { rotate: 0 }, { duration: 0 });
-
-    // 等一帧，让 DOM 更新
     await new Promise(resolve => requestAnimationFrame(resolve));
 
     // 当前屏幕坐标
-    const rect = outerScope.current.getBoundingClientRect();
-    const currentCx = rect.left + rect.width / 2;
-    const currentCy = rect.top  + rect.height / 2;
-
+    const el = outerScope.current;
+    const rect = el.getBoundingClientRect();
+    const startCx = rect.left + rect.width / 2;
+    const startCy = rect.top  + rect.height / 2;
     const destX = window.innerWidth  / 2;
     const destY = window.innerHeight / 2;
-    const tdx = destX - currentCx;
-    const tdy = destY - currentCy;
+    const tdx = destX - startCx;
+    const tdy = destY - startCy;
 
-    // 贝塞尔控制点（偏出一侧，形成弧线感）
-    const P1x = tdx * 0.15 + (dreamSeedFloat(dream.id + 'apx') - 0.5) * window.innerWidth  * 0.08;
-    const P1y = tdy * 0.10 - dreamSeedFloat(dream.id + 'apy')         * window.innerHeight * 0.06;
+    // S 型三次贝塞尔控制点
+    const cp1x = tdx * 0.3 + (dreamSeedFloat(dream.id + 'apx') - 0.5) * window.innerWidth * 0.15;
+    const cp1y = tdy * 0.1 - 180;
+    const cp2x = tdx * 0.7 + (dreamSeedFloat(dream.id + 'apy') - 0.5) * window.innerWidth * 0.1;
+    const cp2y = tdy * 0.9 + 120;
+
+    // 三次贝塞尔
+    const bezPos = (t) => {
+      const u = 1 - t;
+      return {
+        x: u*u*u*0 + 3*u*u*t*cp1x + 3*u*t*t*cp2x + t*t*t*tdx,
+        y: u*u*u*0 + 3*u*u*t*cp1y + 3*u*t*t*cp2y + t*t*t*tdy,
+      };
+    };
+    const bezDeriv = (t) => {
+      const u = 1 - t;
+      return {
+        dx: 3*u*u*(cp1x) + 6*u*t*(cp2x - cp1x) + 3*t*t*(tdx - cp2x),
+        dy: 3*u*u*(cp1y) + 6*u*t*(cp2y - cp1y) + 3*t*t*(tdy - cp2y),
+      };
+    };
 
     // 计算法线方向最大臂宽（用于拖尾）
     const L = starSize * 0.115;
-    const flyDirX = tdx, flyDirY = tdy;
-    const flyLen  = Math.sqrt(flyDirX * flyDirX + flyDirY * flyDirY) || 1;
-    const normX   = -flyDirY / flyLen;
-    const normY   =  flyDirX / flyLen;
+    const flyLen  = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+    const normX   = -tdy / flyLen;
+    const normY   =  tdx / flyLen;
     let armW = 0;
     armRatios.forEach((ratio, k) => {
       const angle = (k * 360 / armRatios.length + rot_deg) * Math.PI / 180;
-      const ax = Math.cos(angle) * L * ratio;
-      const ay = Math.sin(angle) * L * ratio;
-      const proj = Math.abs(ax * normX + ay * normY);
+      const proj = Math.abs(Math.cos(angle) * L * ratio * normX + Math.sin(angle) * L * ratio * normY);
       if (proj > armW) armW = proj;
     });
-    armW = Math.max(armW * 2, 8); // 全宽（两侧）
+    armW = Math.max(armW * 2, 12);
 
-    // 估算弧长（N 采样）
-    const N_ARC = 32;
-    let arcLen = 0;
-    const bezPosLocal = (t) => ({
-      x: 2 * (1 - t) * t * P1x + t * t * tdx,
-      y: 2 * (1 - t) * t * P1y + t * t * tdy,
-    });
-    let prev = bezPosLocal(0);
-    for (let i = 1; i <= N_ARC; i++) {
-      const cur = bezPosLocal(i / N_ARC);
-      const dx = cur.x - prev.x, dy = cur.y - prev.y;
-      arcLen += Math.sqrt(dx * dx + dy * dy);
-      prev = cur;
+    // 估算弧长
+    let arcLen = 0, prevP = bezPos(0);
+    for (let i = 1; i <= 40; i++) {
+      const cur = bezPos(i / 40);
+      arcLen += Math.sqrt((cur.x - prevP.x) ** 2 + (cur.y - prevP.y) ** 2);
+      prevP = cur;
     }
-    const dur = Math.min(Math.max(arcLen / 250, 0.8), 3.0);
+    const flyDur = Math.min(Math.max(arcLen / 380, 0.7), 2.0);
 
-    // 关键帧（N=24 均匀 t）
-    const N_KF = 24;
-    const xs = [], ys = [];
-    for (let i = 0; i <= N_KF; i++) {
-      const t   = i / N_KF;
-      const pos = bezPosLocal(t);
-      xs.push(pos.x);
-      ys.push(pos.y);
-    }
-    const kfTimes = Array.from({ length: N_KF + 1 }, (_, i) => i / N_KF);
-
-    // 预计算 7 个稳定亮点
-    const sparkles = Array.from({ length: 7 }, (_, i) => ({
-      tf:   dreamSeedFloat(dream.id + 'sp' + i),
-      pf:   (dreamSeedFloat(dream.id + 'spf' + i) - 0.5) * 2,
-      size: 2.5 + dreamSeedFloat(dream.id + 'sps' + i) * 3.5,
-    }));
-
-    // 设置拖尾 state（以屏幕坐标传递起始点）
-    setApproachTrail({
-      starX: currentCx,
-      starY: currentCy,
-      P1x, P1y, tdx, tdy, armW, dur,
-      startTime: performance.now(),
-      r, g, b,
-      sparkles,
+    // 预计算散布十字星 + 小亮点（沿路径渐渐稀疏）
+    const TRAIL_STAR_COUNT = 36;
+    const trailStars = Array.from({ length: TRAIL_STAR_COUNT }, (_, i) => {
+      const seed = dreamSeedFloat(dream.id + 'ts' + i);
+      const seed2 = dreamSeedFloat(dream.id + 'ts2' + i);
+      const seed3 = dreamSeedFloat(dream.id + 'ts3' + i);
+      const seed4 = dreamSeedFloat(dream.id + 'ts4' + i);
+      // tf: 在路径上的 t 值，前密后疏（用 sqrt 分布让靠近头部的更密集）
+      const tf = Math.pow(seed, 0.6);
+      // 法线偏移（-1 ~ 1），越靠近尾部散得越开
+      const spread = (seed2 - 0.5) * 2 * (0.3 + (1 - tf) * 0.7);
+      // 是十字星还是小圆点
+      const isCross = seed3 > 0.35;
+      // 大小：靠近头部大，靠近尾部小
+      const size = isCross
+        ? 1.5 + seed4 * 3.0 * (0.4 + tf * 0.6)
+        : 0.8 + seed4 * 1.8 * (0.3 + tf * 0.7);
+      return { tf, spread, isCross, size, seed: seed4 };
     });
 
-    // 执行飞行动画（只做位移，蓄力阶段才给戏剧性）
-    await Promise.all([
-      animateOuter(outerScope.current, { x: xs, y: ys }, {
-        duration: dur, ease: 'linear', times: kfTimes,
-      }),
-      animateOuter(outerScope.current, {
-        scale:  [1, 1.08],
-        filter: ['brightness(1)', 'brightness(2)'],
-      }, {
-        duration: dur, ease: 'easeIn', times: [0, 1.0],
-      }),
-    ]);
+    // 准备拖尾 canvas
+    const canvas = trailCanvasRef.current;
+    if (canvas) {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+      canvas.style.display = 'block';
+    }
+    const ctx = canvas?.getContext('2d');
 
-    // ── 飞行结束：消除拖尾，进入蓄力 ──
-    setApproachTrail(null);
+    // 背景层
+    const bgWrap = bgWrapRef?.current;
+    const containerRect = containerRef?.current?.getBoundingClientRect();
+    const MAX_BG_SCALE = 4.0;
+    if (bgWrap && containerRect) {
+      const ox = ((startCx - containerRect.left) / containerRect.width  * 100).toFixed(1);
+      const oy = ((startCy - containerRect.top)  / containerRect.height * 100).toFixed(1);
+      bgWrap.style.transformOrigin = `${ox}% ${oy}%`;
+    }
+
+    // canvas 绘制辅助：四角内弧十字星
+    const drawCross = (ctx, x, y, r, alpha) => {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = 'white';
+      ctx.shadowBlur = r * 2.5;
+      ctx.shadowColor = 'rgba(210,225,255,0.85)';
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.quadraticCurveTo(x, y, x, y - r);
+      ctx.quadraticCurveTo(x, y, x - r, y);
+      ctx.quadraticCurveTo(x, y, x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+    // canvas 绘制辅助：小圆点
+    const drawDot = (ctx, x, y, r, alpha) => {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.shadowBlur = r * 3;
+      ctx.shadowColor = 'rgba(255,255,255,0.9)';
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    };
+
+    // ── 统一 RAF 循环：飞行 + 到达后余韵 ──
+    cancelRef.current = false;
+    const flyStartTime = performance.now();
+    const flyDurMs = flyDur * 1000;
+    const LINGER_DUR = 0.30;  // 到达后余韵秒数（拖尾消散 + 背景微移）
+    const lingerDurMs = LINGER_DUR * 1000;
+
+    await new Promise((resolve) => {
+      const TRAIL_FRAC = 0.55;
+
+      const tick = (now) => {
+        if (cancelRef.current) { resolve(); return; }
+        const elapsed = now - flyStartTime;
+        const rawT = Math.min(elapsed / flyDurMs, 1);
+        // 到达后的余韵进度 (0→1)
+        const lingerT = rawT >= 1 ? Math.min((elapsed - flyDurMs) / lingerDurMs, 1) : 0;
+
+        // smoothstep 缓动
+        const t = rawT * rawT * (3 - 2 * rawT);
+
+        // ── 背景缩放（余韵阶段继续微推）──
+        const bgBase = 1 + rawT * rawT * (MAX_BG_SCALE - 1);
+        const bgExtra = lingerT * 0.15; // 到达后再微微推进
+        const bgScale = bgWrap ? bgBase + bgExtra : 1;
+        if (bgWrap) bgWrap.style.transform = `scale(${bgScale})`;
+
+        // ── 星星位置 ──
+        const pos = bezPos(t);
+        // 末尾加速放大：t^4 曲线让最后阶段明显变大（"追上"感）
+        const visualScale = 1 + t * 0.15 + Math.pow(t, 4) * 0.45;
+        el.style.transform = `translate(${pos.x / bgScale}px, ${pos.y / bgScale}px) scale(${visualScale / bgScale})`;
+        el.style.filter = `brightness(${1 + t * 2})`;
+
+        // ── 散布十字星 + 小亮点（替代实心拖尾）──
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          const tHead = t;
+          const tTail = Math.max(0, t - TRAIL_FRAC);
+          // 余韵阶段：整体淡出
+          const lingerFade = 1 - lingerT;
+
+          if (tHead > 0.01 && lingerFade > 0) {
+            for (const ts of trailStars) {
+              if (ts.tf < tTail || ts.tf > tHead) continue;
+              // frac: 在可见区间内的归一化位置 (0=尾, 1=头)
+              const frac = (ts.tf - tTail) / Math.max(tHead - tTail, 1e-6);
+              // 越靠近头部越亮，靠近尾部越暗
+              const alpha = (0.08 + frac * frac * 0.85) * lingerFade;
+
+              // 位置：沿路径 + 法线偏移
+              const sp = bezPos(ts.tf);
+              const sd = bezDeriv(ts.tf);
+              const slen = Math.sqrt(sd.dx * sd.dx + sd.dy * sd.dy) || 1;
+              const nx = -sd.dy / slen, ny = sd.dx / slen;
+              const hw = armW * 0.6;
+              const px = startCx + sp.x + nx * hw * ts.spread;
+              const py = startCy + sp.y + ny * hw * ts.spread;
+
+              if (ts.isCross) {
+                drawCross(ctx, px, py, ts.size, alpha);
+              } else {
+                drawDot(ctx, px, py, ts.size, alpha);
+              }
+            }
+          }
+        }
+
+        // 飞行中 或 余韵未结束 → 继续
+        if (rawT < 1 || lingerT < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          resolve();
+        }
+      };
+      requestAnimationFrame(tick);
+    });
+
+    // ── 飞行结束：清拖尾 canvas ──
+    if (canvas) { canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height); canvas.style.display = 'none'; }
+    if (cancelRef.current) {
+      if (bgWrap) { bgWrap.style.transform = ''; bgWrap.style.transformOrigin = ''; }
+      return;
+    }
+
+    // 重置 el transform 由 Framer Motion 接管
+    // 注意：此时 bgWrapRef 已缩放 MAX_BG_SCALE 倍，星星在其内部，
+    // 所有 FM 的位移和缩放值都需除以 S 来抵消容器的放大
+    el.style.transform = '';
+    el.style.filter = '';
+    // 实际 bgScale = MAX_BG_SCALE + linger extra
+    const S = MAX_BG_SCALE + 0.15;
+    await animateOuter(outerScope.current, { x: tdx / S, y: tdy / S, scale: 1.6 / S, filter: 'brightness(3)' }, { duration: 0 });
+
     setPhase('charging');
 
-    // 撞击弹跳（到达中心的冲击感）
+    // 撞击弹跳
     await animateOuter(outerScope.current, {
-      scale:  [1.4,  0.78, 1.08],
-      filter: ['brightness(4)', 'brightness(0.65)', 'brightness(1.3)'],
-      x: [tdx, tdx, tdx],
-      y: [tdy, tdy, tdy],
+      scale: [1.5 / S, 0.78 / S, 1.08 / S],
+      filter: ['brightness(5)', 'brightness(0.6)', 'brightness(1.3)'],
+      x: [tdx / S, tdx / S, tdx / S],
+      y: [tdy / S, tdy / S, tdy / S],
     }, { duration: IMPACT_DUR, times: [0, 0.45, 1], ease: 'easeOut' });
     if (cancelRef.current) return;
 
-    // 蓄力：暗-亮循环，每轮幅度加大、频率加快，最后一脉冲直接爆发不收回
-    const shakeX = [0, -7,  5, -9,  7, -12, 10, -7,  0].map(v => tdx + v);
-    const shakeY = [0,  4, -5,  6, -4,   8, -6,  5,  0].map(v => tdy + v);
+    // 蓄力：暗-亮循环，每轮幅度加大
+    const shakeX = [0, -7, 5, -9, 7, -12, 10, -7, 0].map(v => (tdx + v) / S);
+    const shakeY = [0, 4, -5, 6, -4, 8, -6, 5, 0].map(v => (tdy + v) / S);
     await animateOuter(outerScope.current, {
       x: shakeX,
       y: shakeY,
-      scale:  [1.08, 0.74, 2.2, 0.58, 3.2, 0.48, 4.8, 0.36, 6.5],
+      scale:  [1.08, 0.74, 2.2, 0.58, 3.2, 0.48, 4.8, 0.36, 6.5].map(v => v / S),
       filter: [
         'brightness(1.3)', 'brightness(0.14)',
         'brightness(6)',   'brightness(0.10)',
@@ -569,9 +530,17 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
     }, { duration: CHARGE_DUR, times: CHARGE_TIMES, ease: 'linear' });
     if (cancelRef.current) return;
 
+    // ── 星星本体膨胀成白光（不是另起一个白色 div）──
+    // 星星从蓄力终态(scale 6.5/S) 继续放大到填满屏幕，亮度拉满
+    await animateOuter(outerScope.current, {
+      scale: 28 / S,
+      filter: 'brightness(200)',
+    }, { duration: 0.15, ease: [0.8, 0, 1, 0] });
+    if (cancelRef.current) return;
+
     await animateOuter(outerScope.current, { opacity: 0 }, { duration: 0 });
     setPhase('flash');
-  }, [animateOuter, animateInner, outerScope, innerScope, dream, starSize, armRatios, rot_deg, r, g, b]);
+  }, [animateOuter, animateInner, outerScope, innerScope, dream, starSize, armRatios, rot_deg, r, g, b, bgWrapRef, containerRef]);
 
   // 保持 doApproachRef 同步
   doApproachRef.current = doApproach;
@@ -598,13 +567,15 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
     await animateOuter(outerScope.current, { scale: 1.0 }, { duration: 0.18, ease: [0.2, 0, 0.0, 1] });
     if (cancelRef.current) return;
 
-    // 2. 粒子
+    // 2. 粒子（六颗十字星，随机角度近距簇拥，非均匀）
     setParticles(Array.from({ length: 6 }, (_, i) => ({
-      id: Date.now() + i,
-      angle: i * 60 + (dreamSeedFloat(dream.id + 'p' + i) - 0.5) * 20,
-      curve: (dreamSeedFloat(dream.id + 'c' + i) - 0.5) * 44,
+      id:     Date.now() + i,
+      angle:  dreamSeedFloat(dream.id + 'pa' + i) * 360,
+      radius: starSize * (0.10 + dreamSeedFloat(dream.id + 'pr' + i) * 0.22),
+      delay:  dreamSeedFloat(dream.id + 'pd' + i) * 0.70,
+      crossR: Math.max(2, Math.round(2 + dreamSeedFloat(dream.id + 'ps' + i) * (starSize / 24))),
     })));
-    const particleTimer = setTimeout(() => setParticles([]), 2000);
+    const particleTimer = setTimeout(() => setParticles([]), 2200);
 
     // 脉冲
     pulseAnimRef.current = animateOuter(outerScope.current, {
@@ -650,6 +621,14 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
   const handleAfterCardClose = useCallback(async () => {
     const wasInterpreted = wasInterpretedRef.current;
 
+    // 重置背景缩放
+    if (bgWrapRef?.current) {
+      bgWrapRef.current.style.transition = 'transform 0.5s ease-out';
+      bgWrapRef.current.style.transform  = '';
+      bgWrapRef.current.style.transformOrigin = '';
+      setTimeout(() => { if (bgWrapRef.current) bgWrapRef.current.style.transition = ''; }, 520);
+    }
+
     // snap 回原位
     await animateOuter(outerScope.current, { x: 0, y: 0, scale: 1, filter: 'brightness(1)', opacity: 0 }, { duration: 0 });
 
@@ -685,8 +664,19 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
 
   return (
     <>
-      {/* ── 飞行拖尾（全屏 fixed canvas）── */}
-      {approachTrail !== null && <ApproachTrail {...approachTrail} />}
+      {/* ── 飞行拖尾 + Flash bloom + 卡片弹窗（portal 到 containerRef，在 bgWrapRef 外部）── */}
+      {containerRef?.current && createPortal(
+        <canvas
+          ref={trailCanvasRef}
+          style={{
+            position: 'fixed', top: 0, left: 0,
+            width: '100vw', height: '100vh',
+            pointerEvents: 'none', zIndex: 30,
+            display: 'none',
+          }}
+        />,
+        containerRef.current
+      )}
 
       {/* ── Flash bloom + 卡片弹窗（portal 到手机容器内）── */}
       {containerRef?.current && createPortal(
@@ -694,22 +684,7 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
           {/* 蓄力光晕（容器中心脉冲） */}
           {phase === 'charging' && <ChargingGlow r={r} g={g} b={b} />}
 
-          {phase === 'flash' && (
-            <>
-              <motion.div
-                key="flash-bloom"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 1, 1, 0] }}
-                transition={{ duration: 0.8, times: [0, 0.12, 0.35, 1], ease: 'easeOut' }}
-                onAnimationComplete={() => { setShowCard(true); setPhase('card'); }}
-                style={{
-                  position: 'absolute', inset: 0, zIndex: 95, pointerEvents: 'none',
-                  background: 'white',
-                }}
-              />
-              <FlashLines dur={0.8} />
-            </>
-          )}
+          {phase === 'flash' && <FlashWhiteScreen onDone={() => { setShowCard(true); setPhase('card'); }} />}
           <AnimatePresence onExitComplete={handleAfterCardClose}>
             {showCard && (
               <DreamCard
@@ -749,7 +724,15 @@ export const AnimeStar = ({ dream, containerRef, skyRef, onInterpret, onDelete }
             ? `drm-float-${dream.id} ${16 + dreamSeedFloat(dream.id + 'd') * 10}s ease-in-out ${dreamSeedFloat(dream.id + 'dl') * 8}s infinite`
             : 'none',
         }}>
-          {particles.map(p => <ParticleWithTrail key={p.id} p={p} starSize={starSize} />)}
+          {particles.map(p => (
+            <CrossStar
+              key={p.id}
+              angle={p.angle}
+              radius={p.radius}
+              delay={p.delay}
+              crossR={p.crossR}
+            />
+          ))}
 
           <motion.div
             ref={outerScope}

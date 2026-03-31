@@ -4,13 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../components/Avatar.jsx';
 import { charactersService } from '../services/characters.js';
 
-import { DREAM_TYPES } from './dream/dreamUtils.jsx';
+import { DREAM_TYPES, SKY_RATIO } from './dream/dreamUtils.jsx';
 import { useDreams } from './dream/useDreams.js';
 import { DreamSky } from './dream/DreamSky.jsx';
 import { DreamStars } from './dream/DreamStars.jsx';
 import { DreamCard } from './dream/DreamCard.jsx';
 import { DreamAddModal } from './dream/DreamAddModal.jsx';
-import skyBgImg from './dream/assets/skyBg.jpg';
+import skyBgImg from './dream/assets/starry_background_4k.png';
 
 // ── 角色选择弹窗 ───────────────────────────────────────────────────────────
 const CharPicker = ({ open, selected, allChars, onSelect, onClose }) => (
@@ -161,42 +161,47 @@ const SimpleView = ({ dreams, loading, selectedChar, onInterpret, onDelete }) =>
 };
 
 // ── 星空视图 ────────────────────────────────────────────────────────────────
-const SkyView = ({ skyRef, containerRef, uninterpreted, interpreted, loading, selectedChar, onInterpret, onDelete }) => (
+const SkyView = ({ skyRef, bgWrapRef, containerRef, uninterpreted, interpreted, loading, selectedChar, onInterpret, onDelete }) => (
   <div ref={containerRef} className="flex-1 relative overflow-hidden">
-    {/* 真实夜空照片：底层背景 */}
-    <img
-      src={skyBgImg}
-      style={{
-        position: 'absolute', inset: 0, width: '100%', height: '100%',
-        objectFit: 'cover', objectPosition: 'top',
-        zIndex: 0, opacity: 0.55,
-      }}
-      alt=""
-    />
-    {/* 粒子闪烁视频叠加（黑底用 screen 消除）*/}
-    <video
-      src="/dream/particles.mp4"
-      autoPlay loop muted playsInline
-      style={{
-        position: 'absolute', inset: 0, width: '100%', height: '100%',
-        objectFit: 'cover',
-        mixBlendMode: 'screen',
-        zIndex: 1, opacity: 0.6, pointerEvents: 'none',
-      }}
-    />
-    {/* 程序化天空画布（星云 + 极光 + 背景星场）*/}
-    <DreamSky ref={skyRef} interpreted={interpreted} />
-    {/* HTML 交互层：动画星星（每颗自管理状态） */}
-    <DreamStars
-      uninterpreted={uninterpreted}
-      interpreted={interpreted}
-      loading={loading}
-      selectedChar={selectedChar}
-      containerRef={containerRef}
-      skyRef={skyRef}
-      onInterpret={onInterpret}
-      onDelete={onDelete}
-    />
+    {/* 背景层（整体受 bgWrapRef 缩放控制，实现镜头追逐感）*/}
+    <div ref={bgWrapRef} style={{ position: 'absolute', inset: 0, willChange: 'transform' }}>
+      {/* 背景图：整体填充 */}
+      <img
+        src={skyBgImg}
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', objectPosition: 'top',
+          zIndex: 0, opacity: 1,
+        }}
+        alt=""
+      />
+      {/* 星星闪烁视频（只覆盖天空部分）*/}
+      <video
+        src="/dream/starFlicker.mp4"
+        autoPlay loop muted playsInline
+        style={{
+          position: 'absolute', top: 0, left: 0, width: '100%',
+          height: `${SKY_RATIO * 100}%`,
+          objectFit: 'cover',
+          mixBlendMode: 'screen',
+          zIndex: 1, opacity: 0.7, pointerEvents: 'none',
+        }}
+      />
+      {/* 程序化天空画布（星云 + 极光 + 背景星场）*/}
+      <DreamSky ref={skyRef} interpreted={interpreted} />
+      {/* HTML 交互层：动画星星（在 bgWrapRef 内，随背景一起缩放 → 镜头追逐感）*/}
+      <DreamStars
+        uninterpreted={uninterpreted}
+        interpreted={interpreted}
+        loading={loading}
+        selectedChar={selectedChar}
+        containerRef={containerRef}
+        skyRef={skyRef}
+        bgWrapRef={bgWrapRef}
+        onInterpret={onInterpret}
+        onDelete={onDelete}
+      />
+    </div>
   </div>
 );
 
@@ -217,6 +222,7 @@ const DreamApp = ({ onBack, char: initChar }) => {
   const [addForm, setAddForm]   = useState({ title: '', content: '', type: 'emotion', importance: 5 });
   const skyRef       = useRef(null);
   const containerRef = useRef(null);
+  const bgWrapRef    = useRef(null);
 
   const {
     dreams, loading, uninterpreted, interpreted,
@@ -308,6 +314,7 @@ const DreamApp = ({ onBack, char: initChar }) => {
       {mode === 'beautiful' ? (
         <SkyView
           skyRef={skyRef}
+          bgWrapRef={bgWrapRef}
           containerRef={containerRef}
           uninterpreted={uninterpreted}
           interpreted={interpreted}
