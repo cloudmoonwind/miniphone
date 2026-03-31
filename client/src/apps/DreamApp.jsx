@@ -10,6 +10,7 @@ import { DreamSky } from './dream/DreamSky.jsx';
 import { DreamStars } from './dream/DreamStars.jsx';
 import { DreamCard } from './dream/DreamCard.jsx';
 import { DreamAddModal } from './dream/DreamAddModal.jsx';
+import skyBgImg from './dream/assets/skyBg.jpg';
 
 // ── 角色选择弹窗 ───────────────────────────────────────────────────────────
 const CharPicker = ({ open, selected, allChars, onSelect, onClose }) => (
@@ -162,7 +163,28 @@ const SimpleView = ({ dreams, loading, selectedChar, onInterpret, onDelete }) =>
 // ── 星空视图 ────────────────────────────────────────────────────────────────
 const SkyView = ({ skyRef, containerRef, uninterpreted, interpreted, loading, selectedChar, onInterpret, onDelete }) => (
   <div ref={containerRef} className="flex-1 relative overflow-hidden">
-    {/* PixiJS 背景：天空 + 流星 + 水面倒影 */}
+    {/* 真实夜空照片：底层背景 */}
+    <img
+      src={skyBgImg}
+      style={{
+        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        objectFit: 'cover', objectPosition: 'top',
+        zIndex: 0, opacity: 0.55,
+      }}
+      alt=""
+    />
+    {/* 粒子闪烁视频叠加（黑底用 screen 消除）*/}
+    <video
+      src="/dream/particles.mp4"
+      autoPlay loop muted playsInline
+      style={{
+        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        objectFit: 'cover',
+        mixBlendMode: 'screen',
+        zIndex: 1, opacity: 0.6, pointerEvents: 'none',
+      }}
+    />
+    {/* 程序化天空画布（星云 + 极光 + 背景星场）*/}
     <DreamSky ref={skyRef} interpreted={interpreted} />
     {/* HTML 交互层：动画星星（每颗自管理状态） */}
     <DreamStars

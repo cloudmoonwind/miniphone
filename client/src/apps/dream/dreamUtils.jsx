@@ -97,8 +97,8 @@ const starLayerN = (x, y, rayLengths, sig0, tapS) => {
 };
 
 // ── 呼吸动画参数（在这里调整效果）──────────────────────────────────────────
-export const BREATHE_AMPLITUDE = 0.18; // ← 呼吸幅度（值越大越明显；推荐 0.10~0.28）
-const BREATHE_SPEED = 2;            // ← 呼吸周期（秒），越小越快
+export const BREATHE_AMPLITUDE = 0.05; // ← 呼吸幅度（值越大越明显；推荐 0.10~0.28）
+const BREATHE_SPEED = 3;            // ← 呼吸周期（秒），越小越快
 
 // 全局注入呼吸 keyframe（只需一次）
 if (typeof document !== 'undefined' && !document.getElementById('drm-star-kf')) {
@@ -112,7 +112,7 @@ export const AnimeStar = ({ size, color, opacity = 1, className, style, rays = 4
   const canvasRef = useRef(null);
   const [r, g, b] = hexRgb(color);
 
-  const L = 0.25;          // ← 基准参数，改这一个数整体缩放所有尺寸类参数
+  const L = 0.24;          // ← 基准参数，改这一个数整体缩放所有尺寸类参数
   const DISPLAY = Math.round(size * L / 0.25);  // CSS 显示尺寸随 L 等比缩放
 
   useEffect(() => {

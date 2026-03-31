@@ -432,7 +432,7 @@ const DreamSky = forwardRef(({ interpreted = [] }, ref) => {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="absolute inset-0" style={{ display: 'block' }} />;
+  return <canvas ref={canvasRef} className="absolute inset-0" style={{ display: 'block', mixBlendMode: 'screen', zIndex: 2 }} />;
 });
 
 DreamSky.displayName = 'DreamSky';
