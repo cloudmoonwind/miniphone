@@ -319,6 +319,21 @@ const DreamSky = forwardRef(({ interpreted = [] }, ref) => {
         return true;
       });
 
+      // ── 夜空纵深暗角：四周+顶部压暗，中央保留亮度，营造仰望穹顶感 ──────
+      const vgrd = ctx.createRadialGradient(w * 0.5, skyH * 0.28, 0, w * 0.5, skyH * 0.58, w * 0.80);
+      vgrd.addColorStop(0,    'rgba(0,0,6,0)');
+      vgrd.addColorStop(0.38, 'rgba(0,0,8,0.10)');
+      vgrd.addColorStop(0.65, 'rgba(0,0,15,0.30)');
+      vgrd.addColorStop(1.00, 'rgba(0,0,10,0.58)');
+      ctx.fillStyle = vgrd;
+      ctx.fillRect(0, 0, w, skyH);
+      // 顶边额外压暗：头顶最深，越往下越透
+      const topFade = ctx.createLinearGradient(0, 0, 0, skyH * 0.13);
+      topFade.addColorStop(0, 'rgba(0,0,0,0.52)');
+      topFade.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = topFade;
+      ctx.fillRect(0, 0, w, skyH * 0.13);
+
       // ── 底部深色过渡（无硬线）──────────────────────────────────────────
       const fog = ctx.createLinearGradient(0, skyH * 0.78, 0, h);
       fog.addColorStop(0,    'rgba(4,1,16,0)');

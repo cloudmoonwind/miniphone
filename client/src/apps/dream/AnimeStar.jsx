@@ -21,6 +21,15 @@ const dreamSeedRot = (id) => {
   return (h >>> 0) / 0xffffffff;
 };
 
+// ── 预计算超空间星流线（模块级常量，追逐阶段从目标点辐射的速度线）
+const WARP_LINES = Array.from({ length: 72 }, (_, i) => ({
+  ang:  (i / 72) * Math.PI * 2 + Math.sin(i * 127.4) * 0.06,
+  dist: 0.03 + (Math.sin(i * 73.1) * 0.5 + 0.5) * 0.12,
+  spd:  0.22 + (Math.sin(i * 41.3) * 0.5 + 0.5) * 0.78,
+  br:   0.28 + (Math.sin(i * 97.7) * 0.5 + 0.5) * 0.62,
+  w2:   0.25 + (Math.sin(i * 53.9) * 0.5 + 0.5) * 0.65,
+}));
+
 // ── FlashLines：白光爆闪时的放射速度线（从容器中心向外扩散）
 const FlashLines = ({ dur }) => {
   const canvasRef = useRef(null);
@@ -310,15 +319,7 @@ export const AnimeStar = ({ dream, containerRef, skyRef, bgWrapRef, onInterpret,
         y: u*u*u*0 + 3*u*u*t*cp1y + 3*u*t*t*cp2y + t*t*t*tdy,
       };
     };
-    const bezDeriv = (t) => {
-      const u = 1 - t;
-      return {
-        dx: 3*u*u*(cp1x) + 6*u*t*(cp2x - cp1x) + 3*t*t*(tdx - cp2x),
-        dy: 3*u*u*(cp1y) + 6*u*t*(cp2y - cp1y) + 3*t*t*(tdy - cp2y),
-      };
-    };
-
-    // 计算法线方向最大臂宽（用于拖尾）
+    // 计算法线方向最大臂宽（用于拖尾宽度）
     const L = starSize * 0.115;
     const flyLen  = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
     const normX   = -tdy / flyLen;
@@ -340,74 +341,30 @@ export const AnimeStar = ({ dream, containerRef, skyRef, bgWrapRef, onInterpret,
     }
     const flyDur = Math.min(Math.max(arcLen / 380, 0.7), 2.0);
 
-    // 预计算散布十字星 + 小亮点（沿路径渐渐稀疏）
-    const TRAIL_STAR_COUNT = 36;
-    const trailStars = Array.from({ length: TRAIL_STAR_COUNT }, (_, i) => {
-      const seed = dreamSeedFloat(dream.id + 'ts' + i);
-      const seed2 = dreamSeedFloat(dream.id + 'ts2' + i);
-      const seed3 = dreamSeedFloat(dream.id + 'ts3' + i);
-      const seed4 = dreamSeedFloat(dream.id + 'ts4' + i);
-      // tf: 在路径上的 t 值，前密后疏（用 sqrt 分布让靠近头部的更密集）
-      const tf = Math.pow(seed, 0.6);
-      // 法线偏移（-1 ~ 1），越靠近尾部散得越开
-      const spread = (seed2 - 0.5) * 2 * (0.3 + (1 - tf) * 0.7);
-      // 是十字星还是小圆点
-      const isCross = seed3 > 0.35;
-      // 大小：靠近头部大，靠近尾部小
-      const size = isCross
-        ? 1.5 + seed4 * 3.0 * (0.4 + tf * 0.6)
-        : 0.8 + seed4 * 1.8 * (0.3 + tf * 0.7);
-      return { tf, spread, isCross, size, seed: seed4 };
-    });
-
-    // 准备拖尾 canvas
+    // 准备拖尾 canvas（绝对定位，容器尺寸，容器相对坐标）
+    const containerBounds = containerRef?.current?.getBoundingClientRect();
     const canvas = trailCanvasRef.current;
-    if (canvas) {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
+    if (canvas && containerBounds) {
+      canvas.width  = containerBounds.width;
+      canvas.height = containerBounds.height;
       canvas.style.display = 'block';
     }
     const ctx = canvas?.getContext('2d');
+    // 将 viewport 坐标转为容器相对坐标
+    const localStartCx = startCx - (containerBounds?.left ?? 0);
+    const localStartCy = startCy - (containerBounds?.top  ?? 0);
+    const diagLen      = containerBounds
+      ? Math.sqrt(containerBounds.width ** 2 + containerBounds.height ** 2)
+      : 1200;
 
     // 背景层
     const bgWrap = bgWrapRef?.current;
-    const containerRect = containerRef?.current?.getBoundingClientRect();
     const MAX_BG_SCALE = 4.0;
-    if (bgWrap && containerRect) {
-      const ox = ((startCx - containerRect.left) / containerRect.width  * 100).toFixed(1);
-      const oy = ((startCy - containerRect.top)  / containerRect.height * 100).toFixed(1);
+    if (bgWrap && containerBounds) {
+      const ox = ((startCx - containerBounds.left) / containerBounds.width  * 100).toFixed(1);
+      const oy = ((startCy - containerBounds.top)  / containerBounds.height * 100).toFixed(1);
       bgWrap.style.transformOrigin = `${ox}% ${oy}%`;
     }
-
-    // canvas 绘制辅助：四角内弧十字星
-    const drawCross = (ctx, x, y, r, alpha) => {
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = 'white';
-      ctx.shadowBlur = r * 2.5;
-      ctx.shadowColor = 'rgba(210,225,255,0.85)';
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.quadraticCurveTo(x, y, x, y - r);
-      ctx.quadraticCurveTo(x, y, x - r, y);
-      ctx.quadraticCurveTo(x, y, x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    };
-    // canvas 绘制辅助：小圆点
-    const drawDot = (ctx, x, y, r, alpha) => {
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.shadowBlur = r * 3;
-      ctx.shadowColor = 'rgba(255,255,255,0.9)';
-      ctx.fillStyle = 'white';
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    };
 
     // ── 统一 RAF 循环：飞行 + 到达后余韵 ──
     cancelRef.current = false;
@@ -417,8 +374,6 @@ export const AnimeStar = ({ dream, containerRef, skyRef, bgWrapRef, onInterpret,
     const lingerDurMs = LINGER_DUR * 1000;
 
     await new Promise((resolve) => {
-      const TRAIL_FRAC = 0.55;
-
       const tick = (now) => {
         if (cancelRef.current) { resolve(); return; }
         const elapsed = now - flyStartTime;
@@ -442,37 +397,86 @@ export const AnimeStar = ({ dream, containerRef, skyRef, bgWrapRef, onInterpret,
         el.style.transform = `translate(${pos.x / bgScale}px, ${pos.y / bgScale}px) scale(${visualScale / bgScale})`;
         el.style.filter = `brightness(${1 + t * 2})`;
 
-        // ── 散布十字星 + 小亮点（替代实心拖尾）──
+        // ── 三层追逐视觉效果 ──
         if (ctx) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          const tHead = t;
-          const tTail = Math.max(0, t - TRAIL_FRAC);
-          // 余韵阶段：整体淡出
-          const lingerFade = 1 - lingerT;
 
-          if (tHead > 0.01 && lingerFade > 0) {
-            for (const ts of trailStars) {
-              if (ts.tf < tTail || ts.tf > tHead) continue;
-              // frac: 在可见区间内的归一化位置 (0=尾, 1=头)
-              const frac = (ts.tf - tTail) / Math.max(tHead - tTail, 1e-6);
-              // 越靠近头部越亮，靠近尾部越暗
-              const alpha = (0.08 + frac * frac * 0.85) * lingerFade;
+          // 星星当前在 canvas 上的坐标（镜头追逐的主体）
+          const starCvX = localStartCx + bezPos(t).x;
+          const starCvY = localStartCy + bezPos(t).y;
 
-              // 位置：沿路径 + 法线偏移
-              const sp = bezPos(ts.tf);
-              const sd = bezDeriv(ts.tf);
-              const slen = Math.sqrt(sd.dx * sd.dx + sd.dy * sd.dy) || 1;
-              const nx = -sd.dy / slen, ny = sd.dx / slen;
-              const hw = armW * 0.6;
-              const px = startCx + sp.x + nx * hw * ts.spread;
-              const py = startCy + sp.y + ny * hw * ts.spread;
+          // ① 深空暗幕：以星星为中心向四周扩散黑暗
+          //    越追越暗，最终背景只剩中心一点亮
+          const darkT = Math.pow(rawT, 1.8) * 0.92;
+          if (darkT > 0.015) {
+            const dg = ctx.createRadialGradient(
+              starCvX, starCvY, 0,
+              starCvX, starCvY, diagLen * 0.68,
+            );
+            dg.addColorStop(0,    `rgba(0,0,0,${(darkT * 0.18).toFixed(3)})`);
+            dg.addColorStop(0.28, `rgba(0,0,0,${(darkT * 0.52).toFixed(3)})`);
+            dg.addColorStop(0.60, `rgba(0,0,0,${(darkT * 0.82).toFixed(3)})`);
+            dg.addColorStop(1,    `rgba(0,0,0,${darkT.toFixed(3)})`);
+            ctx.fillStyle = dg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
 
-              if (ts.isCross) {
-                drawCross(ctx, px, py, ts.size, alpha);
-              } else {
-                drawDot(ctx, px, py, ts.size, alpha);
-              }
+          // ② 超空间星流：从星星当前位置向外辐射
+          //    背景"星场"以星星为锚点被甩向四面八方（相对运动）
+          const warpPhase = rawT < 0.06  ? 0
+            : rawT < 0.20 ? (rawT - 0.06) / 0.14
+            : rawT < 0.65 ? 1.0
+            : rawT < 0.84 ? (0.84 - rawT) / 0.19
+            : 0;
+          if (warpPhase > 0.005) {
+            ctx.save();
+            WARP_LINES.forEach(ln => {
+              const speed  = ln.spd * rawT * rawT * 2.8;
+              const startR = ln.dist * diagLen;
+              const endR   = Math.min(startR + speed * diagLen * 0.85, diagLen * 1.1);
+              const cos = Math.cos(ln.ang), sin = Math.sin(ln.ang);
+              const x1 = starCvX + cos * startR, y1 = starCvY + sin * startR;
+              const x2 = starCvX + cos * endR,   y2 = starCvY + sin * endR;
+              const alpha = ln.br * warpPhase * 0.52;
+              const grd = ctx.createLinearGradient(x1, y1, x2, y2);
+              grd.addColorStop(0,   'rgba(180,210,255,0)');
+              grd.addColorStop(0.4, `rgba(210,228,255,${(alpha * 0.45).toFixed(3)})`);
+              grd.addColorStop(1,   `rgba(255,255,255,${alpha.toFixed(3)})`);
+              ctx.strokeStyle = grd;
+              ctx.lineWidth   = ln.w2;
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.stroke();
+            });
+            ctx.restore();
+          }
+
+          // ③ 彗星拖尾：沿贝塞尔路径往回，越远越细越淡
+          //    余韵阶段随 lingerT 淡出
+          if (rawT > 0.04 && t > 0.01) {
+            const tailLen   = 0.28;
+            const tailSteps = 24;
+            ctx.save();
+            ctx.lineCap = 'round';
+            for (let i = 0; i < tailSteps; i++) {
+              const p1t = t - (i / tailSteps) * tailLen;
+              const p2t = t - ((i + 1) / tailSteps) * tailLen;
+              if (p1t < 0) break;
+              const p1 = bezPos(p1t);
+              const p2 = bezPos(Math.max(0, p2t));
+              const frac  = 1 - i / tailSteps;
+              const alpha = frac * frac * frac * 0.82 * Math.min(rawT * 4, 1) * (1 - lingerT);
+              if (alpha < 0.005) break;
+              const w2 = Math.max(0.5, frac * (armW * 0.45 + 4));
+              ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+              ctx.lineWidth   = w2;
+              ctx.beginPath();
+              ctx.moveTo(localStartCx + p1.x, localStartCy + p1.y);
+              ctx.lineTo(localStartCx + p2.x, localStartCy + p2.y);
+              ctx.stroke();
             }
+            ctx.restore();
           }
         }
 
@@ -567,13 +571,14 @@ export const AnimeStar = ({ dream, containerRef, skyRef, bgWrapRef, onInterpret,
     await animateOuter(outerScope.current, { scale: 1.0 }, { duration: 0.18, ease: [0.2, 0, 0.0, 1] });
     if (cancelRef.current) return;
 
-    // 2. 粒子（六颗十字星，随机角度近距簇拥，非均匀）
-    setParticles(Array.from({ length: 6 }, (_, i) => ({
+    // 2. 粒子：每条臂间隙放一颗，定位在臂端1.1倍距离、错开臂方向
+    const armTipLen = starSize * 0.115 * maxArmRatio;
+    setParticles(Array.from({ length: rays }, (_, i) => ({
       id:     Date.now() + i,
-      angle:  dreamSeedFloat(dream.id + 'pa' + i) * 360,
-      radius: starSize * (0.10 + dreamSeedFloat(dream.id + 'pr' + i) * 0.22),
-      delay:  dreamSeedFloat(dream.id + 'pd' + i) * 0.70,
-      crossR: Math.max(2, Math.round(2 + dreamSeedFloat(dream.id + 'ps' + i) * (starSize / 24))),
+      angle:  (i + 0.5) * (360 / rays) + rot_deg + (Math.random() - 0.5) * 18,
+      radius: armTipLen * (1.08 + Math.random() * 0.22),
+      delay:  i * (0.06 + Math.random() * 0.04),
+      crossR: Math.max(3, Math.round(starSize * 0.06 + Math.random() * starSize * 0.05)),
     })));
     const particleTimer = setTimeout(() => setParticles([]), 2200);
 
@@ -669,8 +674,8 @@ export const AnimeStar = ({ dream, containerRef, skyRef, bgWrapRef, onInterpret,
         <canvas
           ref={trailCanvasRef}
           style={{
-            position: 'fixed', top: 0, left: 0,
-            width: '100vw', height: '100vh',
+            position: 'absolute', top: 0, left: 0,
+            width: '100%', height: '100%',
             pointerEvents: 'none', zIndex: 30,
             display: 'none',
           }}
