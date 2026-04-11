@@ -1,47 +1,53 @@
 import { getDb } from '../db/database.js';
 import { SqliteStore } from '../db/SqliteStore.js';
+import type {
+  Message, Summary, Character, CharStats, LifeLog,
+  Item, TimelineEvent, Skill, Relation, Memory, Dream,
+  ApiPreset, PromptPreset, WbBook, WbEntry, Persona,
+  DiaryEntry, Active,
+} from '../types.js';
 
 const db = getDb();
 
 // ── 聊天 ─────────────────────────────────────────────────────
-export const messageStore   = new SqliteStore(db, 'messages');
-export const summaryStore   = new SqliteStore(db, 'summaries');
+export const messageStore   = new SqliteStore<Message>(db, 'messages');
+export const summaryStore   = new SqliteStore<Summary>(db, 'summaries');
 
 // ── 角色主数据 ────────────────────────────────────────────────
-export const characterStore = new SqliteStore(db, 'characters');
-export const charStatStore  = new SqliteStore(db, 'char_stats');
-export const statDefStore   = new SqliteStore(db, 'stat_defs');
-export const lifeStore      = new SqliteStore(db, 'life');
+export const characterStore = new SqliteStore<Character>(db, 'characters');
+export const charStatStore  = new SqliteStore<CharStats>(db, 'char_stats');
+export const statDefStore   = new SqliteStore<any>(db, 'stat_defs');
+export const lifeStore      = new SqliteStore<LifeLog>(db, 'life');
 
 // ── 角色附属数据 ──────────────────────────────────────────────
-export const itemStore      = new SqliteStore(db, 'items');
-export const timelineStore  = new SqliteStore(db, 'timeline');
-export const skillStore     = new SqliteStore(db, 'skills');
-export const relationStore  = new SqliteStore(db, 'relations');
-export const memoryStore    = new SqliteStore(db, 'memories');
-export const dreamStore     = new SqliteStore(db, 'dreams');
+export const itemStore      = new SqliteStore<Item>(db, 'items');
+export const timelineStore  = new SqliteStore<TimelineEvent>(db, 'timeline');
+export const skillStore     = new SqliteStore<Skill>(db, 'skills');
+export const relationStore  = new SqliteStore<Relation>(db, 'relations');
+export const memoryStore    = new SqliteStore<Memory>(db, 'memories');
+export const dreamStore     = new SqliteStore<Dream>(db, 'dreams');
 
 // ── 系统配置 ──────────────────────────────────────────────────
-export const presetStore    = new SqliteStore(db, 'presets');
-export const promptStore    = new SqliteStore(db, 'prompt_presets');
+export const presetStore    = new SqliteStore<ApiPreset>(db, 'presets');
+export const promptStore    = new SqliteStore<PromptPreset>(db, 'prompt_presets');
 
 // ── 世界书 ────────────────────────────────────────────────────
-export const wbBookStore    = new SqliteStore(db, 'wb_books');
-export const wbEntryStore   = new SqliteStore(db, 'wb_entries');
+export const wbBookStore    = new SqliteStore<WbBook>(db, 'wb_books');
+export const wbEntryStore   = new SqliteStore<WbEntry>(db, 'wb_entries');
 
 // ── 用户数据 ──────────────────────────────────────────────────
-export const personaStore   = new SqliteStore(db, 'personas');
-export const mapStore       = new SqliteStore(db, 'maps');
+export const personaStore   = new SqliteStore<Persona>(db, 'personas');
+export const mapStore       = new SqliteStore<any>(db, 'maps');
 
 // ── 各 App 数据 ───────────────────────────────────────────────
-export const calendarStore      = new SqliteStore(db, 'calendar_events');
-export const dafuStore          = new SqliteStore(db, 'dafu_game');
-export const diaryStore         = new SqliteStore(db, 'diary');
-export const suixiangCardStore  = new SqliteStore(db, 'suixiang_cards');
-export const suixiangEntryStore = new SqliteStore(db, 'suixiang_entries');
+export const calendarStore      = new SqliteStore<any>(db, 'calendar_events');
+export const dafuStore          = new SqliteStore<any>(db, 'dafu_game');
+export const diaryStore         = new SqliteStore<DiaryEntry>(db, 'diary');
+export const suixiangCardStore  = new SqliteStore<any>(db, 'suixiang_cards');
+export const suixiangEntryStore = new SqliteStore<any>(db, 'suixiang_entries');
 
 // ── 全局活跃配置（单对象模式）────────────────────────────────
-export const activeStore = new SqliteStore(db, 'active', {
+export const activeStore = new SqliteStore<Active>(db, 'active', {
   singleton: true,
   defaultValue: {
     primaryPresetId: null,
@@ -73,5 +79,5 @@ export const activeStore = new SqliteStore(db, 'active', {
       syncConfirmed:     false,
       timestampFormat:   'bracket',
     },
-  },
+  } as Active,
 });

@@ -49,7 +49,7 @@ app.use('/api/test-connection', (req, res, next) => { req.url = '/test-connectio
 app.get('/api/dreams', async (req, res) => {
   try {
     const all = await dreamStore.getAll();
-    res.json(all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 100));
+    res.json(all.sort((a, b) => +new Date(b.timestamp) - +new Date(a.timestamp)).slice(0, 100));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -92,8 +92,8 @@ app.use((err, req, res, next) => {
   try {
     const db = getDb();
     await runMigration(db);
-  } catch (err) {
-    console.error('[ICS server] 迁移失败，服务仍正常启动（已有数据库数据）:', err.message);
+  } catch (err: any) {
+    console.error('[ICS server] 迁移检查失败（已有数据库数据则跳过）:', err.message);
   }
 
   app.listen(PORT, () => {

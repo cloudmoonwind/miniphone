@@ -1,0 +1,17 @@
+[
+  {
+    "id": "preset_1773397452854_9csr",
+    "name": "智谱zai",
+    "apiKey": "fd4364d9565b487693ac8f9b94c98fa7.b1U3SbwWTkRKlwJ7",
+    "baseURL": "https://open.bigmodel.cn/api/paas/v4/",
+    "model": "glm-4.7",
+    "params": {
+      "temperature": 0.7
+    },
+    "createdAt": "2026-03-13T10:24:12.854Z",
+    "updatedAt": "2026-03-19T10:20:49.638Z",
+    "stream": false,
+    "provider": "zhipu",
+    "contextMode": "flexible"
+  }
+]
