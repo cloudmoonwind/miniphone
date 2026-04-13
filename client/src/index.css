@@ -60,3 +60,14 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+textarea::-webkit-scrollbar {
+  width: 2px;
+}
+textarea::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 1px;
+}
+textarea::-webkit-scrollbar-track {
+  background: transparent;
+}

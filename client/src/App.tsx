@@ -33,7 +33,7 @@ import DreamApp      from './apps/DreamApp';
 import FilesApp      from './apps/FilesApp';
 import MemoryApp     from './apps/MemoryApp';
 import AIConsoleApp  from './apps/AIConsoleApp';
-import WorldbookApp  from './apps/WorldbookApp';
+import WorldbookApp  from './apps/worldbook';
 import CharLifeApp   from './apps/CharLifeApp';
 import CharSystemApp from './apps/CharSystemApp';
 import DaoshuApp     from './apps/DaoshuApp';

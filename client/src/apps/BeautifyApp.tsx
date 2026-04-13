@@ -2,14 +2,15 @@ import React, { useState, useRef } from 'react';
 import { ChevronLeft, Image as ImageIcon, Type, Sun } from 'lucide-react';
 
 // ── 工具 ─────────────────────────────────────────────────────────
+// 白色磨砂卡 + 深色文字（渐变底是浅色，白字不可读）
 const GlassCard = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`bg-white/15 backdrop-blur-[16px] border border-white/25 rounded-2xl ${className}`}>
+  <div className={`bg-white/70 backdrop-blur-[16px] border border-black/5 rounded-2xl shadow-sm ${className}`}>
     {children}
   </div>
 );
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2 px-1">{children}</p>
+  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">{children}</p>
 );
 
 // ── 主组件 ───────────────────────────────────────────────────────
@@ -77,11 +78,11 @@ const BeautifyApp = ({ onBack, onBackgroundChange }: any) => {
       style={{ background: 'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)' }}>
 
       {/* Header */}
-      <div className="h-12 flex items-center px-3 gap-2 shrink-0 bg-white/10 backdrop-blur-[16px] border-b border-white/20">
-        <button onClick={onBack} className="p-1.5 hover:bg-white/20 rounded-full transition-colors">
-          <ChevronLeft size={20} className="text-white" />
+      <div className="h-12 flex items-center px-3 gap-2 shrink-0 bg-white/30 backdrop-blur-[16px] border-b border-black/5">
+        <button onClick={onBack} className="p-1.5 hover:bg-black/10 rounded-full transition-colors">
+          <ChevronLeft size={20} className="text-gray-700" />
         </button>
-        <span className="font-bold text-white">美化</span>
+        <span className="font-bold text-gray-800">美化</span>
       </div>
 
       {/* Content */}
@@ -95,12 +96,12 @@ const BeautifyApp = ({ onBack, onBackgroundChange }: any) => {
               onClick={() => wallpaperRef.current?.click()}
               className="w-full flex items-center gap-3 px-4 py-3"
             >
-              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                <ImageIcon size={18} className="text-white" />
+              <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                <ImageIcon size={18} className="text-indigo-500" />
               </div>
               <div className="text-left">
-                <p className="text-sm font-medium text-white">更换壁纸</p>
-                <p className="text-[11px] text-white/60 mt-0.5">从本地选择图片</p>
+                <p className="text-sm font-medium text-gray-800">更换壁纸</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">从本地选择图片</p>
               </div>
             </button>
           </GlassCard>
@@ -112,9 +113,9 @@ const BeautifyApp = ({ onBack, onBackgroundChange }: any) => {
           <SectionTitle>桌面遮罩透明度</SectionTitle>
           <GlassCard className="px-4 py-3">
             <div className="flex items-center gap-3 mb-2">
-              <Sun size={16} className="text-white/60 shrink-0" />
-              <span className="text-sm text-white flex-1">暗色遮罩</span>
-              <span className="text-sm text-white/80 font-mono w-10 text-right">
+              <Sun size={16} className="text-gray-400 shrink-0" />
+              <span className="text-sm text-gray-700 flex-1">暗色遮罩</span>
+              <span className="text-sm text-gray-500 font-mono w-10 text-right">
                 {Math.round(overlay * 100)}%
               </span>
             </div>
@@ -122,9 +123,9 @@ const BeautifyApp = ({ onBack, onBackgroundChange }: any) => {
               type="range" min={0} max={50} step={1}
               value={Math.round(overlay * 100)}
               onChange={e => applyOverlay(+e.target.value / 100)}
-              className="w-full accent-white/70 h-1.5"
+              className="w-full accent-indigo-500 h-1.5"
             />
-            <div className="flex justify-between text-[10px] text-white/40 mt-1">
+            <div className="flex justify-between text-[10px] text-gray-400 mt-1">
               <span>透明</span><span>较暗</span>
             </div>
           </GlassCard>
@@ -138,12 +139,12 @@ const BeautifyApp = ({ onBack, onBackgroundChange }: any) => {
               onClick={() => fontRef.current?.click()}
               className="w-full flex items-center gap-3 px-4 py-3"
             >
-              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                <Type size={18} className="text-white" />
+              <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
+                <Type size={18} className="text-purple-500" />
               </div>
               <div className="text-left flex-1">
-                <p className="text-sm font-medium text-white">导入字体</p>
-                <p className="text-[11px] text-white/60 mt-0.5">
+                <p className="text-sm font-medium text-gray-800">导入字体</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
                   {fontName ? `已加载：${fontName}` : '支持 ttf / otf / woff / woff2'}
                 </p>
               </div>
@@ -152,7 +153,7 @@ const BeautifyApp = ({ onBack, onBackgroundChange }: any) => {
               <div className="px-4 pb-3">
                 <button
                   onClick={clearFont}
-                  className="w-full py-1.5 bg-red-400/20 text-red-200 text-xs rounded-lg border border-red-400/30 hover:bg-red-400/30 transition-colors"
+                  className="w-full py-1.5 bg-red-50 text-red-500 text-xs rounded-lg border border-red-200 hover:bg-red-100 transition-colors"
                 >
                   恢复默认字体
                 </button>
