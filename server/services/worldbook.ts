@@ -1,96 +1,321 @@
-import { wbBookStore, wbEntryStore } from '../storage/index.js';
-
 /**
- * 获取角色上下文中应注入的非事件条目（always / keyword 模式）
- * @deprecated 用 getActivatedEntries 代替
+ * 世界书服务层
+ *
+ * 基于 Drizzle ORM 操作三张列式表：
+ *   worldbooks            — 书（容器）
+ *   worldbook_entries     — 普通条目（constant / keyword）
+ *   worldbook_event_entries — 事件条目（random / conditional）
  */
-export async function getActiveNonEventEntries(charId) {
-  const [books, entries] = await Promise.all([
-    wbBookStore.getAll(),
-    wbEntryStore.getAll(),
-  ]);
-  const enabledBookIds = new Set(
-    books.filter(b => b.enabled && (b.charId == null || b.charId === charId))
-      .map(b => b.id)
-  );
-  return entries
-    .filter(e =>
-      e.enabled &&
-      enabledBookIds.has(e.bookId) &&
-      (e.activationMode === 'always' || e.activationMode === 'keyword')
-    )
-    .sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+
+import { eq, and, inArray } from 'drizzle-orm';
+import { getDrizzle } from '../db/database.js';
+import {
+  worldbooks,
+  worldbookEntries,
+  worldbookEventEntries,
+} from '../db/schema.js';
+
+// ── 类型导出 ─────────────────────────────────────────────────
+
+export type Worldbook       = typeof worldbooks.$inferSelect;
+export type WbEntry         = typeof worldbookEntries.$inferSelect;
+export type WbEventEntry    = typeof worldbookEventEntries.$inferSelect;
+
+// ── ID 生成 ──────────────────────────────────────────────────
+
+function genId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
+// ════════════════════════════════════════════════════════════════
+// 书 CRUD
+// ════════════════════════════════════════════════════════════════
+
+export function getAllBooks(scope?: string, boundId?: string): Worldbook[] {
+  const db = getDrizzle();
+  let rows = db.select().from(worldbooks).all();
+  if (scope) rows = rows.filter(b => b.scope === scope || b.scope === 'global');
+  if (boundId) rows = rows.filter(b => b.boundId === boundId || !b.boundId);
+  return rows;
+}
+
+export function getBookById(id: string): Worldbook | undefined {
+  return getDrizzle().select().from(worldbooks).where(eq(worldbooks.id, id)).get();
+}
+
+export function createBook(data: {
+  name: string;
+  scope?: string;
+  boundId?: string;
+  scanDepth?: number;
+  description?: string;
+  priority?: number;
+}): Worldbook {
+  const db = getDrizzle();
+  const now = new Date().toISOString();
+  const id = genId('wb');
+  db.insert(worldbooks).values({
+    id,
+    name: data.name,
+    enabled: 1,
+    priority: data.priority ?? 0,
+    scope: data.scope ?? 'global',
+    boundId: data.boundId ?? null,
+    scanDepth: data.scanDepth ?? 20,
+    description: data.description ?? null,
+    createdAt: now,
+    updatedAt: now,
+  }).run();
+  return getBookById(id)!;
+}
+
+export function updateBook(id: string, patch: Partial<Worldbook>): Worldbook | null {
+  const existing = getBookById(id);
+  if (!existing) return null;
+  const db = getDrizzle();
+  const now = new Date().toISOString();
+  db.update(worldbooks)
+    .set({ ...patch, updatedAt: now })
+    .where(eq(worldbooks.id, id))
+    .run();
+  return getBookById(id)!;
+}
+
+export function deleteBook(id: string): boolean {
+  const db = getDrizzle();
+  // 级联删除由 FK ON DELETE CASCADE 处理
+  const result = db.delete(worldbooks).where(eq(worldbooks.id, id)).run();
+  return result.changes > 0;
+}
+
+// ════════════════════════════════════════════════════════════════
+// 普通条目 CRUD
+// ════════════════════════════════════════════════════════════════
+
+export function getEntriesByBook(worldbookId: string): WbEntry[] {
+  return getDrizzle().select().from(worldbookEntries)
+    .where(eq(worldbookEntries.worldbookId, worldbookId))
+    .all();
+}
+
+export function getEntryById(id: string): WbEntry | undefined {
+  return getDrizzle().select().from(worldbookEntries)
+    .where(eq(worldbookEntries.id, id))
+    .get();
+}
+
+export function createEntry(worldbookId: string, data: Partial<WbEntry>): WbEntry {
+  const db = getDrizzle();
+  const now = new Date().toISOString();
+  const id = genId('wbe');
+  db.insert(worldbookEntries).values({
+    id,
+    worldbookId,
+    memo: data.memo ?? null,
+    content: data.content ?? '',
+    enabled: data.enabled ?? 1,
+    strategy: data.strategy ?? 'constant',
+    probability: data.probability ?? 100,
+    keywords: data.keywords ?? null,
+    filterKeywords: data.filterKeywords ?? null,
+    filterLogic: data.filterLogic ?? 'AND_ANY',
+    scanDepth: data.scanDepth ?? null,
+    caseSensitive: data.caseSensitive ?? 0,
+    matchWholeWord: data.matchWholeWord ?? 0,
+    position: data.position ?? 'system-bottom',
+    depth: data.depth ?? 0,
+    orderNum: data.orderNum ?? 0,
+    noRecurse: data.noRecurse ?? 0,
+    noFurtherRecurse: data.noFurtherRecurse ?? 0,
+    inclusionGroup: data.inclusionGroup ?? null,
+    groupWeight: data.groupWeight ?? 100,
+    sticky: data.sticky ?? 0,
+    cooldown: data.cooldown ?? 0,
+    delay: data.delay ?? 0,
+    characterFilter: data.characterFilter ?? null,
+    filterMode: data.filterMode ?? 'include',
+    createdAt: now,
+    updatedAt: now,
+  }).run();
+  return getEntryById(id)!;
+}
+
+export function updateEntry(id: string, patch: Partial<WbEntry>): WbEntry | null {
+  const existing = getEntryById(id);
+  if (!existing) return null;
+  const db = getDrizzle();
+  const now = new Date().toISOString();
+  db.update(worldbookEntries)
+    .set({ ...patch, updatedAt: now })
+    .where(eq(worldbookEntries.id, id))
+    .run();
+  return getEntryById(id)!;
+}
+
+export function deleteEntry(id: string): boolean {
+  return getDrizzle().delete(worldbookEntries).where(eq(worldbookEntries.id, id)).run().changes > 0;
+}
+
+// ════════════════════════════════════════════════════════════════
+// 事件条目 CRUD
+// ════════════════════════════════════════════════════════════════
+
+export function getEventEntriesByBook(worldbookId: string): WbEventEntry[] {
+  return getDrizzle().select().from(worldbookEventEntries)
+    .where(eq(worldbookEventEntries.worldbookId, worldbookId))
+    .all();
+}
+
+export function getEventEntryById(id: string): WbEventEntry | undefined {
+  return getDrizzle().select().from(worldbookEventEntries)
+    .where(eq(worldbookEventEntries.id, id))
+    .get();
+}
+
+export function createEventEntry(worldbookId: string, data: Partial<WbEventEntry>): WbEventEntry {
+  const db = getDrizzle();
+  const now = new Date().toISOString();
+  const id = genId('wbev');
+  db.insert(worldbookEventEntries).values({
+    id,
+    worldbookId,
+    memo: data.memo ?? null,
+    content: data.content ?? '',
+    enabled: data.enabled ?? 1,
+    eventType: data.eventType ?? 'random',
+    probability: data.probability ?? 100,
+    weight: data.weight ?? 1,
+    conditionStat: data.conditionStat ?? null,
+    conditionOp: data.conditionOp ?? null,
+    conditionValue: data.conditionValue ?? null,
+    tags: data.tags ?? null,
+    orderNum: data.orderNum ?? 0,
+    createdAt: now,
+    updatedAt: now,
+  }).run();
+  return getEventEntryById(id)!;
+}
+
+export function updateEventEntry(id: string, patch: Partial<WbEventEntry>): WbEventEntry | null {
+  const existing = getEventEntryById(id);
+  if (!existing) return null;
+  const db = getDrizzle();
+  const now = new Date().toISOString();
+  db.update(worldbookEventEntries)
+    .set({ ...patch, updatedAt: now })
+    .where(eq(worldbookEventEntries.id, id))
+    .run();
+  return getEventEntryById(id)!;
+}
+
+export function deleteEventEntry(id: string): boolean {
+  return getDrizzle().delete(worldbookEventEntries).where(eq(worldbookEventEntries.id, id)).run().changes > 0;
+}
+
+// ════════════════════════════════════════════════════════════════
+// 上下文注入：获取激活的普通条目（供 context.ts）
+// ════════════════════════════════════════════════════════════════
+
 /**
- * 带级联激活的世界书条目激活函数
+ * 带级联激活 + 概率 + 互斥组的世界书条目激活
  *
  * 规则：
- * - 先用最近 scanDepth 条消息的文本作为 baseText
- * - always 条目无条件激活
- * - keyword 条目：若 noRecurse=true 只扫 baseText，否则扫 scanText（含已激活条目内容）
- * - 激活后：若 noFurtherRecurse=false，将其内容追加到 scanText（供后续条目匹配）
- * - 循环直到没有新激活
- *
- * @param {string} charId
- * @param {Array<{role:string, content:string}>} messages 按时间升序排列的消息列表
- * @returns {Promise<Array>} 激活的条目，按 priority 排序
+ * 1. 找到所有启用书中的启用条目
+ * 2. constant 条目无条件激活（受 probability 控制）
+ * 3. keyword 条目：匹配关键词后激活（受 probability、互斥组控制）
+ * 4. 级联激活：激活条目的 content 可触发其他 keyword 条目
+ * 5. 互斥组：同组只激活一个（按 groupWeight 加权随机）
  */
-export async function getActivatedEntries(charId, messages = []) {
-  const [books, entries] = await Promise.all([
-    wbBookStore.getAll(),
-    wbEntryStore.getAll(),
-  ]);
+export function getActivatedEntries(
+  charId: string | null,
+  messages: { role: string; content: string }[] = [],
+): WbEntry[] {
+  const db = getDrizzle();
 
-  const enabledBooks = books.filter(
-    b => b.enabled && (b.charId == null || b.charId === charId)
-  );
-  const enabledBookIds = new Set(enabledBooks.map(b => b.id));
+  // 获取启用的书
+  const books = db.select().from(worldbooks)
+    .where(eq(worldbooks.enabled, 1))
+    .all()
+    .filter(b => b.scope === 'global' || b.boundId === charId);
 
-  // 取最大 scanDepth（各书取最大值，默认 20）
-  const scanDepth = enabledBooks.reduce(
-    (max, b) => Math.max(max, b.scanDepth ?? 20), 20
-  );
+  if (books.length === 0) return [];
+  const bookIds = books.map(b => b.id);
 
-  const candidates = entries.filter(
-    e =>
-      e.enabled &&
-      enabledBookIds.has(e.bookId) &&
-      (e.activationMode === 'always' || e.activationMode === 'keyword')
-  );
+  // 获取所有候选条目
+  const allEntries = db.select().from(worldbookEntries)
+    .where(and(
+      eq(worldbookEntries.enabled, 1),
+      inArray(worldbookEntries.worldbookId, bookIds),
+    ))
+    .all();
+
+  // 取最大 scanDepth
+  const maxScanDepth = books.reduce((max, b) => Math.max(max, b.scanDepth), 20);
 
   const baseText = messages
-    .slice(-scanDepth)
+    .slice(-maxScanDepth)
     .map(m => m.content || '')
-    .join(' ')
-    .toLowerCase();
+    .join(' ');
 
   let scanText = baseText;
-  const activated = new Map(); // id → entry
-  let remaining = [...candidates];
+  const activated = new Map<string, WbEntry>();
+  let remaining = [...allEntries];
 
-  // 级联激活：循环直到无新激活
+  // 级联激活循环
   let changed = true;
   while (changed) {
     changed = false;
-    const nextRemaining = [];
+    const nextRemaining: WbEntry[] = [];
     for (const entry of remaining) {
       let shouldActivate = false;
-      if (entry.activationMode === 'always') {
+
+      if (entry.strategy === 'constant') {
         shouldActivate = true;
-      } else if (entry.activationMode === 'keyword') {
+      } else if (entry.strategy === 'keyword') {
+        const kws: string[] = entry.keywords ? JSON.parse(entry.keywords) : [];
+        const cs = !!entry.caseSensitive;
         const textToScan = entry.noRecurse ? baseText : scanText;
-        shouldActivate = (entry.keywords || []).some(
-          kw => kw && textToScan.includes(kw.toLowerCase())
-        );
+        const haystack = cs ? textToScan : textToScan.toLowerCase();
+
+        shouldActivate = kws.some(kw => {
+          const needle = cs ? kw : kw.toLowerCase();
+          if (entry.matchWholeWord) {
+            const re = new RegExp(`\\b${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, cs ? '' : 'i');
+            return re.test(textToScan);
+          }
+          return haystack.includes(needle);
+        });
+
+        // 二级关键词过滤
+        if (shouldActivate && entry.filterKeywords) {
+          const fkws: string[] = JSON.parse(entry.filterKeywords);
+          if (fkws.length > 0) {
+            const logic = entry.filterLogic || 'AND_ANY';
+            const fMatches = fkws.filter(fk => {
+              const fn = cs ? fk : fk.toLowerCase();
+              return haystack.includes(fn);
+            });
+            switch (logic) {
+              case 'AND_ALL':  shouldActivate = fMatches.length === fkws.length; break;
+              case 'NOT_ANY':  shouldActivate = fMatches.length === 0; break;
+              case 'NOT_ALL':  shouldActivate = fMatches.length < fkws.length; break;
+              case 'AND_ANY':
+              default:         shouldActivate = fMatches.length > 0; break;
+            }
+          }
+        }
+      }
+
+      // 概率检查
+      if (shouldActivate && entry.probability < 100) {
+        shouldActivate = Math.random() * 100 < entry.probability;
       }
 
       if (shouldActivate) {
         activated.set(entry.id, entry);
         changed = true;
-        // 若不设置 noFurtherRecurse，将内容追加到 scanText 供后续匹配
         if (!entry.noFurtherRecurse && entry.content) {
-          scanText += ' ' + entry.content.toLowerCase();
+          scanText += ' ' + entry.content;
         }
       } else {
         nextRemaining.push(entry);
@@ -99,24 +324,56 @@ export async function getActivatedEntries(charId, messages = []) {
     remaining = nextRemaining;
   }
 
-  return [...activated.values()].sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  // 互斥组处理：同组只保留一个（按 groupWeight 加权随机）
+  const grouped = new Map<string, WbEntry[]>();
+  const ungrouped: WbEntry[] = [];
+  for (const entry of activated.values()) {
+    if (entry.inclusionGroup) {
+      const arr = grouped.get(entry.inclusionGroup) || [];
+      arr.push(entry);
+      grouped.set(entry.inclusionGroup, arr);
+    } else {
+      ungrouped.push(entry);
+    }
+  }
+
+  const result = [...ungrouped];
+  for (const [, entries] of grouped) {
+    if (entries.length === 1) {
+      result.push(entries[0]);
+    } else {
+      // 加权随机选一个
+      const totalWeight = entries.reduce((s, e) => s + e.groupWeight, 0);
+      let roll = Math.random() * totalWeight;
+      for (const e of entries) {
+        roll -= e.groupWeight;
+        if (roll <= 0) { result.push(e); break; }
+      }
+    }
+  }
+
+  return result.sort((a, b) => a.orderNum - b.orderNum);
 }
 
-/**
- * 获取事件池条目（event-random + event-conditional，供生活生成用）
- */
-export async function getEventPoolEntries(charId) {
-  const [books, entries] = await Promise.all([
-    wbBookStore.getAll(),
-    wbEntryStore.getAll(),
-  ]);
-  const enabledBookIds = new Set(
-    books.filter(b => b.enabled && (b.charId == null || b.charId === charId))
-      .map(b => b.id)
-  );
-  return entries.filter(e =>
-    e.enabled &&
-    enabledBookIds.has(e.bookId) &&
-    (e.activationMode === 'event-random' || e.activationMode === 'event-conditional')
-  );
+// ════════════════════════════════════════════════════════════════
+// 事件池：获取事件条目（供 life 生成）
+// ════════════════════════════════════════════════════════════════
+
+export function getEventPoolEntries(charId: string | null): WbEventEntry[] {
+  const db = getDrizzle();
+
+  const books = db.select().from(worldbooks)
+    .where(eq(worldbooks.enabled, 1))
+    .all()
+    .filter(b => b.scope === 'global' || b.boundId === charId);
+
+  if (books.length === 0) return [];
+  const bookIds = books.map(b => b.id);
+
+  return db.select().from(worldbookEventEntries)
+    .where(and(
+      eq(worldbookEventEntries.enabled, 1),
+      inArray(worldbookEventEntries.worldbookId, bookIds),
+    ))
+    .all();
 }

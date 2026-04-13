@@ -493,8 +493,7 @@ interface EventMap {
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "strict": false,
-    "allowJs": true,
-    "checkJs": false,
+    "allowJs": false,
     "skipLibCheck": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
@@ -512,8 +511,7 @@ interface EventMap {
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": false,
-    "allowJs": true,
-    "checkJs": false,
+    "allowJs": false,
     "skipLibCheck": true,
     "outDir": "./dist",
     "rootDir": "./",
@@ -612,3 +610,9 @@ interface EventMap {
 - 全部 .tsx/.ts 文件已 0 errors（strict: false）
 - 下一步：tsconfig 改 `strict: true`，修复 `any` 推断 / `null` 未检查等问题
 - 预计主要问题集中在 apps 层大量 `useState({})` / `useState([])` 推断为 `{}`/`never[]`
+
+### 旧文件清理（2026-04-11）
+- 删除全部旧 .js/.jsx 文件（server 33 + repositories 目录，client 88 个）
+- 修正入口：server `"dev": "tsx index.ts"`，client `src="/src/main.tsx"`
+- tsconfig 两端 `allowJs` 改为 `false`，server include 去掉 `*.js`
+- any 统计：client 14 处，server 33 处，共 47 处，待 Phase 8 清理

@@ -5,6 +5,7 @@ import {
   skillStore, relationStore, activeStore,
 } from '../storage/index.js';
 import { genId } from '../storage/FileStore.js';
+import { seedValueEventData } from '../services/seed.js';
 
 const router = Router();
 
@@ -189,6 +190,25 @@ router.post('/seed/:charId', async (req, res) => {
 
     res.json({ ok: true, charId, charName, results });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * POST /api/debug/seed-values/:charId — 为角色注入新数值/事件系统示例数据
+ *
+ * 生成：5 个数值（含阶段+规则）、6 个事件（含标签+连接）、5 条世界状态。
+ * 幂等：已有数据不会被覆盖。
+ * ═══════════════════════════════════════════════════════════════════ */
+router.post('/seed-values/:charId', async (req, res) => {
+  try {
+    const { charId } = req.params;
+    const char = await characterStore.getById(charId);
+    if (!char) return res.status(404).json({ error: '角色不存在' });
+
+    const result = seedValueEventData(charId);
+    res.json({ ok: true, charId, charName: char.name, result });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });

@@ -12,9 +12,10 @@ import { lifeStore, characterStore, messageStore, presetStore, activeStore } fro
 import { getClient, chatCompletion } from '../services/ai.js';
 import { processLifeLog } from '../services/charSystem.js';
 import { genId } from '../storage/FileStore.js';
-import { getEventPoolEntries } from '../services/worldbook.js';
+import { getEventPool, type Event as PoolEvent } from '../services/events.js';
 import { getCharStats, getMergedStatDefs } from '../services/charstats.js';
 import { getPrompt } from '../services/promptPresets.js';
+import { checkAndFireEvents, fireValueRules } from '../services/eventEngine.js';
 
 const router = Router({ mergeParams: true });
 
@@ -98,8 +99,8 @@ router.post('/generate', async (req, res) => {
     const stats = await getCharStats(charId);
     const statDefs = await getMergedStatDefs(charId);
 
-    // 4. 从世界书事件池中选取事件
-    const eventPool = await getEventPoolEntries(charId);
+    // 4. 从事件池中选取事件
+    const eventPool = getEventPool(charId);
     const selectedEvents = pickEvents(eventPool, stats, +eventCount);
 
     // 5. 最近3条生活日志（从旧到新）
@@ -149,6 +150,11 @@ router.post('/generate', async (req, res) => {
       });
       // 角色系统：从生活日志中提取时间线事件、物品、技能
       processLifeLog(charId, log).catch(e => console.error('[charSystem]', e.message));
+      // 事件引擎：time_pass_life 触发
+      try {
+        checkAndFireEvents(charId, { trigger: 'time_pass_life' });
+        fireValueRules(charId, 'time_pass_life');
+      } catch (e) { console.error('[life/event-engine]', e.message); }
     }
 
     res.status(201).json({
@@ -183,37 +189,45 @@ const PERIOD_ZH = { morning: '上午', afternoon: '下午', evening: '傍晚/晚
 
 /**
  * 从事件池中选取事件
- * - event-random: 按 weight 加权随机
- * - event-conditional: 检查数值条件是否满足，满足则加入候选池
+ * - 无 triggerConditions：纯随机事件，按 weight 加权随机
+ * - 有 triggerConditions：检查数值条件，满足则加入候选池
  */
-function pickEvents(pool, stats, count) {
+function pickEvents(pool: PoolEvent[], stats: Record<string, number>, count: number) {
   if (!count || !pool.length) return [];
 
-  // 分离条件事件和随机事件
-  const conditional = pool.filter(e => {
-    if (e.activationMode !== 'event-conditional') return false;
-    const cond = e.eventConfig?.condition;
-    if (!cond) return false;
-    const val = stats[cond.stat];
-    if (val == null) return false;
-    switch (cond.op) {
-      case 'gte': return val >= cond.value;
-      case 'lte': return val <= cond.value;
-      case 'gt':  return val >  cond.value;
-      case 'lt':  return val <  cond.value;
-      case 'eq':  return val === cond.value;
-      default:    return false;
-    }
+  // 概率过滤（probability = 事件被纳入候选的概率）
+  const probPool = pool.filter(e =>
+    (e.probability ?? 100) >= 100 || Math.random() * 100 < (e.probability ?? 100)
+  );
+
+  // 分离：有触发条件的 vs 纯随机
+  const conditional = probPool.filter(e => {
+    if (!e.triggerConditions) return false;
+    try {
+      const cond = JSON.parse(e.triggerConditions);
+      // 目前只处理单层简单条件（数值比较），复杂条件留给阶段二引擎
+      const firstGroup = cond?.条件组?.[0]?.条件?.[0];
+      if (!firstGroup || firstGroup.类型 !== '数值') return false;
+      const val = stats[firstGroup.目标];
+      if (val == null) return false;
+      switch (firstGroup.比较) {
+        case '>=': return val >= firstGroup.值;
+        case '<=': return val <= firstGroup.值;
+        case '>':  return val >  firstGroup.值;
+        case '<':  return val <  firstGroup.值;
+        case '==': return val === firstGroup.值;
+        default:   return false;
+      }
+    } catch { return false; }
   });
 
-  const random = pool.filter(e => e.activationMode === 'event-random');
+  const random = probPool.filter(e => !e.triggerConditions);
 
   // 加权随机选取（条件事件优先，最多占 count 的一半）
-  const selected = [];
-  const maxConditional = Math.floor(count / 2) + (count % 2);  // 向上取整的一半
-  const picked = new Set();
+  const selected: PoolEvent[] = [];
+  const maxConditional = Math.floor(count / 2) + (count % 2);
+  const picked = new Set<string>();
 
-  // 先从条件池选
   const condAvail = weightedShuffle(conditional);
   for (const e of condAvail) {
     if (selected.length >= maxConditional) break;
@@ -221,7 +235,6 @@ function pickEvents(pool, stats, count) {
     picked.add(e.id);
   }
 
-  // 再从随机池补充
   const randAvail = weightedShuffle(random).filter(e => !picked.has(e.id));
   for (const e of randAvail) {
     if (selected.length >= count) break;
@@ -231,19 +244,18 @@ function pickEvents(pool, stats, count) {
   return selected;
 }
 
-/** 按 eventConfig.weight 加权随机打乱 */
-function weightedShuffle(entries) {
+/** 按 weight 加权随机打乱 */
+function weightedShuffle(entries: PoolEvent[]) {
   const weighted = entries.flatMap(e => {
-    const w = Math.max(1, e.eventConfig?.weight ?? 1);
+    const w = Math.max(1, e.weight ?? 1);
     return Array(w).fill(e);
   });
   for (let i = weighted.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [weighted[i], weighted[j]] = [weighted[j], weighted[i]];
   }
-  // 去重（保持相对顺序）
-  const seen = new Set();
-  return weighted.filter(e => {
+  const seen = new Set<string>();
+  return weighted.filter((e: PoolEvent) => {
     if (seen.has(e.id)) return false;
     seen.add(e.id);
     return true;

@@ -4,6 +4,8 @@ import { getClient, chatCompletion, chatCompletionStream, logStreamCompletion } 
 import { assembleMessages, MSG_SEP } from '../services/context.js';
 import { genId } from '../storage/FileStore.js';
 import { triggerExtraction } from '../services/extraction.js';
+import { checkAndFireEvents, parseOutcomeFromAIResponse, tickCooldowns, fireValueRules } from '../services/eventEngine.js';
+import { consumeInjectionTurns } from '../services/events.js';
 
 // 同一发送者 5 分钟内的消息合并为一条
 const GROUP_TIMEOUT_MS = 5 * 60 * 1000;
@@ -233,6 +235,14 @@ router.post('/respond', async (req, res) => {
       res.end();
       triggerAutoSummaries(characterId);
       triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
+      // 事件引擎：解析 AI 回复中的结果标签 + 触发 chat_end 事件检查 + 消耗注入轮次
+      try {
+        parseOutcomeFromAIResponse(fullContent);
+        checkAndFireEvents(characterId, { trigger: 'chat_end', chatContent: fullContent });
+        tickCooldowns(characterId, 'turns');
+        consumeInjectionTurns(characterId);
+        fireValueRules(characterId, 'chat_end');
+      } catch (e) { console.error('[chat/event-engine]', e.message); }
       return;
     }
 
@@ -252,6 +262,14 @@ router.post('/respond', async (req, res) => {
 
     triggerAutoSummaries(characterId);
     triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
+    // 事件引擎：解析 AI 回复中的结果标签 + 触发 chat_end 事件检查 + 消耗注入轮次
+    try {
+      parseOutcomeFromAIResponse(aiContent);
+      checkAndFireEvents(characterId, { trigger: 'chat_end', chatContent: aiContent });
+      tickCooldowns(characterId, 'turns');
+      consumeInjectionTurns(characterId);
+      fireValueRules(characterId, 'chat_end');
+    } catch (e) { console.error('[chat/event-engine]', e.message); }
     res.json({ id: aiMsg.id, sender: 'character', content: aiContent, mode, timestamp: aiMsg.timestamp });
   } catch (err) {
     console.error('[chat/respond]', err.message);

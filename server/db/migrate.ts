@@ -64,6 +64,12 @@ export async function runMigration(db: Database.Database): Promise<void> {
 
   console.log('[migrate] 开始检查 JSON → SQLite 迁移...');
 
+  // ── 世界书 blob→列式迁移 ──────────────────────────────────
+  migrateWorldbookBlob(db);
+
+  // ── worldbook_event_entries → events 迁移 ────────────────
+  migrateWbEventEntriesToEvents(db);
+
   for (const m of MIGRATIONS) {
     const filePath = path.join(DATA_ROOT, m.file);
 
@@ -154,6 +160,227 @@ function migrateObject(
   db.prepare(
     `INSERT OR IGNORE INTO "${table}" (id, char_id, data, created_at) VALUES (?, ?, ?, ?)`
   ).run('singleton', null, JSON.stringify(obj), new Date().toISOString());
+}
+
+// ── 世界书 blob→列式迁移 ─────────────────────────────────────
+function migrateWorldbookBlob(db: Database.Database): void {
+  // 检查旧 blob 表是否存在且有数据
+  const hasOldBooks = (() => {
+    try {
+      const r = db.prepare(`SELECT COUNT(*) as c FROM wb_books`).get() as { c: number };
+      return r.c > 0;
+    } catch { return false; }
+  })();
+  if (!hasOldBooks) return;
+
+  // 检查新表是否已有数据（幂等）
+  const hasNew = (() => {
+    try {
+      const r = db.prepare(`SELECT COUNT(*) as c FROM worldbooks`).get() as { c: number };
+      return r.c > 0;
+    } catch { return false; }
+  })();
+  if (hasNew) {
+    console.log('[migrate] SKIP  worldbook blob→column（新表已有数据）');
+    return;
+  }
+
+  console.log('[migrate] 开始世界书 blob→列式迁移...');
+
+  const oldBooks = db.prepare(`SELECT * FROM wb_books`).all() as { id: string; data: string }[];
+  const oldEntries = db.prepare(`SELECT * FROM wb_entries`).all() as { id: string; data: string }[];
+
+  const insertBook = db.prepare(`
+    INSERT INTO worldbooks (id, name, enabled, priority, scope, bound_id, scan_depth, description, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertEntry = db.prepare(`
+    INSERT INTO worldbook_entries (id, worldbook_id, memo, content, enabled, strategy, probability,
+      keywords, position, order_num, no_recurse, no_further_recurse, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertEventEntry = db.prepare(`
+    INSERT INTO worldbook_event_entries (id, worldbook_id, memo, content, enabled, event_type, probability,
+      weight, condition_stat, condition_op, condition_value, tags, order_num, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const migrate = db.transaction(() => {
+    let bookCount = 0;
+    let entryCount = 0;
+    let eventCount = 0;
+
+    for (const row of oldBooks) {
+      try {
+        const b = JSON.parse(row.data);
+        const now = b.createdAt || new Date().toISOString();
+        insertBook.run(
+          b.id, b.name || 'Untitled', b.enabled ? 1 : 0, 0,
+          b.charId ? 'character' : 'global', b.charId || null,
+          b.scanDepth ?? 20, b.description || null, now, now,
+        );
+        bookCount++;
+      } catch (e) { console.warn('[migrate] WARN  跳过书:', row.id, e); }
+    }
+
+    for (const row of oldEntries) {
+      try {
+        const e = JSON.parse(row.data);
+        const now = e.createdAt || new Date().toISOString();
+        const isEvent = e.activationMode?.startsWith('event-');
+
+        if (isEvent) {
+          const cond = e.eventConfig?.condition;
+          insertEventEntry.run(
+            e.id, e.bookId, e.name || null, e.content || '', e.enabled ? 1 : 0,
+            e.activationMode === 'event-conditional' ? 'conditional' : 'random',
+            100, // probability
+            e.eventConfig?.weight ?? e.weight ?? 1,
+            cond?.stat || null, cond?.op || null, cond?.value ?? null,
+            e.eventConfig?.tags ? JSON.stringify(e.eventConfig.tags) : null,
+            e.priority ?? 0, now, now,
+          );
+          eventCount++;
+        } else {
+          const strategy = e.activationMode === 'keyword' ? 'keyword' : 'constant';
+          insertEntry.run(
+            e.id, e.bookId, e.name || null, e.content || '', e.enabled ? 1 : 0,
+            strategy, 100, // probability
+            e.keywords ? JSON.stringify(e.keywords) : null,
+            e.insertionPosition || 'system-bottom',
+            e.priority ?? 0,
+            e.noRecurse ? 1 : 0, e.noFurtherRecurse ? 1 : 0,
+            now, now,
+          );
+          entryCount++;
+        }
+      } catch (e) { console.warn('[migrate] WARN  跳过条目:', row.id, e); }
+    }
+
+    console.log(`[migrate] OK    worldbook: ${bookCount} 书, ${entryCount} 普通条目, ${eventCount} 事件条目`);
+  });
+
+  migrate();
+}
+
+// ── worldbook_event_entries → event_books + events 迁移 ──────
+function migrateWbEventEntriesToEvents(db: Database.Database): void {
+  // 检查源表是否存在且有数据
+  const hasSource = (() => {
+    try {
+      const r = db.prepare(`SELECT COUNT(*) as c FROM worldbook_event_entries`).get() as { c: number };
+      return r.c > 0;
+    } catch { return false; }
+  })();
+  if (!hasSource) return;
+
+  // 幂等：检查迁移出的事件是否已存在（通过 book_id 前缀判断，比仅检查 event_books 更准确）
+  const alreadyMigrated = (() => {
+    try {
+      const r = db.prepare(
+        `SELECT COUNT(*) as c FROM events WHERE book_id LIKE 'evtbook_%'`
+      ).get() as { c: number };
+      return r.c > 0;
+    } catch { return false; }
+  })();
+  if (alreadyMigrated) {
+    console.log('[migrate] SKIP  worldbook_event_entries→events（已迁移）');
+    return;
+  }
+
+  console.log('[migrate] 开始 worldbook_event_entries → events 迁移...');
+
+  // 查旧事件条目，联查世界书信息
+  const oldEntries = db.prepare(`
+    SELECT ee.*, wb.scope, wb.bound_id as wbBoundId, wb.name as wbName
+    FROM worldbook_event_entries ee
+    LEFT JOIN worldbooks wb ON wb.id = ee.worldbook_id
+  `).all() as Array<{
+    id: string; worldbook_id: string; memo: string | null; content: string;
+    enabled: number; event_type: string; probability: number; weight: number;
+    condition_stat: string | null; condition_op: string | null; condition_value: number | null;
+    tags: string | null; order_num: number; created_at: string;
+    scope: string | null; wbBoundId: string | null; wbName: string | null;
+  }>;
+
+  if (!oldEntries.length) return;
+
+  // 按来源世界书分组，每本世界书创建一个事件书
+  const bookMap = new Map<string, string>(); // worldbookId → eventBookId
+
+  const insertBook = db.prepare(`
+    INSERT OR IGNORE INTO event_books (id, name, description, scope, character_id, enabled, priority, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, 1, 0, ?, ?)
+  `);
+  const insertEvent = db.prepare(`
+    INSERT OR IGNORE INTO events (
+      id, book_id, character_id, name, description,
+      status, priority, probability, weight,
+      repeatable, max_triggers, trigger_count,
+      trigger_conditions,
+      cooldown_type, cooldown_value, cooldown_remaining,
+      condition_cooldown, condition_cooldown_remaining,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, 1, NULL, 0, ?, 'none', 0, 0, 0, 0, ?)
+  `);
+
+  const migrate = db.transaction(() => {
+    let bookCount = 0;
+    let evtCount = 0;
+
+    for (const e of oldEntries) {
+      // 确保有对应的事件书
+      if (!bookMap.has(e.worldbook_id)) {
+        const bookId = `evtbook_${e.worldbook_id}`;
+        const scope = e.scope === 'character' ? 'character' : 'global';
+        const charId = e.wbBoundId || null;
+        const now = e.created_at || new Date().toISOString();
+        insertBook.run(
+          bookId,
+          e.wbName ? `${e.wbName}（事件）` : '迁移事件书',
+          `[migrated-from-wbee] 从世界书 ${e.worldbook_id} 迁移`,
+          scope, charId, now, now,
+        );
+        bookMap.set(e.worldbook_id, bookId);
+        bookCount++;
+      }
+
+      const bookId = bookMap.get(e.worldbook_id)!;
+      // 构建 trigger_conditions JSON（conditional 类型）
+      let triggerCond: string | null = null;
+      if (e.event_type === 'conditional' && e.condition_stat) {
+        triggerCond = JSON.stringify({
+          组间逻辑: '或',
+          条件组: [{
+            组内逻辑: '且',
+            条件: [{
+              类型: '数值',
+              目标: e.condition_stat,
+              比较: e.condition_op || '>=',
+              值: e.condition_value ?? 0,
+            }],
+          }],
+        });
+      }
+
+      // character_id：字符专属书用 wbBoundId，全局书暂用 '_global_'（兼容 NOT NULL 约束）
+      const charId = e.wbBoundId || '_global_';
+      insertEvent.run(
+        e.id, bookId, charId,
+        e.memo || '未命名事件', null,
+        e.order_num ?? 0,
+        e.probability ?? 100,
+        e.weight ?? 100,
+        triggerCond,
+        e.created_at || new Date().toISOString(),
+      );
+      evtCount++;
+    }
+
+    console.log(`[migrate] OK    wbee→events: ${bookCount} 事件书, ${evtCount} 事件`);
+  });
+
+  migrate();
 }
 
 // ── 改名备份 ─────────────────────────────────────────────────

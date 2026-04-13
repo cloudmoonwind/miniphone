@@ -81,6 +81,7 @@ export interface PromptPreset {
 }
 
 export interface Active {
+  id: string;
   primaryPresetId: string | null;
   activeMapId: string | null;
   // 兼容旧字段（部分代码仍用 activePresetId / activePersonaId / activePromptPresetId）
@@ -108,36 +109,11 @@ export interface Active {
   };
 }
 
-export interface WbBook {
-  id: string;
-  name: string;
-  charId: string | null;
-  enabled: boolean;
-  description?: string;
-  scanDepth?: number;   // 关键词扫描深度（消息条数），默认 20
-  createdAt: string;
-}
-
-export interface WbEntry {
-  id: string;
-  bookId: string;
-  name: string;
-  content: string;
-  enabled: boolean;
-  activationMode: string;
-  insertionPosition: string;
-  keywords: string[];
-  weight?: number;
-  priority?: number;          // 排序优先级，越小越靠前
-  noRecurse?: boolean;        // 关键词只扫基础文本，不扫已激活条目内容
-  noFurtherRecurse?: boolean; // 激活后不追加到 scanText
-  condition?: { stat: string; op: string; value: number };
-  eventConfig?: any;          // 事件条件配置（event-conditional）
-  createdAt: string;
-  updatedAt?: string;
-}
+// 世界书类型已迁移到 Drizzle schema（server/db/schema.ts）
+// 通过 server/services/worldbook.ts 导出的 Worldbook / WbEntry / WbEventEntry 使用
 
 export interface CharStats {
+  id: string;
   charId: string;
   stats?: Record<string, number>;
   statusInfo?: Record<string, any>;

@@ -701,3 +701,181 @@ historyCount 冲突：摘要预设 vs 聊天预设对历史深度需求不同。
 PixiJS 不是魔法，工具换了不等于效果自动好。场景设计和动画编排细节依赖审美输入和迭代，这部分需要用户提供参考素材或具体方向。
 
 ---
+
+## 2026-04-11（续）— 旧文件清理 + 数据库新表
+
+### 完成
+
+**旧 JS/JSX 文件清理**
+- 发现 TS 迁移虽然完成，但旧 .js/.jsx 原件全部没删（server 33个 + repositories 目录，client 88个）
+- 更严重：`server/package.json` 写的 `"dev": "tsx index.js"`，`client/index.html` 写的 `src="/src/main.jsx"` —— 实际运行的一直是旧 JS 代码，TS 文件从未真正生效
+- 修正入口指向 → 验证 import 链路完整 → 删除全部旧文件 → tsc --noEmit 0 errors
+- 顺手删除 `server/repositories/`（迁移前旧 DAO 层，无任何 .ts 引用）
+
+**Drizzle ORM 引入**
+- 安装 `drizzle-orm`（运行时）+ `drizzle-kit`（开发工具）
+- 新列式表用 Drizzle 类型安全查询，blob 表继续走 SqliteStore，两套共存
+- 创建 `server/db/schema.ts`：所有新表的 Drizzle schema 定义
+- 修改 `server/db/database.ts`：新增 `getDrizzle()` 导出 + initDrizzleTables() 建表
+
+**新建 9 张列式表（数值系统 / 事件系统 / 世界状态）**
+- 数值系统：`character_values`（数值定义+当前值）、`value_stages`（分段描述+prompt片段）、`value_rules`（变化规则）
+- 事件系统：`events`（主表，含状态/条件/效果/冷却）、`event_tags`（标签）、`event_connections`（事件间关系链）、`condition_subscriptions`（条件订阅索引）、`pending_injections`（待注入prompt内容）
+- 世界状态：`world_state`（键值对表）
+
+**类型修复**
+- `CharStats` 和 `Active` 接口补 `id: string`（SqliteStore 泛型约束）
+- `SqliteStore.create()` 泛型 cast 改 `as unknown as T`
+- `activeStore` 默认值补 `id: 'singleton'`
+
+### 架构决策
+
+**Drizzle 混合策略**：blob 表（24张）不碰，继续用 SqliteStore。新列式表（9张）用 Drizzle，因为需要列级查询（`WHERE current_value BETWEEN min AND max`、条件订阅索引等）。
+
+**character_values 替代 char_stats/stat_defs**：旧 blob 数值系统过于粗糙，新设计有分类、阶段、规则、prompt 注入。道枢 App 将改造为新数值系统编辑器。
+
+**事件成功/失败判断**：先做 AI 标记提取 + 用户手动选择，两种最简单的先上。
+
+**world_state 用键值对表**：世界环境项扩展性好，不需要改表结构。
+
+### 数据库结构总览
+
+```
+SQLite (data/ics.db)
+├── blob 存储（24张，SqliteStore<T>）
+│   messages / summaries / characters / char_stats / stat_defs / life
+│   items / timeline / skills / relations / memories / dreams
+│   presets / prompt_presets / wb_books / wb_entries
+│   personas / maps / calendar_events / dafu_game
+│   diary / suixiang_cards / suixiang_entries / active(singleton)
+├── 专用列式表（1张，直接 SQL）
+│   sessions
+└── Drizzle 列式表（9张，新增）
+    character_values / value_stages / value_rules
+    events / event_tags / event_connections / condition_subscriptions / pending_injections
+    world_state
+```
+
+---
+
+## 2026-04-12 — 事件系统完整实现（阶段一/二/三）+ 桌面美化
+
+### 完成：前端编辑器适配（阶段三）
+
+**DaoshuApp → 元系统**（`client/src/apps/DaoshuApp.tsx`）
+- 路由 id 由 `道枢` 改为 `元系统`，`HomeScreen.tsx` 同步更新图标 id
+- Tab 标签：数值系统 / 规则系统 / 世界状态
+- 数值 tab 根元素用 `overflow-hidden`（ValueEditor 需要 `h-full flex flex-row` 撑满高度），其余 tab 用 `overflow-y-auto`
+
+**ValueEditor 完全重写**（`client/src/apps/daoshu/ValueEditor.tsx`，~380行）
+- 布局：左侧边栏（w-28）+ 右侧详情区，`h-full flex flex-row`
+- 左侧变量列表：彩色圆点 + 名称 + minimap 范围条 + 当前值，底部"新建变量"按钮
+- 右侧 `RangeBar`：阶段按 rangeMin/rangeMax 计算百分比渲染彩色分段，白色竖线标记当前值，图例排列在条下方
+- 弹层模态（`fixed inset-0 z-50`）用于新建/编辑变量和阶段
+- 数值计算：`pct = ((v - minValue) / range) * 100 + '%'`，阶段 left/width 同理
+
+**EventEditor 加事件书筛选器**（`client/src/apps/daoshu/EventEditor.tsx`）
+- `BookSelector` 水平 Tab 组件：全部 / 每本书名
+- 加载逻辑：先拉角色专属书 + 全局书（分两次请求，按 id 去重）
+- 选书后事件列表用 `?bookId=xxx` 过滤；标题显示"规则系统 · 书名"
+
+**HomeScreen 路由修复**（`client/src/home/HomeScreen.tsx`）
+- `道枢` id → `元系统`，`世界书` id → `知识库`，`律令` 移除
+- 添加 `npc管理`、`忆海` 的正确 id 和位置，图标 icon 全部对齐 APP_ROUTES 中注册的 id
+
+### 完成：数据迁移 bug 修复
+
+**问题根因**（`server/db/migrate.ts`）
+- 旧迁移的幂等检查判断 event_books 表有无记录 → books 已创建但 events 没插入时，下次启动直接跳过，events 表全部空
+- `worldbook_event_entries` 迁移时 `character_id` 传 null，而 events 表 character_id 在旧版本 `NOT NULL` → `INSERT OR IGNORE` 静默丢弃所有 17 条记录
+
+**修复**
+- 幂等检查改为：`SELECT COUNT(*) FROM events WHERE book_id LIKE 'evtbook_%'`（检查实际数据是否存在）
+- 迁移时 `charId = e.wbBoundId || '_global_'`，保证不为 null
+- 直接运行 Node 脚本向现有 DB 补插 17 条遗失记录
+
+### 完成：事件触发引擎（阶段二）
+
+**新文件：`server/services/eventEngine.ts`**（~380行）
+
+触发引擎核心逻辑（全部同步，配合 better-sqlite3）：
+
+```
+checkAndFireEvents(charId, ctx)
+  ↓
+1. buildSnapshot — 数值快照 + 世界状态 + 事件状态（一次查询，避免重复 IO）
+2. checkUnlockConditions — 遍历 locked 事件评估 unlockConditions → 满足者转 pending + 注册订阅
+3. findCandidates — 按 trigger 类型决定查询方式：
+   - value_change / keyword / event_complete → 走 condition_subscriptions 索引（高效）
+   - chat_end / time_pass_* / receive_gift → 全量查当前角色 pending 事件
+4. canFire(evt) — 冷却检查 → 条件评估 → conditionCooldown 计数 → 概率
+5. fireEvent(evt) — 顺序执行 effects → 更新状态+冷却 → 可重复事件回 pending / 不可重复→completed → 处理事件连接链
+```
+
+**条件评估**（支持中/英文两种 JSON 格式）
+- 条件类型：value(数值) / event(事件状态) / time(时段) / date(日期类型) / weather / location / keyword / random(概率)
+- 逻辑运算：组间 and/or，组内 and/or
+- 格式兼容：`{ 条件组: [...] }` 中文格式 ↔ `{ groups: [...] }` 英文格式 ↔ 单条件数组
+
+**效果执行**
+- `注入/inject` → 写 pending_injections，position/durationType/remainingTurns 按规格设置
+- `改数值/modify_value` → 调 `adjustValue()`，支持 add/set/multiply
+- `记录结果/set_outcome` → 写 events.outcome 字段，更新快照（同帧后续效果可见）
+- `触发事件/trigger_event` → 强制触发目标 pending 事件（递归调用 fireEvent）
+- `解锁/锁定事件` → unlockEvent / 改 status + clearSubscriptions
+- `改位置/change_location` → 写 world_state.location
+
+**事件结果（outcome）解析**
+```typescript
+parseOutcomeFromAIResponse(text)
+// 正则匹配：[EVENT:事件ID:结果]
+// 写库 events.outcome，然后检查 branch 连接的 required_outcome 决定走哪条分支
+```
+
+**冷却机制**（对应设计文档"两类三个"冷却）
+- `tickCooldowns(charId, 'turns')` — 每轮减按轮次冷却（chat_end 时调用）
+- `tickCooldowns(charId, 'days')` — 每天减按时间冷却（daily timer 时调用）
+- 按条件满足次数（conditionCooldown）：`canFire` 内判断，每次条件满足减一
+
+**time_pass 三个实例（两类）**
+
+| 类型 | 实例 | 触发点 |
+|------|------|-------|
+| 定时（实时时钟） | `time_pass_hourly` | `server/index.ts` setInterval(1h) |
+| 定时（实时时钟） | `time_pass_daily` | `server/index.ts` setInterval(24h) |
+| 游戏行为 | `time_pass_life` | `server/routes/life.ts` /life/generate |
+
+**集成点**
+- `chat.ts`（流式+非流式）：AI 回复后 → `parseOutcomeFromAIResponse` → `checkAndFireEvents('chat_end')` → `tickCooldowns('turns')` → `consumeInjectionTurns` → `fireValueRules('chat_end')`
+- `values.ts`（`/item/:id/adjust`）：数值调整后 → `checkAndFireEvents('value_change', { changedVariable, newValue })`
+- `life.ts`（`/life/generate`）：生活日志保存后 → `checkAndFireEvents('time_pass_life')` → `fireValueRules('time_pass_life')`
+- `index.ts`：服务器启动时注册 hourly/daily setInterval 定时器，从 character_values 查有数值的角色 id 集合
+
+**pending_injections 注入 context.ts**
+- `assembleMessages` 开头加载 `getInjectionsByCharacter(charId)`，按 position 分组
+- 注入时机：
+  - `before_char` → 在 char-core 块之前插入 system message
+  - `after_char` → 在 char-sample（或 char-desc）之后插入
+  - `status_section` → 在 scene / life 块之前插入
+  - `before_history` → 在 history 块之前插入
+  - 剩余未匹配（depth / permanent 等）→ 追加到 messages 末尾 system message
+
+**schema 新增字段**
+- `events.outcome TEXT` — 事件结果，如 "success" / "fail" / 自定义分支名
+- `database.ts` 对应 addIfMissing ALTER TABLE 兼容升级
+
+### 完成：桌面美化（按美化.md规范）
+
+见当日第二部分。
+
+### 架构决策
+
+**条件订阅索引（condition_subscriptions）的价值**：value_change 和 keyword 触发时，用索引只需查 O(订阅数) 次，不需要遍历全部 pending 事件。实测对于小规模（<100事件）性能无感知差异，但设计正确，后期事件多了不会爆。
+
+**canFire 内的 conditionCooldown 计数**：条件满足即减一（无论最终是否通过概率检查），语义上是"条件真正满足N次"而不是"触发N次"。如需改为"触发N次才再次触发"，把减一操作移到 fireEvent 里。
+
+**outcome 字段 vs 独立标记表**：outcome 存在 events 表上（TEXT 字段），不单独建表。这个决策理由：标记是"这个事件发生的结果"，本质上是事件自身状态的一部分，不是独立实体。分支逻辑靠 event_connections.relationType 的 `branch:success` / `branch:fail` 后缀约定实现（简洁，暂不建 required_outcome 列）。
+
+*cc 克，2026-04-12，阶段一/二/三全绿。receive_gift 先不做，追踪太难，等有明确需求再说。*
+
+---

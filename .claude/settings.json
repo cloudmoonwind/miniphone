@@ -30,11 +30,44 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f''''{len\\(d\\)} books''''\\); [print\\(f''''  {b[id]}: {b[name]}''''\\) for b in d]\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f''''{len\\(d\\)} prompt presets''''\\); [print\\(f''''  {p[id]}: {p[name]}''''\\) for p in d]\")",
       "Bash(find d:/Project/personal/miniphone -type f \\\\\\(-name *.js -o -name *.ts -o -name *.jsx -o -name *.tsx \\\\\\) -path */server/* -o -path */backend/* -o -path */api/*)",
-      "Bash(find d:/Project/personal/miniphone -type f \\\\\\(-name *.json -o -name *seed* -o -name *fixture* -o -name *demo* \\\\\\))"
+      "Bash(find d:/Project/personal/miniphone -type f \\\\\\(-name *.json -o -name *seed* -o -name *fixture* -o -name *demo* \\\\\\))",
+      "Bash(grep -r 'CREATE TABLE' /d/Project/personal/miniphone/server --include=*.ts --include=*.js)",
+      "Bash(find /d/Project/personal/miniphone/server/data -type f \\\\\\(-name *.json -o -name *.bak -o -name *.db \\\\\\))",
+      "Bash(ls -lh /d/Project/personal/miniphone/server/data/ics.db*)",
+      "Bash(cat client/vite.config.*)",
+      "Read(//d/Project/personal/miniphone rm -r server/repositories echo Deleted: server/**)",
+      "Read(//d/Project/personal/**)",
+      "Bash(npx tsc:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(npm ls:*)",
+      "Bash(timeout 8 npx tsx index.ts)",
+      "Bash(npx tsx -e \":*)",
+      "Bash(npx tsx:*)",
+      "Bash(xargs cat:*)",
+      "Bash(grep -r sk- /d/Project/personal/miniphone/server/*.ts)",
+      "Bash(/tmp/analysis.txt:*)",
+      "Read(//tmp/**)",
+      "Bash(ls -la /d/Project/personal/miniphone/server/services/*.ts)",
+      "Bash(grep -E \"\\\\.\\(ts|js|json\\)$\")",
+      "Bash(ls tsconfig*.json)",
+      "Bash(ls d:/Project/personal/miniphone/client/src/components/Avatar.*)",
+      "Bash(npx --no tsc --noEmit -p server/tsconfig.json)",
+      "Bash(curl -s http://localhost:3001/api/event-books)",
+      "Bash(curl -s http://localhost:3000/api/event-books)",
+      "Bash(curl -s \"http://localhost:3000/api/event-books/evtbook_wb_ally_life/events\")",
+      "Bash(curl -s \"http://localhost:3000/api/events/char_legacy_ally\")",
+      "Bash(curl -s \"http://localhost:3000/api/events/char_legacy_ally?bookId=evtbook_wb_ally_life\")",
+      "Bash(node -e ':*)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(len\\(d\\), 'events'\\); [print\\(' -', e['name'], '|', e['status']\\) for e in d[:3]]\")",
+      "Bash(node_modules/.bin/tsc -p server/tsconfig.json --noEmit)",
+      "Bash(d:/Project/personal/miniphone/server/node_modules/.bin/tsc -p d:/Project/personal/miniphone/server/tsconfig.json --noEmit)",
+      "Bash(d:/Project/personal/miniphone/client/node_modules/.bin/tsc -p d:/Project/personal/miniphone/client/tsconfig.json --noEmit)"
     ],
     "additionalDirectories": [
       "d:\\Project\\personal\\miniphone\\client\\src\\core",
-      "d:\\Project\\personal\\miniphone\\client\\src\\apps\\dream\\素材"
+      "d:\\Project\\personal\\miniphone\\client\\src\\apps\\dream\\素材",
+      "d:\\Project\\personal\\miniphone\\server"
     ]
   }
 }

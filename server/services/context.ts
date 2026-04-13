@@ -27,6 +27,7 @@ import {
   activeStore, promptStore, personaStore, lifeStore, dreamStore,
 } from '../storage/index.js';
 import { getActivatedEntries } from './worldbook.js';
+import { getInjectionsByCharacter } from './events.js';
 
 const HOT_COUNT  = 20;
 const WARM_COUNT = 5;
@@ -159,9 +160,9 @@ export async function assembleMessages(charId, personaId, newUserContent, option
   let activatedWb = { 'system-top': [], 'system-bottom': [], 'before-chat': [], 'after-chat': [] };
   try {
     const sortedMsgs = [...allMsgs].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp));
-    const activated = await getActivatedEntries(charId, sortedMsgs);
+    const activated = getActivatedEntries(charId, sortedMsgs.map(m => ({ role: m.sender, content: m.content })));
     for (const e of activated) {
-      const pos = e.insertionPosition || 'system-bottom';
+      const pos = e.position || 'system-bottom';
       if (!activatedWb[pos]) activatedWb['system-bottom'].push(e);
       else activatedWb[pos].push(e);
     }
@@ -289,7 +290,26 @@ export async function assembleMessages(charId, personaId, newUserContent, option
 
   // ── 世界书文本构建助手 ───────────────────────────────────────────────────
   const wbText = (entries) =>
-    entries.map(e => (e.name ? `【${e.name}】\n` : '') + (e.content || '')).filter(Boolean).join('\n\n');
+    entries.map(e => (e.memo ? `【${e.memo}】\n` : '') + (e.content || '')).filter(Boolean).join('\n\n');
+
+  // ── 待注入内容（pending_injections） ────────────────────────────────────
+  // 按 position 分组，待组装时插入对应位置
+  const pendingInj = (() => {
+    try { return getInjectionsByCharacter(charId); } catch { return []; }
+  })();
+  const injByPos: Record<string, string[]> = {};
+  for (const inj of pendingInj) {
+    const pos = inj.position || 'status_section';
+    if (!injByPos[pos]) injByPos[pos] = [];
+    injByPos[pos].push(inj.content);
+  }
+  const consumeInj = (pos: string): string | null => {
+    const items = injByPos[pos];
+    if (!items?.length) return null;
+    const merged = items.join('\n');
+    delete injByPos[pos];
+    return merged;
+  };
 
   // ════ 按 contextItems 顺序构建 messages 数组 ════════════════════════════
   const messages = [];
@@ -301,6 +321,24 @@ export async function assembleMessages(charId, personaId, newUserContent, option
     const customEntry = !slotDef ? customEntriesMap[item.entryId] : null;
     const blockType = slotDef?.blockType || null;
     const role      = item.roleOverride || slotDef?.defaultRole || customEntry?.role || 'system';
+
+    // before_char 注入点：在 char-core 之前插入
+    if (blockType === 'char-core') {
+      const inj = consumeInj('before_char');
+      if (inj) messages.push({ role: 'system', content: inj });
+    }
+
+    // before_history 注入点：在 history 之前插入
+    if (blockType === 'history') {
+      const inj = consumeInj('before_history');
+      if (inj) messages.push({ role: 'system', content: inj });
+    }
+
+    // status_section 注入点：在 scene/life 之前插入
+    if (blockType === 'scene' || blockType === 'life') {
+      const inj = consumeInj('status_section');
+      if (inj) { messages.push({ role: 'system', content: inj }); }
+    }
 
     // 特殊：history 展开为多条消息
     if (blockType === 'history') {
@@ -437,6 +475,18 @@ export async function assembleMessages(charId, personaId, newUserContent, option
       const finalContent = item.maxTokens ? truncateToTokens(content, item.maxTokens) : content;
       messages.push({ role, content: finalContent });
     }
+
+    // after_char 注入点：在 char-sample（或兜底 char-desc）之后插入
+    if (blockType === 'char-sample' || blockType === 'char-desc') {
+      const inj = consumeInj('after_char');
+      if (inj) messages.push({ role: 'system', content: inj });
+    }
+  }
+
+  // 所有未消耗的注入（position 未匹配或 permanent 类型）→ 追加到最后的 system 块前
+  const remaining = Object.values(injByPos).flat();
+  if (remaining.length) {
+    messages.push({ role: 'system', content: remaining.join('\n') });
   }
 
   // 若上下文以 assistant 结尾且无新用户消息，追加 (继续) 占位

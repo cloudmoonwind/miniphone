@@ -1522,3 +1522,233 @@ hover时：
 3. **世界书FilesApp**：加上noRecurse/noFurtherRecurse勾选框，书级scanDepth输入框
 4. **梦境UI**（你在line 48-276描述的那个星空水潭设计，这个我还没开始）
 5. 其他功能（邀请系统、聊天+按钮、回放等）
+
+
+# ts重构检查：
+别泛泛看目录，直接按“能不能跑 + 有没有坑”去验。下面这套是最省时间的检查顺序，10–20 分能把质量摸清。
+
+
+---
+
+一、先看有没有“工程级问题”（30 秒判断）
+
+根目录看 4 个东西：
+
+package.json
+
+tsconfig.json
+
+是否同时存在 .js + .ts
+
+有没有 .env.example
+
+
+👉 直接判断：
+
+还有一堆 .js → 迁移没收口
+
+没 .env.example → 环境不可复现
+
+tsconfig 很空 → 类型系统基本没用
+
+
+
+---
+
+二、依赖 & 脚本（必须能一键跑）
+
+看 package.json：
+
+scripts: {
+  "dev": "...",
+  "build": "...",
+  "start": "...",
+  "lint": "...",
+  "test": "..."
+}
+
+实测（必须跑）
+
+npm install
+npm run build
+npm run dev
+
+看三点：
+
+有没有直接报错（路径/类型）
+
+有没有 warning 一堆
+
+dev 能不能正常起前后端
+
+
+👉 build 失败 = 直接不合格
+
+
+---
+
+三、TypeScript 是否“真在用”（核心）
+
+打开 tsconfig.json，看这几个：
+
+{
+  "strict": true,
+  "noImplicitAny": true,
+  "allowJs": false
+}
+
+判断标准
+
+allowJs: true → 还在混 JS（没迁完）
+
+strict: false → TS 基本是摆设
+
+
+👉 再全局搜：
+
+:any
+
+一堆 any → 等于没写类型
+
+
+---
+
+四、前后端结构是否清晰
+
+典型分离结构应该像：
+
+frontend/
+backend/
+
+或：
+
+client/
+server/
+
+后端看什么
+
+有没有分层：
+
+routes
+
+controllers
+
+services
+
+models
+
+
+
+如果是一个 index.ts 全写：
+
+👉 后期必炸
+
+
+---
+
+五、接口是否规范（关键）
+
+随便打开一个 API：
+
+看有没有：
+
+参数校验（zod / joi / class-validator）
+
+错误处理（try/catch 统一）
+
+返回格式统一
+
+
+坏代码长这样：
+
+res.send(data)
+
+好一点至少：
+
+res.json({ code: 0, data })
+
+
+---
+
+六、数据库层（最容易出事）
+
+看有没有用这些：
+
+ORM：
+
+Prisma
+
+TypeORM
+
+
+
+或者原生 SQL
+
+检查点：
+
+1. 有没有 migration 文件
+
+
+2. 有没有 schema 定义
+
+
+3. 有没有 .env 里的 DB 配置
+
+
+
+👉 没 migration = 数据结构不可控
+
+
+---
+
+七、环境变量管理
+
+看：
+
+.env
+.env.example
+
+标准情况：
+
+.env 不进 git
+
+.env.example 提供模板
+
+
+👉 没 example → 别人根本跑不起来
+
+
+---
+
+八、前端是否乱用接口
+
+随便找一个 API 调用：
+
+看有没有：
+
+baseURL 统一管理
+
+请求封装（axios instance）
+
+
+如果到处：
+
+fetch('http://localhost:3000/xxx')
+
+👉 后期改接口 = 地狱
+
+
+---
+
+九、快速“质量评分法”（很实用）
+
+你可以直接按这个打分：
+
+项目	合格标准
+
+build	必须成功
+TS 严格模式	必须开
+JS 残留	不应该有
+API 结构	有分层
+DB	有 migration
+env	有 example

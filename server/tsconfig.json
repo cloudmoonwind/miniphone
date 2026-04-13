@@ -5,14 +5,13 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": false,
-    "allowJs": true,
-    "checkJs": false,
+    "allowJs": false,
     "skipLibCheck": true,
     "outDir": "./dist",
     "rootDir": "./",
     "resolveJsonModule": true,
     "esModuleInterop": true
   },
-  "include": ["./**/*.ts", "./**/*.js"],
+  "include": ["./**/*.ts"],
   "exclude": ["node_modules", "dist", "data"]
 }

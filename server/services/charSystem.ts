@@ -19,7 +19,7 @@ import {
 } from '../storage/index.js';
 import { getClient, chatCompletion } from '../services/ai.js';
 import { genId } from '../storage/FileStore.js';
-import { getEventPoolEntries } from '../services/worldbook.js';
+import { getEventPool } from '../services/events.js';
 import { getCharStats, getMergedStatDefs } from '../services/charstats.js';
 import { getPrompt, BUILTIN_PROMPT_PRESETS } from '../services/promptPresets.js';
 
@@ -152,13 +152,13 @@ const MILESTONES = [
   { stat: 'stress',       threshold: 80, op: 'gte', title: '压力过大', desc: '压力值过高，可能会影响行为' },
 ];
 
-function checkCondition(value, op, threshold) {
+function checkCondition(value: number, op: string, threshold: number): boolean {
   switch (op) {
-    case 'gte': return value >= threshold;
-    case 'lte': return value <= threshold;
-    case 'gt':  return value > threshold;
-    case 'lt':  return value < threshold;
-    case 'eq':  return value === threshold;
+    case 'gte': case '>=': return value >= threshold;
+    case 'lte': case '<=': return value <= threshold;
+    case 'gt':  case '>':  return value >  threshold;
+    case 'lt':  case '<':  return value <  threshold;
+    case 'eq':  case '==': return value === threshold;
     default: return false;
   }
 }
@@ -171,35 +171,38 @@ export async function checkStatThresholds(charId, prevStats, newStats) {
     const events = [];
     const now = new Date().toISOString();
 
-    // 检查世界书条件事件
-    const eventPool = await getEventPoolEntries(charId);
-    const conditionalEvents = eventPool.filter(e => e.activationMode === 'event-conditional');
+    // 检查事件池中的条件事件（有 triggerConditions 的 repeatable 事件）
+    const eventPool = getEventPool(charId);
+    const conditionalEvents = eventPool.filter(e => e.triggerConditions);
 
-    for (const wbEvent of conditionalEvents) {
-      const cond = wbEvent.eventConfig?.condition;
-      if (!cond) continue;
+    for (const poolEvent of conditionalEvents) {
+      try {
+        const cond = JSON.parse(poolEvent.triggerConditions!);
+        const firstCond = cond?.条件组?.[0]?.条件?.[0];
+        if (!firstCond || firstCond.类型 !== '数值' || !firstCond.目标) continue;
 
-      const prevVal = prevStats[cond.stat];
-      const newVal = newStats[cond.stat];
-      if (prevVal == null || newVal == null) continue;
+        const prevVal = prevStats[firstCond.目标];
+        const newVal  = newStats[firstCond.目标];
+        if (prevVal == null || newVal == null) continue;
 
-      const wasMet = checkCondition(prevVal, cond.op, cond.value);
-      const isMet  = checkCondition(newVal, cond.op, cond.value);
+        const wasMet = checkCondition(prevVal, firstCond.比较 ?? '>=', firstCond.值 ?? 0);
+        const isMet  = checkCondition(newVal,  firstCond.比较 ?? '>=', firstCond.值 ?? 0);
 
-      // 只在条件从「不满足」变为「满足」时触发
-      if (!wasMet && isMet) {
-        const event = await timelineStore.create({
-          id: genId('tl'), charId,
-          title: wbEvent.name,
-          content: wbEvent.content,
-          type: 'event',
-          timestamp: now,
-          linkedItemIds: [], linkedEventId: wbEvent.id,
-          extractedSource: 'stat-threshold',
-        });
-        events.push(event);
-        console.log('[charSystem] stat threshold event triggered:', wbEvent.name);
-      }
+        // 只在条件从「不满足」变为「满足」时触发
+        if (!wasMet && isMet) {
+          const event = await timelineStore.create({
+            id: genId('tl'), charId,
+            title: poolEvent.name,
+            content: poolEvent.description ?? poolEvent.effects ?? '',
+            type: 'event',
+            timestamp: now,
+            linkedItemIds: [], linkedEventId: poolEvent.id,
+            extractedSource: 'stat-threshold',
+          });
+          events.push(event);
+          console.log('[charSystem] stat threshold event triggered:', poolEvent.name);
+        }
+      } catch { /* 跳过格式错误的条件 */ }
     }
 
     // 检查内置里程碑

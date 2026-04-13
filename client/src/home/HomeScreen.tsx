@@ -41,15 +41,15 @@ const PAGES = [
     { id: 'widget-clock',        type: 'widget', component: ClockWidget,       gridPos: '1 / 1 / 3 / 5' },
     { id: 'widget-chat-preview', type: 'widget', component: ChatPreviewWidget, gridPos: '3 / 1 / 4 / 5' },
     { id: '结缘',    name: '结缘',    icon: Heart,             gridPos: '4 / 1 / 5 / 2' },
-    { id: '道枢',    name: '道枢',    icon: SlidersHorizontal, gridPos: '4 / 2 / 5 / 3' },
-    { id: '律令',    name: '律令',    icon: Scroll,            gridPos: '4 / 3 / 5 / 4' },
+    { id: '元系统',  name: '元系统',  icon: SlidersHorizontal, gridPos: '4 / 2 / 5 / 3' },
+    { id: '知识库',  name: '知识库',  icon: BookCopy,          gridPos: '4 / 3 / 5 / 4' },
     { id: '命格',    name: '命格',    icon: User,              gridPos: '4 / 4 / 5 / 5' },
     { id: '地图',    name: '地图',    icon: Map,               gridPos: '5 / 1 / 6 / 2' },
-    { id: '世界书',  name: '世界书',  icon: BookCopy,          gridPos: '5 / 2 / 6 / 3' },
+    { id: '忆海',    name: '忆海',    icon: Brain,             gridPos: '5 / 2 / 6 / 3' },
     { id: '群聊',    name: '群聊',    icon: Users2,            gridPos: '5 / 3 / 6 / 4' },
     { id: '角色系统', name: '角色系统', icon: Bot,             gridPos: '5 / 4 / 6 / 5' },
     { id: '社区',    name: '社区',    icon: Users,             gridPos: '6 / 1 / 7 / 2' },
-    { id: '忆海',    name: '忆海',    icon: Brain,             gridPos: '6 / 2 / 7 / 3' },
+    { id: 'npc管理', name: 'NPC管理', icon: Users,             gridPos: '6 / 2 / 7 / 3' },
   ],
   // Page 2 — 生活工具
   [
@@ -83,12 +83,13 @@ export default function HomeScreen({ onOpenApp, wallpaper, recentChat, onOpenRec
 
   return (
     <div
-      className="h-full bg-gradient-to-br from-blue-400 to-pink-400 flex flex-col relative overflow-hidden"
+      className="h-full flex flex-col relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)' }}
     >
       {wallpaper && (
         <img src={wallpaper} className="absolute inset-0 w-full h-full object-cover" alt="" />
       )}
-      <div className="absolute inset-0 bg-black/10" />
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,var(--desktop-overlay, 0.1))' }} />
 
       {/* 滑动页面区 */}
       <motion.div

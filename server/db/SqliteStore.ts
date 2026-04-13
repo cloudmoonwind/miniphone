@@ -99,7 +99,7 @@ export class SqliteStore<T extends { id: string }> implements IFileStore<T> {
       id: `${this.table}_${Date.now()}_${shortId()}`,
       createdAt: now,
       ...item,
-    } as T;
+    } as unknown as T;
     this.db
       .prepare<[string, string | null, string, string]>(
         `INSERT INTO "${this.table}" (id, char_id, data, created_at) VALUES (?, ?, ?, ?)`

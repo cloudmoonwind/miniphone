@@ -2,6 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── 设计令牌（全局参数，美化App 可通过 JS 动态修改） ───────────────────────
+   用法：document.documentElement.style.setProperty('--fs-body', '18px')
+   ──────────────────────────────────────────────────────────────────────── */
+:root {
+  /* 字体大小（6级） */
+  --fs-h1:    32px;   /* 大标题 */
+  --fs-h2:    24px;   /* 页面标题 */
+  --fs-h3:    18px;   /* 正文标题 */
+  --fs-body:  16px;   /* 普通正文 */
+  --fs-small: 14px;   /* 辅助说明 */
+  --fs-xs:    12px;   /* 小标签/提示 */
+
+  /* 行高 */
+  --lh-title: 1.25;
+  --lh-body:  1.55;
+
+  /* 间距（8px 基础网格） */
+  --sp-1: 8px;
+  --sp-2: 16px;
+  --sp-3: 24px;
+  --sp-4: 32px;
+  --sp-5: 40px;
+  --sp-6: 48px;
+
+  /* 圆角 */
+  --r-btn:    10px;   /* 按钮 */
+  --r-card:   14px;   /* 卡片 */
+  --r-avatar: 50%;    /* 头像 */
+  --r-sm:     8px;    /* 小模块 */
+
+  /* 图标 */
+  --icon-size:   24px;
+  --icon-stroke: 1.5px;
+
+  /* 按钮最小高度（可点击区域） */
+  --btn-h: 44px;
+
+  /* 毛玻璃图标 */
+  --icon-bg:     rgba(255, 255, 255, 0.2);
+  --icon-border: rgba(255, 255, 255, 0.4);
+  --icon-blur:   16px;
+
+  /* 桌面背景（极光蓝+烟霞粉） */
+  --wallpaper-default: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+}
+
 body {
   background-color: #f0f2f5;
   display: flex;

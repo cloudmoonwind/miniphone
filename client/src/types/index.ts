@@ -132,46 +132,7 @@ export interface Active {
   };
 }
 
-// ── 世界书（WbBook / WbEntry）───────────────────────────────────────────────
-export interface WbBook {
-  id: string;
-  name: string;
-  charId: string | null;     // null = 全局世界书
-  enabled: boolean;
-  scanDepth?: number;
-  createdAt: string;
-}
-
-export type ActivationMode =
-  | 'always'
-  | 'keyword'
-  | 'event-random'
-  | 'event-conditional';
-
-export type InsertionPosition =
-  | 'system-top'
-  | 'system-bottom'
-  | 'before-chat'
-  | 'after-chat';
-
-export interface WbEntry {
-  id: string;
-  bookId: string;
-  name: string;
-  content: string;
-  enabled: boolean;
-  activationMode: ActivationMode;
-  insertionPosition: InsertionPosition;
-  keywords: string[];
-  weight?: number;
-  priority?: number;
-  noRecurse?: boolean;
-  noFurtherRecurse?: boolean;
-  condition?: { stat: string; op: string; value: number };
-  eventConfig?: any;
-  createdAt: string;
-  updatedAt?: string;
-}
+// ── 世界书类型已迁移到列式 schema，通过 /api/worldbook 接口的响应体推断 ─────
 
 // ── 角色属性数值（CharStats）────────────────────────────────────────────────
 export interface StatDef {

@@ -18,9 +18,9 @@ const AppIcon = ({ app, onOpen }) => (
     onClick={() => onOpen(app.id)}
     className="flex flex-col items-center justify-center gap-2 group"
   >
-    <div className="w-14 h-14 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center
-      shadow-lg group-active:scale-95 transition-transform border border-white/10">
-      <app.icon size={28} color="white" strokeWidth={1.5} />
+    <div className="w-14 h-14 bg-white/20 backdrop-blur-[16px] rounded-2xl flex items-center justify-center
+      shadow-lg group-active:scale-95 transition-transform border border-white/40">
+      <app.icon size={24} color="white" strokeWidth={1.5} />
     </div>
     <span className="text-xs font-medium text-white drop-shadow-md">{app.name}</span>
   </button>

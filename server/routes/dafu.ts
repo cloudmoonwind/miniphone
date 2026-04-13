@@ -9,12 +9,15 @@
 import { Router } from 'express';
 import {
   dafuStore, presetStore, activeStore,
-  characterStore, wbEntryStore, wbBookStore,
+  characterStore,
   timelineStore, messageStore, lifeStore,
 } from '../storage/index.js';
 import { genId } from '../storage/FileStore.js';
 import { getClient, chatCompletion } from '../services/ai.js';
-import { getActivatedEntries } from '../services/worldbook.js';
+import {
+  getActivatedEntries, getAllBooks, getEntriesByBook,
+  createBook, createEntry,
+} from '../services/worldbook.js';
 
 const router = Router();
 
@@ -203,11 +206,12 @@ async function embedWbContent(cells, wbBookId, mode) {
   const fallback = WB_CONTENT[mode] || [];
   if (!wbBookId) return cells.map((c, i) => ({ ...c, wbContent: fallback[i] || '' }));
   try {
-    const entries = await wbEntryStore.getAll(e => e.bookId === wbBookId && e.enabled);
+    const entries = getEntriesByBook(wbBookId).filter(e => e.enabled);
     return cells.map((c, i) => {
       const keys = [c.name, `格子${c.id}`, String(c.id)];
+      const kws = (kw: string) => { try { return JSON.parse(kw) as string[]; } catch { return []; } };
       const match = entries.find(e =>
-        keys.includes(e.name) || (e.keywords || []).some(kw => keys.includes(kw))
+        keys.includes(e.memo || '') || kws(e.keywords || '[]').some(kw => keys.includes(kw))
       );
       return { ...c, wbContent: match?.content || fallback[i] || '' };
     });
@@ -582,7 +586,7 @@ router.post('/game', async (req, res) => {
     // Auto-find mode-appropriate worldbook if none specified
     let resolvedWbBookId = wbBookId;
     if (!resolvedWbBookId) {
-      const allBooks = await wbBookStore.getAll();
+      const allBooks = getAllBooks();
       const modeKeywords = { '益智': '华尔街', '恋爱': '约会之旅', '十八禁': '欲望迷宫' };
       const keyword = modeKeywords[mode] || mode;
       const matchBook = allBooks.find(b => b.enabled && b.name.includes('大富翁') && (b.name.includes(keyword) || b.name.includes(mode)));
@@ -962,7 +966,7 @@ router.get('/records/:id', async (req, res) => {
 // POST /init-worldbooks — 初始化三套测试世界书
 router.post('/init-worldbooks', async (req, res) => {
   try {
-    const books = await wbBookStore.getAll();
+    const books = getAllBooks();
     const BOOK_DEFS = [
       { name: '大富翁·华尔街征途（益智）', mode: '益智' },
       { name: '大富翁·约会之旅（恋爱）', mode: '恋爱' },
@@ -972,23 +976,24 @@ router.post('/init-worldbooks', async (req, res) => {
     for (const def of BOOK_DEFS) {
       const existing = books.find(b => b.name === def.name);
       if (existing) { results.push({ book: existing, created: false }); continue; }
-      const book = await wbBookStore.create({
-        id: genId('wb'), name: def.name,
+      const book = createBook({
+        name: def.name,
         description: `${def.mode}模式专用棋盘格子内容`,
-        enabled: true, scanDepth: 20, charId: null,
       });
       const content = WB_CONTENT[def.mode] || [];
       for (let i = 0; i < DEFAULT_CELLS.length; i++) {
         const cell = DEFAULT_CELLS[i];
-        await wbEntryStore.create({
-          id: genId('wbe'), bookId: book.id,
-          name: `${cell.name}(格子${cell.id})`,
+        createEntry(book.id, {
+          memo: `${cell.name}(格子${cell.id})`,
           content: content[i] || `${cell.name}格子事件`,
-          keywords: [cell.name, `格子${cell.id}`, String(cell.id)],
-          activationMode: 'keyword', enabled: true,
-          priority: cell.id, insertionPosition: 'system-bottom',
-          noRecurse: false, noFurtherRecurse: true,
-        });
+          keywords: JSON.stringify([cell.name, `格子${cell.id}`, String(cell.id)]),
+          strategy: 'keyword',
+          enabled: 1,
+          orderNum: cell.id,
+          position: 'system-bottom',
+          noRecurse: 0,
+          noFurtherRecurse: 1,
+        } as any);
       }
       results.push({ book, created: true });
     }

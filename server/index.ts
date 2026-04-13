@@ -5,6 +5,7 @@ import bodyParser from 'body-parser';
 
 import { getDb } from './db/database.js';
 import { runMigration } from './db/migrate.js';
+import { seedAllCharacters } from './services/seed.js';
 
 import sessionsRouter    from './routes/sessions.js';
 import charactersRouter  from './routes/characters.js';
@@ -29,6 +30,10 @@ import relationsRouter   from './routes/relations.js';
 import suixiangRouter    from './routes/suixiang.js';
 import calendarRouter    from './routes/calendar.js';
 import dafuRouter        from './routes/dafu.js';
+import valuesRouter      from './routes/values.js';
+import eventsRouter, { injectionsRouter, eventBooksRouter } from './routes/events.js';
+import worldstateRouter  from './routes/worldstate.js';
+import { checkAndFireEvents, tickCooldowns, fireValueRules } from './services/eventEngine.js';
 
 const PORT = 3000;
 const app  = express();
@@ -79,7 +84,11 @@ app.use('/api/characters/:charId/relations', relationsRouter);
 app.use('/api/suixiang',                     suixiangRouter);
 app.use('/api/calendar',                     calendarRouter);
 app.use('/api/dafu',                         dafuRouter);
-// charstats/defs 作为独立路径暴露（charstats 路由内部已处理 /defs）
+app.use('/api/values',                       valuesRouter);
+app.use('/api/event-books',                  eventBooksRouter);
+app.use('/api/events',                       eventsRouter);
+app.use('/api/injections',                   injectionsRouter);
+app.use('/api/worldstate',                   worldstateRouter);
 
 // ── Error handler ───────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
@@ -96,7 +105,49 @@ app.use((err, req, res, next) => {
     console.error('[ICS server] 迁移检查失败（已有数据库数据则跳过）:', err.message);
   }
 
+  // 为所有角色注入数值/事件种子数据（幂等，已有则跳过）
+  try {
+    await seedAllCharacters();
+  } catch (err: any) {
+    console.error('[ICS server] 种子数据注入失败:', err.message);
+  }
+
   app.listen(PORT, () => {
     console.log(`[ICS server] listening on http://localhost:${PORT}`);
   });
+
+  // ── 时间流逝定时器（time_pass_hourly / time_pass_daily）──────────────────
+  function getActiveCharIds(): string[] {
+    try {
+      return (getDb().prepare('SELECT DISTINCT character_id FROM character_values').all() as { character_id: string }[])
+        .map(r => r.character_id);
+    } catch { return []; }
+  }
+
+  // 每小时触发：time_pass_hourly
+  const HOUR_MS = 60 * 60 * 1000;
+  setInterval(() => {
+    const charIds = getActiveCharIds();
+    for (const charId of charIds) {
+      try {
+        checkAndFireEvents(charId, { trigger: 'time_pass_hourly' });
+        fireValueRules(charId, 'time_pass_hourly');
+      } catch (e: any) { console.error('[time_pass_hourly]', charId, e.message); }
+    }
+    if (charIds.length) console.log('[time_pass_hourly] checked', charIds.length, 'characters');
+  }, HOUR_MS);
+
+  // 每天触发：time_pass_daily（每24小时）
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  setInterval(() => {
+    const charIds = getActiveCharIds();
+    for (const charId of charIds) {
+      try {
+        checkAndFireEvents(charId, { trigger: 'time_pass_daily' });
+        tickCooldowns(charId, 'days');
+        fireValueRules(charId, 'time_pass_daily');
+      } catch (e: any) { console.error('[time_pass_daily]', charId, e.message); }
+    }
+    if (charIds.length) console.log('[time_pass_daily] checked', charIds.length, 'characters');
+  }, DAY_MS);
 })();

@@ -3,7 +3,7 @@ import { SqliteStore } from '../db/SqliteStore.js';
 import type {
   Message, Summary, Character, CharStats, LifeLog,
   Item, TimelineEvent, Skill, Relation, Memory, Dream,
-  ApiPreset, PromptPreset, WbBook, WbEntry, Persona,
+  ApiPreset, PromptPreset, Persona,
   DiaryEntry, Active,
 } from '../types.js';
 
@@ -32,8 +32,8 @@ export const presetStore    = new SqliteStore<ApiPreset>(db, 'presets');
 export const promptStore    = new SqliteStore<PromptPreset>(db, 'prompt_presets');
 
 // ── 世界书 ────────────────────────────────────────────────────
-export const wbBookStore    = new SqliteStore<WbBook>(db, 'wb_books');
-export const wbEntryStore   = new SqliteStore<WbEntry>(db, 'wb_entries');
+// 已迁移到列式表（worldbooks / worldbook_entries / worldbook_event_entries）
+// 通过 server/services/worldbook.ts 操作，不再使用 blob store
 
 // ── 用户数据 ──────────────────────────────────────────────────
 export const personaStore   = new SqliteStore<Persona>(db, 'personas');
@@ -50,6 +50,7 @@ export const suixiangEntryStore = new SqliteStore<any>(db, 'suixiang_entries');
 export const activeStore = new SqliteStore<Active>(db, 'active', {
   singleton: true,
   defaultValue: {
+    id: 'singleton',
     primaryPresetId: null,
     activeMapId: null,
     featurePresets: { summaries: null, dafu: null, life: null, charSystem: null, dreams: null },

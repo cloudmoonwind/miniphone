@@ -13,7 +13,7 @@
  *   - wallpaper → AppContext.wallpaper
  *   - recentChat → AppContext.recentChat
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AppProvider, useApp } from './core/AppContext.jsx';
 import StatusBar from './components/StatusBar';
@@ -36,7 +36,7 @@ import AIConsoleApp  from './apps/AIConsoleApp';
 import WorldbookApp  from './apps/WorldbookApp';
 import CharLifeApp   from './apps/CharLifeApp';
 import CharSystemApp from './apps/CharSystemApp';
-import RuleSystemApp from './apps/RuleSystemApp';
+import DaoshuApp     from './apps/DaoshuApp';
 import NPCApp        from './apps/NPCApp';
 import MinggeApp     from './apps/MinggeApp';
 import DiaryApp      from './apps/DiaryApp';
@@ -77,10 +77,9 @@ function AppContent({ currentApp, setCurrentApp }) {
     梦境:     <ErrorBoundary><DreamApp       onBack={back} char={activeChar} /></ErrorBoundary>,
     忆海:     <ErrorBoundary><MemoryApp      onBack={back} /></ErrorBoundary>,
     终端:     <ErrorBoundary><AIConsoleApp   onBack={back} /></ErrorBoundary>,
-    世界书:   <ErrorBoundary><WorldbookApp   onBack={back} /></ErrorBoundary>,
+    知识库:   <ErrorBoundary><WorldbookApp   onBack={back} /></ErrorBoundary>,
     角色系统: <ErrorBoundary><CharSystemApp  onBack={back} onOpenApp={openApp} initialChar={activeChar} /></ErrorBoundary>,
-    道枢:     <ErrorBoundary><RuleSystemApp  onBack={back} /></ErrorBoundary>,
-    律令:     <ErrorBoundary><RuleSystemApp  onBack={back} /></ErrorBoundary>,
+    元系统:   <ErrorBoundary><DaoshuApp      onBack={back} /></ErrorBoundary>,
     npc管理:  <ErrorBoundary><NPCApp         onBack={back} initialChar={activeChar} /></ErrorBoundary>,
     角色手机: <ErrorBoundary><CharPhoneApp   onBack={() => setCurrentApp('角色系统')} initialChar={activeChar} /></ErrorBoundary>,
     命格:     <ErrorBoundary><MinggeApp      onBack={back} /></ErrorBoundary>,
@@ -133,6 +132,23 @@ function AppContent({ currentApp, setCurrentApp }) {
 // ── 根组件 ──────────────────────────────────────────────────────
 export default function App() {
   const [currentApp, setCurrentApp] = useState(null);
+
+  // 恢复桌面透明度 + 自定义字体
+  useEffect(() => {
+    const overlay = localStorage.getItem('ics_desktop_overlay');
+    if (overlay) document.documentElement.style.setProperty('--desktop-overlay', overlay);
+
+    const fontName = localStorage.getItem('ics_font_name');
+    const fontData = localStorage.getItem('ics_font_data');
+    if (fontName && fontData) {
+      const face = new FontFace(fontName, `url(${fontData})`);
+      face.load().then(f => {
+        document.fonts.add(f);
+        document.documentElement.style.setProperty('--font-family', `"${fontName}", sans-serif`);
+        (document.body.style as any).fontFamily = `var(--font-family)`;
+      }).catch(() => {});
+    }
+  }, []);
 
   return (
     <div className="w-[375px] h-[812px] bg-black rounded-[3rem] shadow-2xl border-[8px] border-gray-800 overflow-hidden relative ring-4 ring-gray-300">
