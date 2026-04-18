@@ -4,7 +4,6 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 
 import { getDb } from './db/database.js';
-import { runMigration } from './db/migrate.js';
 import { seedAllCharacters } from './services/seed.js';
 
 import sessionsRouter    from './routes/sessions.js';
@@ -96,14 +95,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
-// ── 启动：先运行数据迁移，再开始监听 ──────────────────────────
+// ── 启动 ────────────────────────────────────────────────────────────────
 (async () => {
-  try {
-    const db = getDb();
-    await runMigration(db);
-  } catch (err: any) {
-    console.error('[ICS server] 迁移检查失败（已有数据库数据则跳过）:', err.message);
-  }
+  // getDb() 内部会自动运行 drizzle migrations
+  getDb();
 
   // 为所有角色注入数值/事件种子数据（幂等，已有则跳过）
   try {

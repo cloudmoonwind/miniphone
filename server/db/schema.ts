@@ -1,10 +1,22 @@
 // ============================================================
 // server/db/schema.ts
-// Drizzle ORM schema — 列式表定义（数值系统 / 事件系统 / 世界状态）
-// blob 存储表（messages, characters 等）仍走 SqliteStore，不在此定义
+// Drizzle ORM schema — 所有列式表的单一真相来源
+// schema 变更通过 drizzle-kit generate 生成 migration，不要直接改数据库
 // ============================================================
 
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+
+// ── 会话表 ────────────────────────────────────────────────────
+
+export const sessions = sqliteTable('sessions', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id').notNull(),
+  type:      text('type').notNull(),
+  name:      text('name'),
+  isActive:  integer('is_active').default(1),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at'),
+});
 
 // ── 数值系统 ──────────────────────────────────────────────────
 

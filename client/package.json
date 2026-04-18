@@ -1,6 +1,6 @@
 {
-  "name": "ics-mvp-client",
-  "version": "0.0.0",
+  "name": "ics-client",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

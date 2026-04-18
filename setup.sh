@@ -7,7 +7,7 @@ mkdir -p client/src/assets
 
 # 自动整理文件 (如果文件在根目录)
 [ -f "index.js" ] && mv index.js server/
-[ -f "package.json" ] && grep -q "ics-mvp-client" package.json && mv package.json client/
+[ -f "package.json" ] && grep -q "ics-client" package.json && mv package.json client/
 [ -f "vite.config.js" ] && mv vite.config.js client/
 [ -f "tailwind.config.js" ] && mv tailwind.config.js client/
 [ -f "postcss.config.js" ] && mv postcss.config.js client/

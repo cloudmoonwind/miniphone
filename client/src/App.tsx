@@ -42,7 +42,7 @@ import MinggeApp     from './apps/MinggeApp';
 import DiaryApp      from './apps/DiaryApp';
 import ItemsApp      from './apps/ItemsApp';
 import CharPhoneApp  from './apps/CharPhoneApp';
-import SuixiangApp   from './apps/SuixiangApp';
+import SuixiangApp   from './apps/suixiang';
 import CalendarApp   from './apps/CalendarApp';
 import DafuApp       from './apps/DafuApp';
 import TimeCapsuleApp from './apps/TimeCapsuleApp';

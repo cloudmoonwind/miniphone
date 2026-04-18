@@ -62,7 +62,12 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(len\\(d\\), 'events'\\); [print\\(' -', e['name'], '|', e['status']\\) for e in d[:3]]\")",
       "Bash(node_modules/.bin/tsc -p server/tsconfig.json --noEmit)",
       "Bash(d:/Project/personal/miniphone/server/node_modules/.bin/tsc -p d:/Project/personal/miniphone/server/tsconfig.json --noEmit)",
-      "Bash(d:/Project/personal/miniphone/client/node_modules/.bin/tsc -p d:/Project/personal/miniphone/client/tsconfig.json --noEmit)"
+      "Bash(d:/Project/personal/miniphone/client/node_modules/.bin/tsc -p d:/Project/personal/miniphone/client/tsconfig.json --noEmit)",
+      "Bash(grep -E \"\\\\.\\(md|txt|json\\)$\")",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(ls d:/Project/personal/miniphone/*.md)",
+      "Bash(mv DEVLOG.md DEV_LOG_2026-04-14.md EVENT_SYSTEM_PLAN.md ICS_动态系统_数据库设计.md ICS_设计讨论记录_v2.md UI_改进需求_2026-04-13.md project_structure.md task.md ts-migration.md 美化.md 需求文档-第二版.md 项目文档-第三版.md docs/archive/)",
+      "Bash(mv zai.md zai-对话补全.md docs/)"
     ],
     "additionalDirectories": [
       "d:\\Project\\personal\\miniphone\\client\\src\\core",
