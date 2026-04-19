@@ -8,11 +8,14 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import WaterScene    from './WaterScene';
 import CardListView  from './CardListView';
+import FlowEditor    from './FlowEditor';
 import { Card, api } from './types';
+
+type Mode = 'scene' | 'card' | 'editor';
 
 export default function SuixiangApp({ onBack }: { onBack: () => void }) {
   const [cards, setCards]   = useState<Card[]>([]);
-  const [mode, setMode]     = useState<'scene' | 'card'>('scene');
+  const [mode, setMode]     = useState<Mode>('scene');
 
   const loadCards = async () => {
     const data = await api('/suixiang/cards');
@@ -21,45 +24,48 @@ export default function SuixiangApp({ onBack }: { onBack: () => void }) {
 
   useEffect(() => { loadCards(); }, []);
 
-  const switchToCard  = () => setMode('card');
-  const switchToScene = () => setMode('scene');
-
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
       <AnimatePresence mode="wait">
-        {mode === 'scene' ? (
-          <motion.div
-            key="scene"
-            style={{ position: 'absolute', inset: 0 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+
+        {mode === 'scene' && (
+          <motion.div key="scene" style={{ position: 'absolute', inset: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
           >
             <WaterScene
               cards={cards}
               onBack={onBack}
-              onSwitchMode={switchToCard}
+              onSwitchMode={() => setMode('card')}
+              onOpenEditor={() => setMode('editor')}
               onCardUpdate={loadCards}
             />
           </motion.div>
-        ) : (
-          <motion.div
-            key="card"
-            style={{ position: 'absolute', inset: 0 }}
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -30 }}
+        )}
+
+        {mode === 'card' && (
+          <motion.div key="card" style={{ position: 'absolute', inset: 0 }}
+            initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
             transition={{ duration: 0.25 }}
           >
             <CardListView
               cards={cards}
               onBack={onBack}
-              onSwitchMode={switchToScene}
+              onSwitchMode={() => setMode('scene')}
               onCardUpdate={loadCards}
             />
           </motion.div>
         )}
+
+        {mode === 'editor' && (
+          <motion.div key="editor" style={{ position: 'absolute', inset: 0 }}
+            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
+            transition={{ duration: 0.3 }}
+          >
+            <FlowEditor onBack={() => setMode('scene')} />
+          </motion.div>
+        )}
+
       </AnimatePresence>
     </div>
   );

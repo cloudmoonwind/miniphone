@@ -67,12 +67,15 @@
       "Bash(npx drizzle-kit:*)",
       "Bash(ls d:/Project/personal/miniphone/*.md)",
       "Bash(mv DEVLOG.md DEV_LOG_2026-04-14.md EVENT_SYSTEM_PLAN.md ICS_动态系统_数据库设计.md ICS_设计讨论记录_v2.md UI_改进需求_2026-04-13.md project_structure.md task.md ts-migration.md 美化.md 需求文档-第二版.md 项目文档-第三版.md docs/archive/)",
-      "Bash(mv zai.md zai-对话补全.md docs/)"
+      "Bash(mv zai.md zai-对话补全.md docs/)",
+      "Bash(python3 -c ':*)",
+      "Bash(python -c ':*)"
     ],
     "additionalDirectories": [
       "d:\\Project\\personal\\miniphone\\client\\src\\core",
       "d:\\Project\\personal\\miniphone\\client\\src\\apps\\dream\\素材",
-      "d:\\Project\\personal\\miniphone\\server"
+      "d:\\Project\\personal\\miniphone\\server",
+      "d:\\Project\\personal\\miniphone\\素材\\随想app前端素材"
     ]
   }
 }
