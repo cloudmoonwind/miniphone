@@ -27,9 +27,12 @@ export const characterValues = sqliteTable('character_values', {
   category:      text('category').notNull(),  // 'attribute' | 'status' | 'emotion' | 'relation' | 'social'
   name:          text('name').notNull(),       // 显示名，如"好感度"
   variableName:  text('variable_name').notNull(), // 变量名，如"affection"
+  valueType:     text('value_type').notNull().default('continuous'), // 'continuous' | 'discrete'
   currentValue:  real('current_value').notNull().default(0),
   minValue:      real('min_value').notNull().default(0),
   maxValue:      real('max_value').notNull().default(100),
+  sortOrder:     integer('sort_order').notNull().default(0),
+  groupName:     text('group_name'),
   createdAt:     text('created_at').notNull(),
   updatedAt:     text('updated_at'),
 });
@@ -55,6 +58,7 @@ export const valueRules = sqliteTable('value_rules', {
   conditions:  text('conditions'),   // JSON，额外条件
   operation:   text('operation').notNull(),   // 'set' | 'add' | 'multiply'
   amount:      real('amount').notNull(),
+  description: text('description'),   // 文字说明，如"亲密接触时减少3-8"
   enabled:     integer('enabled').notNull().default(1), // 0/1
   createdAt:   text('created_at'),
 });

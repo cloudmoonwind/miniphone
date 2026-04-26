@@ -28,6 +28,7 @@ import {
 } from '../storage/index.js';
 import { getActivatedEntries } from './worldbook.js';
 import { getInjectionsByCharacter } from './events.js';
+import { getValuesByCharacter, getCurrentStage, seedDefaultVariables } from './values.js';
 
 const HOT_COUNT  = 20;
 const WARM_COUNT = 5;
@@ -64,6 +65,7 @@ const SLOT_DEFS = {
   'sys-scene':       { blockType: 'scene',      defaultRole: 'system' }, // 场景（可编辑）
   'sys-life':        { blockType: 'life',        defaultRole: 'system' }, // 近期生活
   'sys-dreams':      { blockType: 'dreams',     defaultRole: 'system' }, // 梦境
+  'sys-variables':   { blockType: 'variables',  defaultRole: 'system' }, // 变量系统状态
   'sys-summaries':   { blockType: 'summaries',  defaultRole: 'system' }, // chat history摘要
   'sys-history':     { blockType: 'history',    defaultRole: null     }, // chat history（特殊：展开为多条）
   'sys-syspost':     { blockType: 'sys-post',   defaultRole: 'system' }, // 系统提示_后（可编辑）
@@ -82,6 +84,7 @@ const DEFAULT_CONTEXT_ITEMS = [
   'sys-char-core', 'sys-char-desc', 'sys-char-sample',
   'sys-user-desc', 'sys-memories', 'sys-wbpost',
   'sys-scene', 'sys-life', 'sys-dreams',
+  'sys-variables',
   'sys-summaries', 'sys-history', 'sys-syspost',
 ].map(id => ({
   entryId: id,
@@ -435,6 +438,58 @@ export async function assembleMessages(charId, personaId, newUserContent, option
           }).join('\n\n');
         }
         break;
+
+      case 'variables': {
+        // 自动种seed情绪底色变量（幂等）
+        try { seedDefaultVariables(charId); } catch {}
+        const charVars = getValuesByCharacter(charId);
+        if (charVars.length > 0) {
+          // 从最新消息快照里取 emotion_state 字符串
+          let emotionState: string | null = null;
+          const msgsWithSnap = [...sortedMsgs].reverse().find(
+            (m: any) => m.variableSnapshot?.emotion_state
+          ) as any;
+          if (msgsWithSnap) emotionState = msgsWithSnap.variableSnapshot.emotion_state;
+
+          const lines: string[] = ['【当前变量状态】'];
+
+          // 情绪底色三轴（若存在）
+          const BASELINE_VARS = ['sanity', 'stability', 'intensity'];
+          const baselines = charVars.filter(v => BASELINE_VARS.includes(v.variableName));
+          if (baselines.length > 0) {
+            lines.push('情绪底色：' + baselines.map(v => `${v.variableName}(${v.name}) ${v.currentValue}`).join(' | '));
+          }
+
+          // 当前情绪状态（来自上轮快照）
+          if (emotionState) {
+            lines.push(`当前情绪：${emotionState}`);
+          }
+
+          // 其余变量
+          const others = charVars.filter(v => !BASELINE_VARS.includes(v.variableName));
+          for (const v of others) {
+            const stage = getCurrentStage(v.id);
+            const stageText = stage?.stageName ? `（${stage.stageName}）` : '';
+            lines.push(`${v.variableName}(${v.name})：${v.currentValue}${stageText}`);
+          }
+
+          // 情绪底色轴说明 + 格式指令
+          lines.push('');
+          lines.push('【情绪底色轴说明】三轴范围均为 -100~100：');
+          lines.push('sanity（理智）：负值=理性崩溃混乱，正值=冷静清醒');
+          lines.push('stability（稳定）：负值=情绪剧烈波动，正值=情绪稳定平静');
+          lines.push('intensity（强度）：负值=麻木压抑低迷，正值=情绪强烈激越');
+          lines.push('');
+          lines.push('【变量更新】每轮回复末尾必须附加此块，只写本轮有变化的项，不变的自动继承：');
+          lines.push('<var>');
+          lines.push('variableName: 原值→新值');
+          lines.push('情绪: 情绪词 X% | 情绪词 Y%（百分比之和=100，选2~5个主要情绪）');
+          lines.push('</var>');
+
+          content = lines.join('\n');
+        }
+        break;
+      }
 
       case 'summaries':
         if (warmSummaries.length > 0)

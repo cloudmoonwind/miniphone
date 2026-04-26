@@ -130,6 +130,15 @@ const SYSTEM_SLOTS = {
     desc: '角色最近 3 条梦境记录（由梦境 App 记录）',
     sourceLabel: '在「梦境」App 中记录',
   },
+  'sys-variables': {
+    name: '变量系统',
+    blockType: 'variables',
+    defaultRole: 'system',
+    color: 'purple',
+    icon: Brain,
+    desc: '当前角色变量状态 + 情绪底色三轴 + 变量更新格式指令',
+    sourceLabel: '在「元系统 → 变量系统」中管理',
+  },
   'sys-summaries': {
     name: 'chat history摘要',
     blockType: 'summaries',
@@ -231,6 +240,7 @@ const DEFAULT_CHAT_ITEMS = [
   'sys-char-core', 'sys-char-desc', 'sys-char-sample',
   'sys-user-desc', 'sys-memories', 'sys-wbpost',
   'sys-scene', 'sys-life', 'sys-dreams',
+  'sys-variables',
   'sys-summaries', 'sys-history', 'sys-syspost',
 ].map(id => ({
   entryId: id,

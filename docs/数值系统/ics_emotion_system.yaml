@@ -1,0 +1,697 @@
+# ═══════════════════════════════════════════════════════
+# ICS Emotion System Configuration
+# Interactive Character Simulation - Emotion System
+# Based on Anthropic's emotion vectors research (171 concepts)
+# Adapted for Chinese character simulation
+# ═══════════════════════════════════════════════════════
+
+version: "1.0"
+language: ["zh-CN", "en-US"]
+
+# ═══════════════════════════════════════════════════════
+# 情绪词库 / Emotion Lexicon
+# ═══════════════════════════════════════════════════════
+
+emotion_lexicon:
+  
+  # 中文情绪词库
+  zh_CN:
+    
+    sadness_cluster:
+      label: "悲伤系"
+      valence: negative
+      arousal: low
+      emotions:
+        basic:
+          - 悲伤
+          - 哀伤
+          - 伤心
+          - 心碎
+          - 痛心
+        literary:
+          - 忧郁
+          - 惆怅
+          - 怅然
+          - 凄然
+          - 怆然
+        heavy:
+          - 阴郁
+          - 沉郁
+          - 抑郁
+          - 苦闷
+          - 郁结
+        listless:
+          - 沮丧
+          - 颓丧
+          - 消沉
+          - 萎靡
+          - 无精打采
+        nostalgic:
+          - 怀旧
+          - 乡愁
+          - 思念
+          - 孤寂
+          - 寂寥
+    
+    anger_cluster:
+      label: "愤怒系"
+      valence: negative
+      arousal: high
+      emotions:
+        gradient:
+          - 不悦
+          - 恼怒
+          - 愤怒
+          - 暴怒
+          - 狂怒
+        cold:
+          - 不满
+          - 不快
+          - 愠怒
+          - 冷怒
+        hot:
+          - 火大
+          - 恼火
+          - 勃然大怒
+        resentment:
+          - 怨恨
+          - 积怨
+          - 愤懑
+          - 憋屈
+        hostile:
+          - 敌意
+          - 恶意
+          - 狠意
+          - 杀意
+    
+    fear_cluster:
+      label: "恐惧系"
+      valence: negative
+      arousal: high
+      emotions:
+        gradient:
+          - 不安
+          - 担忧
+          - 害怕
+          - 惊恐
+          - 恐惧
+          - 惊骇
+        social:
+          - 忐忑
+          - 惶恐
+          - 惴惴
+          - 局促
+          - 窘迫
+        physiological:
+          - 惊慌
+          - 慌乱
+          - 慌张
+          - 胆怯
+          - 胆寒
+    
+    shame_cluster:
+      label: "羞愧系"
+      valence: negative
+      arousal: medium
+      social: high
+      emotions:
+        gradient:
+          - 难为情
+          - 尴尬
+          - 羞愧
+          - 羞惭
+          - 耻辱
+        self_blame:
+          - 自责
+          - 愧疚
+          - 懊悔
+          - 悔恨
+    
+    calm_cluster:
+      label: "平静系"
+      valence: neutral
+      arousal: low
+      emotions:
+        calm_levels:
+          - 平静
+          - 安静
+          - 宁静
+          - 安详
+          - 淡然
+        relaxed:
+          - 轻松
+          - 舒适
+          - 惬意
+          - 悠然
+          - 自在
+        content:
+          - 满意
+          - 满足
+          - 安心
+          - 踏实
+          - 妥帖
+    
+    joy_cluster:
+      label: "喜悦系"
+      valence: positive
+      arousal: variable
+      emotions:
+        low_arousal:
+          - 愉快
+          - 欣喜
+          - 喜悦
+          - 欢喜
+        medium_arousal:
+          - 高兴
+          - 开心
+          - 快乐
+          - 畅快
+        high_arousal:
+          - 兴奋
+          - 激动
+          - 狂喜
+          - 欣喜若狂
+          - 得意忘形
+        specific:
+          - 得意
+          - 自豪
+          - 骄傲
+          - 幸福
+          - 陶醉
+    
+    contempt_cluster:
+      label: "轻蔑系"
+      valence: negative
+      arousal: low
+      superiority: high
+      emotions:
+        gradient:
+          - 不屑
+          - 鄙夷
+          - 轻蔑
+          - 蔑视
+          - 鄙视
+        sarcastic:
+          - 讥讽
+          - 嘲讽
+          - 冷笑
+          - 嗤笑
+        cold_hostile:
+          - 凉薄
+          - 刻薄
+          - 冷淡
+          - 冷漠
+    
+    complex_cluster:
+      label: "复杂混合"
+      valence: mixed
+      arousal: variable
+      emotions:
+        conflicted:
+          - 矛盾
+          - 纠结
+          - 挣扎
+          - 困惑
+          - 迷惘
+        numb:
+          - 麻木
+          - 倦怠
+          - 厌倦
+          - 索然无味
+          - 心如死灰
+    
+    social_cluster:
+      label: "社交情绪"
+      social: high
+      emotions:
+        positive:
+          - 感激
+          - 感动
+          - 温暖
+          - 亲切
+          - 关切
+        negative:
+          - 嫉妒
+          - 眼红
+          - 憎恨
+          - 厌恶
+          - 反感
+
+  # English Emotion Lexicon
+  en_US:
+    
+    fear_cluster:
+      label: "Fear Spectrum"
+      valence: negative
+      arousal: high
+      emotions:
+        gradient:
+          - alert
+          - anxious
+          - nervous
+          - on edge
+          - worried
+          - afraid
+          - scared
+          - alarmed
+          - frightened
+          - panicked
+          - terrified
+          - horrified
+        social:
+          - embarrassed
+          - ashamed
+          - humiliated
+          - mortified
+          - self-conscious
+        physiological:
+          - rattled
+          - shaken
+          - unnerved
+    
+    anger_cluster:
+      label: "Anger Spectrum"
+      valence: negative
+      arousal: high
+      emotions:
+        gradient:
+          - annoyed
+          - irritated
+          - frustrated
+          - mad
+          - angry
+          - irate
+          - furious
+          - enraged
+          - outraged
+        cold:
+          - resentful
+          - bitter
+          - vindictive
+          - spiteful
+        hostile:
+          - hostile
+          - contemptuous
+          - disdainful
+          - scornful
+    
+    sadness_cluster:
+      label: "Sadness Spectrum"
+      valence: negative
+      arousal: low
+      emotions:
+        basic:
+          - sad
+          - unhappy
+          - heartbroken
+          - grief-stricken
+          - hurt
+        melancholic:
+          - melancholy
+          - gloomy
+          - brooding
+          - reflective
+        despair:
+          - depressed
+          - dispirited
+          - hopeless
+          - miserable
+          - tormented
+        listless:
+          - weary
+          - worn out
+          - droopy
+          - listless
+          - sluggish
+    
+    calm_cluster:
+      label: "Calm/Peace Spectrum"
+      valence: neutral_positive
+      arousal: low
+      emotions:
+        calm:
+          - calm
+          - peaceful
+          - serene
+          - at ease
+          - relaxed
+        content:
+          - content
+          - satisfied
+          - fulfilled
+          - patient
+        refreshed:
+          - refreshed
+          - rejuvenated
+    
+    joy_cluster:
+      label: "Joy Spectrum"
+      valence: positive
+      arousal: variable
+      emotions:
+        low_arousal:
+          - pleased
+          - happy
+          - cheerful
+          - content
+          - grateful
+          - thankful
+        medium_arousal:
+          - joyful
+          - delighted
+          - glad
+        high_arousal:
+          - excited
+          - thrilled
+          - ecstatic
+          - elated
+          - jubilant
+          - euphoric
+          - exuberant
+        pride:
+          - proud
+          - triumphant
+          - self-confident
+    
+    contempt_cluster:
+      label: "Disgust/Contempt"
+      valence: negative
+      arousal: low
+      superiority: high
+      emotions:
+        disgust:
+          - disgusted
+          - revolted
+        contempt:
+          - contemptuous
+          - disdainful
+          - scornful
+          - smug
+    
+    complex_cluster:
+      label: "Complex/Mixed States"
+      valence: mixed
+      arousal: variable
+      emotions:
+        confusion:
+          - bewildered
+          - perplexed
+          - puzzled
+          - mystified
+          - disoriented
+          - dumbstruck
+        conflict:
+          - conflicted
+          - torn
+          - ambivalent
+        numbness:
+          - indifferent
+          - numb
+          - resigned
+          - apathetic
+    
+    social_cluster:
+      label: "Social Emotions"
+      social: high
+      emotions:
+        positive:
+          - compassionate
+          - empathetic
+          - sympathetic
+          - loving
+          - kind
+          - grateful
+        negative:
+          - jealous
+          - envious
+          - resentful
+          - hateful
+          - vengeful
+
+
+# ═══════════════════════════════════════════════════════
+# 对立对基线系统 / Baseline Opposing Pairs
+# ═══════════════════════════════════════════════════════
+
+baseline_system:
+  
+  description: |
+    Character personality baseline - determines emotional tendencies
+    These values change slowly (only during major events)
+    Range: -100 to 100
+  
+  opposing_pairs:
+    
+    sanity:
+      label_zh: "理智 ↔ 失智"
+      label_en: "Rational ↔ Irrational"
+      range: [-100, 100]
+      description: |
+        Controls rational self-control and extremity of emotions
+        High (50~100): Maintains rational control, avoids extreme emotions
+        Low (-100~-50): Rational collapse, prone to extreme states
+    
+    stability:
+      label_zh: "稳定 ↔ 波动"
+      label_en: "Stable ↔ Volatile"
+      range: [-100, 100]
+      description: |
+        Controls emotional persistence and volatility
+        High (50~100): Emotions persist steadily, single dominant emotion
+        Low (-100~-50): Emotions fluctuate rapidly, multiple mixed emotions
+    
+    calmness:
+      label_zh: "镇定 ↔ 激动"
+      label_en: "Calm ↔ Agitated"
+      range: [-100, 100]
+      description: |
+        Controls arousal level tendency
+        High (50~100): Strongly prefers low-arousal emotions
+        Low (-100~-50): Strongly prefers high-arousal emotions
+
+
+# ═══════════════════════════════════════════════════════
+# 情绪选择规则 / Emotion Selection Rules
+# ═══════════════════════════════════════════════════════
+
+selection_rules:
+  
+  rule_calmness:
+    label: "CALMNESS affects arousal tendency"
+    
+    high_calmness:
+      threshold: "> 50"
+      tendency: "LOW arousal emotions"
+      examples:
+        sadness: ["忧郁", "沉郁", "消沉", "melancholy", "gloomy", "dispirited"]
+        anger: ["愠怒", "冷怒", "不满", "resentful", "bitter", "annoyed"]
+        fear: ["不安", "担忧", "worried", "anxious", "uneasy"]
+      avoid: ["心碎", "暴怒", "惊恐", "heartbroken", "furious", "terrified"]
+    
+    low_calmness:
+      threshold: "< -50"
+      tendency: "HIGH arousal emotions"
+      examples:
+        sadness: ["心碎", "痛心", "崩溃", "heartbroken", "tormented", "grief-stricken"]
+        anger: ["暴怒", "狂怒", "furious", "enraged", "outraged"]
+        fear: ["惊恐", "惊骇", "惊慌", "terrified", "panicked", "horrified"]
+      avoid: ["忧郁", "愠怒", "不安", "melancholy", "annoyed", "worried"]
+    
+    medium_calmness:
+      threshold: "-50 to 50"
+      tendency: "Mixed selection, medium intensity allowed"
+  
+  rule_stability:
+    label: "STABILITY affects persistence and volatility"
+    
+    high_stability:
+      threshold: "> 50"
+      effects:
+        - "Emotions persist steadily"
+        - "Single dominant emotion (60-80%)"
+        - "Rarely flips to opposite emotions"
+        - "Even high arousal remains controlled"
+      emotion_mix_pattern: "dominant_single"
+      example_output: "愤怒 70% | 不甘 20% | 不满 10%"
+    
+    low_stability:
+      threshold: "< -50"
+      effects:
+        - "Emotions fluctuate rapidly"
+        - "Multiple emotions balanced (20-40% each)"
+        - "May flip from anger to fear suddenly"
+        - "Contradictory emotions coexist"
+      emotion_mix_pattern: "multiple_balanced"
+      example_output: "愤怒 35% | 害怕 30% | 不甘 35%"
+    
+    medium_stability:
+      threshold: "-50 to 50"
+      effects:
+        - "Normal fluctuation range"
+      emotion_mix_pattern: "normal"
+  
+  rule_sanity:
+    label: "SANITY affects rational control and extremity"
+    
+    high_sanity:
+      threshold: "> 50"
+      effects:
+        - "Maintains rational self-control"
+        - "Even negative emotions remain restrained"
+        - "Unlikely to lose control"
+      avoid_emotions: ["狂怒", "崩溃", "歇斯底里", "心如死灰", "furious", "hysterical", "panicked", "numb"]
+      prefer_emotions: ["冷怒", "淡然", "平静", "克制", "resentful", "resigned", "calm"]
+    
+    low_sanity:
+      threshold: "< -50"
+      effects:
+        - "Rational collapse"
+        - "Easily selects extreme emotions"
+        - "May experience 'lucid collapse'"
+      prefer_emotions: ["狂怒", "绝望", "崩溃", "麻木", "furious", "despairing", "panicked", "numb"]
+      special_states:
+        - label: "清醒地崩溃 / Lucid Collapse"
+          description: "High awareness but cannot stop breakdown"
+    
+    medium_sanity:
+      threshold: "-50 to 50"
+      effects:
+        - "Normal rational level"
+  
+  rule_combinations:
+    label: "Combination Effects"
+    
+    patterns:
+      - name: "持续高强度 / Sustained High Intensity"
+        conditions:
+          stability: high
+          calmness: low
+        result: "Can maintain excited/energized/elated for extended periods without crash"
+        example_emotions: ["兴奋", "亢奋", "激动", "excited", "energized", "elated"]
+      
+      - name: "情绪失控 / Emotional Loss of Control"
+        conditions:
+          stability: low
+          calmness: low
+        result: "High arousal plus volatility, prone to rapid shifts"
+        example_pattern: "暴怒 → 惊恐 → 崩溃 / furious → terrified → collapsed"
+      
+      - name: "冷系负面 / Cold Negative Emotions"
+        conditions:
+          calmness: high
+          situation: negative
+        result: "Calm anger (cold fury), stable despair (numbness)"
+        example_emotions: ["冷怒", "麻木", "resentful", "numb"]
+      
+      - name: "清醒的波动 / Lucid Volatility"
+        conditions:
+          sanity: high
+          stability: low
+        result: "Rational loss of control - aware of breakdown but cannot stop"
+        special_note: "理智地失控 - unique contradictory state"
+
+
+# ═══════════════════════════════════════════════════════
+# 情绪扇形输出规范 / Emotion Mix Output Specification
+# ═══════════════════════════════════════════════════════
+
+output_format:
+  
+  basic_rules:
+    - "Output 3-5 emotion words per turn"
+    - "Percentages must sum to 100"
+    - "Dominant emotion typically 30-60%"
+    - "Distribution determined by stability value"
+  
+  distribution_patterns:
+    
+    high_stability_pattern:
+      name: "单一主导 / Single Dominant"
+      structure: "One dominant (60-80%) + 1-2 secondary emotions"
+      example: "不屑 70% | 讥讽 20% | 倦怠 10%"
+    
+    low_stability_pattern:
+      name: "多元均衡 / Multiple Balanced"
+      structure: "3-5 emotions relatively balanced (20-40% each)"
+      example: "愤怒 35% | 害怕 30% | 不甘 35%"
+    
+    normal_pattern:
+      name: "正常分布 / Normal Distribution"
+      structure: "One dominant (40-60%) + 2-3 secondary emotions"
+      example: "不满 50% | 讥讽 30% | 倦怠 20%"
+  
+  output_examples:
+    zh_CN:
+      - "不屑 40% | 讥讽 35% | 倦怠 25%"
+      - "愤怒 60% | 不甘 30% | 害怕 10%"
+      - "麻木 70% | 空虚 20% | 绝望 10%"
+      - "兴奋 55% | 得意 30% | 期待 15%"
+    
+    en_US:
+      - "contemptuous 40% | scornful 35% | weary 25%"
+      - "furious 60% | helpless 30% | afraid 10%"
+      - "numb 70% | empty 20% | despairing 10%"
+      - "excited 55% | proud 30% | hopeful 15%"
+
+
+# ═══════════════════════════════════════════════════════
+# 使用指南 / Usage Guidelines
+# ═══════════════════════════════════════════════════════
+
+usage:
+  
+  workflow:
+    step1: "Set initial baseline values (sanity, stability, calmness)"
+    step2: "For each turn, read current situation and previous emotion state"
+    step3: "Apply selection rules based on baseline values"
+    step4: "Select 3-5 emotions from appropriate clusters"
+    step5: "Assign percentages based on stability pattern"
+    step6: "Output emotion mix in specified format"
+    step7: "Baseline values only change during major events (every N turns or story milestones)"
+  
+  prompt_template: |
+    【Character Baseline】(Stable, changes slowly)
+    - sanity: {sanity_value} ({sanity_description})
+    - stability: {stability_value} ({stability_description})
+    - calmness: {calmness_value} ({calmness_description})
+    
+    【Previous Emotion State】
+    {previous_emotions}
+    
+    【Current Situation】
+    {situation_description}
+    
+    【Task】
+    1. Generate character response based on baseline tendencies
+    2. Apply emotion selection rules:
+       - calmness={calmness_value} → prefer {arousal_tendency} arousal
+       - stability={stability_value} → use {distribution_pattern} pattern
+       - sanity={sanity_value} → {control_level}
+    3. Output new emotion mix (JSON format):
+       {
+         "emotions": [
+           {"name": "emotion1", "percent": X},
+           {"name": "emotion2", "percent": Y},
+           {"name": "emotion3", "percent": Z}
+         ]
+       }
+  
+  notes:
+    - "Baseline values represent personality traits, not current state"
+    - "Emotion mix represents current momentary state"
+    - "Selection rules are guidelines, not absolute constraints"
+    - "Allow natural variation and context-appropriate deviations"
+
+
+# ═══════════════════════════════════════════════════════
+# 元数据 / Metadata
+# ═══════════════════════════════════════════════════════
+
+metadata:
+  based_on: "Anthropic Emotion Vectors Research (171 emotion concepts)"
+  research_paper: "Emotion Concepts and their Function in a Large Language Model"
+  paper_url: "https://transformer-circuits.pub/2026/emotions/"
+  adaptation: "Chinese emotion lexicon with cultural granularity"
+  created_for: "Interactive Character Simulation (ICS) project"
+  version: "1.0"
+  last_updated: "2026-04-08"

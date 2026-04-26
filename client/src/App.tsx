@@ -36,7 +36,7 @@ import AIConsoleApp  from './apps/AIConsoleApp';
 import WorldbookApp  from './apps/worldbook';
 import CharLifeApp   from './apps/CharLifeApp';
 import CharSystemApp from './apps/CharSystemApp';
-import DaoshuApp     from './apps/DaoshuApp';
+import MetaApp       from './apps/meta/MetaApp';
 import NPCApp        from './apps/NPCApp';
 import MinggeApp     from './apps/MinggeApp';
 import DiaryApp      from './apps/DiaryApp';
@@ -79,7 +79,7 @@ function AppContent({ currentApp, setCurrentApp }) {
     终端:     <ErrorBoundary><AIConsoleApp   onBack={back} /></ErrorBoundary>,
     知识库:   <ErrorBoundary><WorldbookApp   onBack={back} /></ErrorBoundary>,
     角色系统: <ErrorBoundary><CharSystemApp  onBack={back} onOpenApp={openApp} initialChar={activeChar} /></ErrorBoundary>,
-    元系统:   <ErrorBoundary><DaoshuApp      onBack={back} /></ErrorBoundary>,
+    元系统:   <ErrorBoundary><MetaApp        onBack={back} /></ErrorBoundary>,
     npc管理:  <ErrorBoundary><NPCApp         onBack={back} initialChar={activeChar} /></ErrorBoundary>,
     角色手机: <ErrorBoundary><CharPhoneApp   onBack={() => setCurrentApp('角色系统')} initialChar={activeChar} /></ErrorBoundary>,
     命格:     <ErrorBoundary><MinggeApp      onBack={back} /></ErrorBoundary>,

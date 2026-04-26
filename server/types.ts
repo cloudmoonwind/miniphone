@@ -37,6 +37,7 @@ export interface Message {
   timestamp: string;
   userTimestamp?: string;
   charTimestamp?: string | null;
+  variableSnapshot?: Record<string, any> | null;
   createdAt: string;
 }
 
@@ -244,6 +245,7 @@ export interface TimelineEvent {
   linkedSummaryId?: string | null;
   linkedLifeLogId?: string | null;
   linkedMessageIds?: string[];
+  variableSnapshot?: Record<string, any> | null;
   createdAt: string;
 }
 

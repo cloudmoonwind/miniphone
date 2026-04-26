@@ -33,6 +33,7 @@ const router = Router();
 
 router.get('/:charId', (req, res) => {
   try {
+    svc.seedDefaultVariables(req.params.charId);
     const values = svc.getValuesByCharacter(req.params.charId);
     // 附带每个数值的当前阶段
     const result = values.map(v => ({
@@ -45,7 +46,7 @@ router.get('/:charId', (req, res) => {
 
 router.post('/:charId', (req, res) => {
   try {
-    const { category, name, variableName, currentValue, minValue, maxValue } = req.body;
+    const { category, name, variableName, valueType, currentValue, minValue, maxValue, sortOrder, groupName } = req.body;
     if (!category?.trim() || !name?.trim() || !variableName?.trim()) {
       return res.status(400).json({ error: 'category, name, variableName 不能为空' });
     }
@@ -54,7 +55,7 @@ router.post('/:charId', (req, res) => {
       category: category.trim(),
       name: name.trim(),
       variableName: variableName.trim(),
-      currentValue, minValue, maxValue,
+      valueType, currentValue, minValue, maxValue, sortOrder, groupName,
     });
     res.status(201).json(value);
   } catch (e: any) {
@@ -168,14 +169,14 @@ router.get('/item/:valueId/rules', (req, res) => {
 
 router.post('/item/:valueId/rules', (req, res) => {
   try {
-    const { triggerOn, operation, amount, rangeMin, rangeMax, conditions, enabled } = req.body;
+    const { triggerOn, operation, amount, rangeMin, rangeMax, conditions, description, enabled } = req.body;
     if (!triggerOn || !operation || amount == null) {
       return res.status(400).json({ error: 'triggerOn, operation, amount 不能为空' });
     }
     const rule = svc.createRule({
       valueId: Number(req.params.valueId),
       triggerOn, operation, amount,
-      rangeMin, rangeMax, conditions, enabled,
+      rangeMin, rangeMax, conditions, description, enabled,
     });
     res.status(201).json(rule);
   } catch (e: any) { res.status(500).json({ error: e.message }); }

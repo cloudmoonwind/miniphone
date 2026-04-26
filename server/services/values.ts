@@ -17,11 +17,12 @@ export type ValueRule       = typeof valueRules.$inferSelect;
 
 // ── character_values CRUD ─────────────────────────────────────
 
-/** 获取角色的所有数值 */
+/** 获取角色的所有数值（按 sortOrder 排序） */
 export function getValuesByCharacter(characterId: string): CharacterValue[] {
   const db = getDrizzle();
   return db.select().from(characterValues)
     .where(eq(characterValues.characterId, characterId))
+    .orderBy(characterValues.sortOrder, characterValues.id)
     .all();
 }
 
@@ -50,9 +51,12 @@ export function createValue(data: {
   category: string;
   name: string;
   variableName: string;
+  valueType?: string;
   currentValue?: number;
   minValue?: number;
   maxValue?: number;
+  sortOrder?: number;
+  groupName?: string;
 }): CharacterValue {
   const db = getDrizzle();
   const now = new Date().toISOString();
@@ -61,9 +65,12 @@ export function createValue(data: {
     category: data.category,
     name: data.name,
     variableName: data.variableName,
+    valueType: data.valueType ?? 'continuous',
     currentValue: data.currentValue ?? 0,
     minValue: data.minValue ?? 0,
     maxValue: data.maxValue ?? 100,
+    sortOrder: data.sortOrder ?? 0,
+    groupName: data.groupName ?? null,
     createdAt: now,
   }).returning().get();
   return result;
@@ -74,9 +81,12 @@ export function updateValue(id: number, patch: Partial<{
   category: string;
   name: string;
   variableName: string;
+  valueType: string;
   currentValue: number;
   minValue: number;
   maxValue: number;
+  sortOrder: number;
+  groupName: string | null;
 }>): CharacterValue | undefined {
   const db = getDrizzle();
   const result = db.update(characterValues)
@@ -198,6 +208,7 @@ export function createRule(data: {
   conditions?: string;
   operation: string;
   amount: number;
+  description?: string;
   enabled?: number;
 }): ValueRule {
   const db = getDrizzle();
@@ -216,6 +227,7 @@ export function updateRule(id: number, patch: Partial<{
   conditions: string | null;
   operation: string;
   amount: number;
+  description: string | null;
   enabled: number;
 }>): ValueRule | undefined {
   const db = getDrizzle();
@@ -258,6 +270,110 @@ export function resolveValuePlaceholders(template: string, characterId: string):
       default:       return `[未知字段:${field}]`;
     }
   });
+}
+
+// ── 默认变量种子 ──────────────────────────────────────────────
+
+/** 情绪底色三轴默认值（角色首次请求变量时自动创建） */
+const EMOTION_BASELINES = [
+  { category: 'emotion', name: '理智', variableName: 'sanity',    currentValue: 50, minValue: -100, maxValue: 100 },
+  { category: 'emotion', name: '稳定', variableName: 'stability', currentValue: 30, minValue: -100, maxValue: 100 },
+  { category: 'emotion', name: '强度', variableName: 'intensity', currentValue: 20, minValue: -100, maxValue: 100 },
+];
+
+/** 为角色创建默认情绪底色变量（幂等：已存在则跳过） */
+export function seedDefaultVariables(characterId: string): void {
+  const existing = getValuesByCharacter(characterId);
+  const existingNames = new Set(existing.map(v => v.variableName));
+  for (const def of EMOTION_BASELINES) {
+    if (!existingNames.has(def.variableName)) {
+      createValue({ characterId, ...def });
+    }
+  }
+}
+
+// ── 变量快照 ──────────────────────────────────────────────────
+
+/** 将角色所有数值导出为快照对象 { variableName → currentValue } */
+export function buildVariableSnapshot(characterId: string): Record<string, number> {
+  const values = getValuesByCharacter(characterId);
+  const snapshot: Record<string, number> = {};
+  for (const v of values) {
+    snapshot[v.variableName] = v.currentValue;
+  }
+  return snapshot;
+}
+
+// ── <var> 块解析与应用 ────────────────────────────────────────
+
+/**
+ * 从 AI 回复中提取并移除 <var>...</var> 块。
+ * 返回去掉该块后的干净内容，以及块内文本（null 表示无）。
+ */
+export function extractVarBlock(content: string): { cleanContent: string; varBlock: string | null } {
+  const match = content.match(/<var>([\s\S]*?)<\/var>/i);
+  if (!match) return { cleanContent: content, varBlock: null };
+  const varBlock = match[1].trim();
+  const cleanContent = content.replace(/<var>[\s\S]*?<\/var>/i, '').trim();
+  return { cleanContent, varBlock };
+}
+
+/**
+ * 解析并应用 <var> 块：
+ * - 数值行格式：`变量名：原值→新值`（支持显示名或变量名，原值需与当前值相差 ≤1）
+ * - 情绪行格式：`情绪：情绪词 X% | 情绪词 Y%`（百分比之和应在 95~105）
+ *
+ * 返回应用后的完整快照（含 emotion_state 字符串，若有效则写入）。
+ */
+export function parseAndApplyVarBlock(
+  characterId: string,
+  varBlock: string,
+): { snapshot: Record<string, any>; emotionState: string | null } {
+  const allValues = getValuesByCharacter(characterId);
+  // 同时支持按 variableName 和 name 查找
+  const byVarName = new Map<string, CharacterValue>(allValues.map(v => [v.variableName, v]));
+  const byName    = new Map<string, CharacterValue>(allValues.map(v => [v.name, v]));
+
+  let emotionState: string | null = null;
+
+  for (const raw of varBlock.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    // 情绪行：情绪：愤怒 40% | 委屈 35% | 不甘 25%
+    if (/^情绪[：:]/.test(line)) {
+      const body = line.replace(/^情绪[：:]/, '').trim();
+      const pcts = [...body.matchAll(/(\d+)%/g)].map(m => parseInt(m[1]));
+      const sum  = pcts.reduce((a, b) => a + b, 0);
+      if (pcts.length > 0 && Math.abs(sum - 100) <= 5) {
+        emotionState = body;
+      }
+      continue;
+    }
+
+    // 数值行：变量名：原值→新值（→ 或 -> 均接受）
+    const match = line.match(/^(.+?)[：:]([\d.]+)\s*(?:→|->)\s*([\d.]+)$/);
+    if (!match) continue;
+
+    const key    = match[1].trim();
+    const oldVal = parseFloat(match[2]);
+    const newVal = parseFloat(match[3]);
+
+    const val = byVarName.get(key) ?? byName.get(key);
+    if (!val) continue;
+
+    // 原值校验（±1 容忍，防止重新生成时错误 delta 累积）
+    if (Math.abs(val.currentValue - oldVal) > 1) continue;
+
+    const clamped = Math.max(val.minValue, Math.min(val.maxValue, newVal));
+    updateValue(val.id, { currentValue: clamped });
+  }
+
+  // 重新读取（含刚更新的值），构建快照
+  const snapshot: Record<string, any> = buildVariableSnapshot(characterId);
+  if (emotionState) snapshot['emotion_state'] = emotionState;
+
+  return { snapshot, emotionState };
 }
 
 // ── 规则执行引擎 ──────────────────────────────────────────────

@@ -69,7 +69,12 @@
       "Bash(mv DEVLOG.md DEV_LOG_2026-04-14.md EVENT_SYSTEM_PLAN.md ICS_动态系统_数据库设计.md ICS_设计讨论记录_v2.md UI_改进需求_2026-04-13.md project_structure.md task.md ts-migration.md 美化.md 需求文档-第二版.md 项目文档-第三版.md docs/archive/)",
       "Bash(mv zai.md zai-对话补全.md docs/)",
       "Bash(python3 -c ':*)",
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(xargs ls *)",
+      "Bash(curl -s http://localhost:3000/api/characters)",
+      "Bash(curl -s http://localhost:3000/api/worldbook/entries)",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const j=JSON.parse\\(d\\); console.log\\('角色数量:', j.length || Object.keys\\(j\\).length, '\\\\n示例:', JSON.stringify\\(j[0]||Object.values\\(j\\)[0], null, 2\\).slice\\(0,300\\)\\)\")"
     ],
     "additionalDirectories": [
       "d:\\Project\\personal\\miniphone\\client\\src\\core",

@@ -6,6 +6,7 @@ import { genId } from '../storage/FileStore.js';
 import { triggerExtraction } from '../services/extraction.js';
 import { checkAndFireEvents, parseOutcomeFromAIResponse, tickCooldowns, fireValueRules } from '../services/eventEngine.js';
 import { consumeInjectionTurns } from '../services/events.js';
+import { extractVarBlock, parseAndApplyVarBlock } from '../services/values.js';
 
 // 同一发送者 5 分钟内的消息合并为一条
 const GROUP_TIMEOUT_MS = 5 * 60 * 1000;
@@ -223,22 +224,33 @@ router.post('/respond', async (req, res) => {
         return;
       }
 
+      // 提取并移除 <var> 块，保留干净内容
+      const { cleanContent: streamClean, varBlock: streamVarBlock } = extractVarBlock(fullContent);
+
       const aiNow = new Date().toISOString();
       const aiMsg = await messageStore.create({
         id: genId('msg'), charId: characterId, personaId,
-        sender: 'character', content: fullContent, mode,
+        sender: 'character', content: streamClean, mode,
         timestamp: aiNow, userTimestamp: aiNow, charTimestamp: null,
       });
 
-      logStreamCompletion({ model: usedModel, messages, fullContent, t0, usage: lastUsage });
+      // 应用变量更新，将快照写回消息
+      if (streamVarBlock) {
+        try {
+          const { snapshot } = parseAndApplyVarBlock(characterId, streamVarBlock);
+          await messageStore.update(aiMsg.id, { variableSnapshot: snapshot } as any);
+        } catch (e) { console.error('[chat/var-block]', e.message); }
+      }
+
+      logStreamCompletion({ model: usedModel, messages, fullContent: streamClean, t0, usage: lastUsage });
       res.write(`data: ${JSON.stringify({ done: true, id: aiMsg.id, timestamp: aiMsg.timestamp })}\n\n`);
       res.end();
       triggerAutoSummaries(characterId);
       triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
       // 事件引擎：解析 AI 回复中的结果标签 + 触发 chat_end 事件检查 + 消耗注入轮次
       try {
-        parseOutcomeFromAIResponse(fullContent);
-        checkAndFireEvents(characterId, { trigger: 'chat_end', chatContent: fullContent });
+        parseOutcomeFromAIResponse(streamClean);
+        checkAndFireEvents(characterId, { trigger: 'chat_end', chatContent: streamClean });
         tickCooldowns(characterId, 'turns');
         consumeInjectionTurns(characterId);
         fireValueRules(characterId, 'chat_end');
@@ -253,24 +265,35 @@ router.post('/respond', async (req, res) => {
       max_tokens: aiPreset?.maxReplyTokens ?? 3000,
     });
 
+    // 提取并移除 <var> 块
+    const { cleanContent, varBlock } = extractVarBlock(aiContent);
+
     const aiNow = new Date().toISOString();
     const aiMsg = await messageStore.create({
       id: genId('msg'), charId: characterId, personaId,
-      sender: 'character', content: aiContent, mode,
+      sender: 'character', content: cleanContent, mode,
       timestamp: aiNow, userTimestamp: aiNow, charTimestamp: null,
     });
+
+    // 应用变量更新，将快照写回消息
+    if (varBlock) {
+      try {
+        const { snapshot } = parseAndApplyVarBlock(characterId, varBlock);
+        await messageStore.update(aiMsg.id, { variableSnapshot: snapshot } as any);
+      } catch (e) { console.error('[chat/var-block]', e.message); }
+    }
 
     triggerAutoSummaries(characterId);
     triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
     // 事件引擎：解析 AI 回复中的结果标签 + 触发 chat_end 事件检查 + 消耗注入轮次
     try {
-      parseOutcomeFromAIResponse(aiContent);
-      checkAndFireEvents(characterId, { trigger: 'chat_end', chatContent: aiContent });
+      parseOutcomeFromAIResponse(cleanContent);
+      checkAndFireEvents(characterId, { trigger: 'chat_end', chatContent: cleanContent });
       tickCooldowns(characterId, 'turns');
       consumeInjectionTurns(characterId);
       fireValueRules(characterId, 'chat_end');
     } catch (e) { console.error('[chat/event-engine]', e.message); }
-    res.json({ id: aiMsg.id, sender: 'character', content: aiContent, mode, timestamp: aiMsg.timestamp });
+    res.json({ id: aiMsg.id, sender: 'character', content: cleanContent, mode, timestamp: aiMsg.timestamp });
   } catch (err) {
     console.error('[chat/respond]', err.message);
     res.status(500).json({ error: err.message });

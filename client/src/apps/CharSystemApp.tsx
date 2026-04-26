@@ -93,6 +93,7 @@ export default function CharSystemApp({ onBack, onOpenApp, initialChar }) {
   // 各区域数据
   const [status, setStatus]     = useState<{ moodColors: any[]; location: string; outfit: string; statusDesc: string; innerThoughts: string; lastUpdated?: string | null }>({ moodColors: [], location: '', outfit: '', statusDesc: '', innerThoughts: '' });
   const [stats, setStats]       = useState(null);
+  const [charVals, setCharVals] = useState<any[]>([]);
   const [recentItems, setRecentItems] = useState([]);
   const [timeline, setTimeline] = useState([]);
   const [rels, setRels]         = useState([]);
@@ -154,7 +155,7 @@ export default function CharSystemApp({ onBack, onOpenApp, initialChar }) {
     if (!char) return;
     setLoading(true);
     try {
-      const [statsData, itemsData, tlData, relsData, skillsData, settingsData, presetsData, lifeData] = await Promise.all([
+      const [statsData, itemsData, tlData, relsData, skillsData, settingsData, presetsData, lifeData, valsData] = await Promise.all([
         api.get(`/api/charstats/${char.id}`).catch(() => null),
         api.get(`/api/characters/${char.id}/items`).catch(() => []),
         api.get(`/api/characters/${char.id}/timeline`).catch(() => []),
@@ -163,6 +164,7 @@ export default function CharSystemApp({ onBack, onOpenApp, initialChar }) {
         api.get('/api/debug/char-system-settings').catch(() => ({})),
         api.get('/api/settings/presets').catch(() => []),
         api.get(`/api/characters/${char.id}/life?limit=3`).catch(() => []),
+        api.get(`/api/values/${char.id}`).catch(() => []),
       ]);
       if (settingsData) setCsSettings(settingsData);
       if (presetsData) setPresets(presetsData);
@@ -176,6 +178,7 @@ export default function CharSystemApp({ onBack, onOpenApp, initialChar }) {
       setStatus(s);
       setDraft(s);
       if (statsData?.stats) setStats(statsData.stats);
+      setCharVals(Array.isArray(valsData) ? valsData : []);
       // 物品（最近 5 个 active）
       setRecentItems((itemsData || []).filter(i => i.status !== 'trashed').slice(0, 5));
       // 时间线（全部）
@@ -400,33 +403,59 @@ export default function CharSystemApp({ onBack, onOpenApp, initialChar }) {
               </button>
             </div>
 
-            {/* ═══════ 数值速览 ═══════ */}
-            {stats && (
-              <div className="mx-4 -mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3 relative z-10">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Activity size={11} className="text-gray-400" />
-                  <span className="text-gray-400 text-[10px]">数值概览</span>
-                  <span className="text-gray-300 text-[10px] ml-auto">来自道枢</span>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { k: 'mood', l: '心情', c: '#fbbf24' },
-                    { k: 'trust', l: '信任', c: '#60a5fa' },
-                    { k: 'relationship', l: '好感', c: '#f472b6' },
-                  ].map(s => {
-                    const v = stats[s.k] ?? 50;
-                    return (
-                      <div key={s.k} className="text-center">
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mx-1">
-                          <div className="h-full rounded-full transition-all" style={{ width: `${v}%`, background: s.c }} />
-                        </div>
-                        <span className="text-gray-500 text-[9px] mt-0.5 block">{s.l} {v}</span>
+            {/* ═══════ 变量速览 ═══════ */}
+            {charVals.length > 0 && (() => {
+              const BASELINES = ['理智', '稳定', '强度'];
+              const bases  = charVals.filter(v => BASELINES.includes(v.variableName));
+              const others = charVals.filter(v => !BASELINES.includes(v.variableName));
+              return (
+                <div className="mx-4 -mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3 relative z-10">
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <Activity size={11} className="text-gray-400" />
+                    <span className="text-gray-400 text-[10px]">变量状态</span>
+                  </div>
+                  {/* 情绪底色 */}
+                  {bases.length > 0 && (
+                    <div className="mb-2.5">
+                      <span className="text-gray-300 text-[9px] block mb-1.5">情绪底色</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        {bases.map(v => {
+                          // -100~100 → 0~100%
+                          const pct = ((v.currentValue + 100) / 200) * 100;
+                          return (
+                            <div key={v.id} className="text-center">
+                              <div className="h-1 bg-gray-100 rounded-full overflow-hidden mx-1 mb-0.5">
+                                <div className="h-full rounded-full transition-all bg-indigo-400" style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-gray-500 text-[9px]">{v.name} {v.currentValue}</span>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
+                    </div>
+                  )}
+                  {/* 其他变量 */}
+                  {others.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {others.map(v => {
+                        const range = (v.maxValue - v.minValue) || 100;
+                        const pct   = Math.round(((v.currentValue - v.minValue) / range) * 100);
+                        const COLORS = ['#fbbf24', '#60a5fa', '#f472b6', '#34d399', '#a78bfa', '#fb923c'];
+                        const color  = COLORS[charVals.indexOf(v) % COLORS.length];
+                        return (
+                          <div key={v.id} className="text-center">
+                            <div className="h-1 bg-gray-100 rounded-full overflow-hidden mx-1 mb-0.5">
+                              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                            </div>
+                            <span className="text-gray-500 text-[9px]">{v.name} {v.currentValue}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* ═══════ 随身物品 ═══════ */}
             {recentItems.length > 0 && (

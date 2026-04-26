@@ -8,8 +8,48 @@
  *   MessageGroup      — 处理 MSG_SEP 合并的多条子消息
  */
 import { useState, useEffect } from 'react';
-import { Check, X, User } from 'lucide-react';
+import { Check, X, User, ChevronDown } from 'lucide-react';
 import { MSG_SEP, formatMsgTime } from './chatFormatters.js';
+
+// ── 变量快照折叠条 ──────────────────────────────────────────────
+const BASELINE_VARS = ['理智', '稳定', '强度'];
+
+function VarSnapshotBar({ snapshot }: { snapshot: Record<string, any> }) {
+  const [open, setOpen] = useState(false);
+
+  const emotionState: string | null = snapshot.emotion_state ?? null;
+  const numericEntries = Object.entries(snapshot)
+    .filter(([k]) => k !== 'emotion_state')
+    .map(([k, v]) => ({ k, v: typeof v === 'number' ? Math.round(v * 10) / 10 : v }));
+
+  const preview = emotionState
+    ? emotionState.slice(0, 28) + (emotionState.length > 28 ? '…' : '')
+    : numericEntries.slice(0, 2).map(e => `${e.k} ${e.v}`).join('  ');
+
+  return (
+    <div className="pl-9 mt-1">
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        className="flex items-center gap-1 text-[9px] text-gray-300 hover:text-gray-500 transition-colors"
+      >
+        <ChevronDown size={9} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="truncate max-w-[180px]">{preview}</span>
+      </button>
+      {open && (
+        <div className="mt-1 ml-2 text-[9px] text-gray-400 space-y-0.5 border-l border-gray-100 pl-2">
+          {emotionState && (
+            <p className="text-indigo-400">{emotionState}</p>
+          )}
+          {numericEntries.map(({ k, v }) => (
+            <p key={k} className={BASELINE_VARS.includes(k) ? 'text-gray-300' : ''}>
+              {k}：{v}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── 呼吸灯动点 ──────────────────────────────────────────────────
 export function BreathingDots() {
@@ -174,6 +214,12 @@ export function MessageBubble({
     </p>
   ) : null;
 
+  // 变量快照条（仅角色消息，有快照时显示）
+  const snap = msg.variableSnapshot;
+  const snapEl = !isEdit && msg.sender !== 'user' && snap && Object.keys(snap).length > 0
+    ? <VarSnapshotBar snapshot={snap} />
+    : null;
+
   const selMsg = sid !== msg.id ? { ...msg, id: sid } : msg;
   const touchProps = !isEdit ? {
     onMouseDown:  () => onPressStart(selMsg),
@@ -188,6 +234,7 @@ export function MessageBubble({
     <div {...touchProps} className={`select-none transition-opacity ${isSel ? 'opacity-60' : ''}`}>
       {inner}
       {tsEl}
+      {snapEl}
     </div>
   );
 
