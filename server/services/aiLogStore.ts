@@ -3,7 +3,7 @@
  *
  * - 路径：server/data/logs/ai/YYYY-MM-DD.jsonl
  * - 写入：异步追加，失败时 console.error，不抛
- * - 保留：默认 14 天，启动时清理一次 + 每次写入顺手判断
+ * - 保留：默认 3 天，启动时清理一次 + 每次写入顺手判断
  * - 不进 SQLite：调试数据，避免污染备份/迁移流程
  */
 
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOG_DIR = resolve(__dirname, '../data/logs/ai');
-const RETENTION_DAYS_DEFAULT = 14;
+const RETENTION_DAYS_DEFAULT = Number.parseInt(process.env.AI_LOG_RETENTION_DAYS || '3', 10) || 3;
 
 if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
 
@@ -50,7 +50,7 @@ export interface AiLogEntry {
   errorPhase: AiLogErrorPhase | null;
 }
 
-function genId(): string {
+export function createAiLogId(): string {
   return `log_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
@@ -79,7 +79,7 @@ function maybePurge(retentionDays = RETENTION_DAYS_DEFAULT): Promise<void> {
 /** 写一条日志（异步，失败时不抛） */
 export async function appendEntry(entry: Omit<AiLogEntry, 'id' | 'timestamp'> & { id?: string; timestamp?: string }): Promise<void> {
   const full: AiLogEntry = {
-    id: entry.id ?? genId(),
+    id: entry.id ?? createAiLogId(),
     timestamp: entry.timestamp ?? new Date().toISOString(),
     traceId: entry.traceId ?? null,
     endpoint: entry.endpoint,
@@ -153,6 +153,28 @@ export async function deleteByDate(date: string): Promise<boolean> {
   } catch (err: any) {
     if (err.code === 'ENOENT') return false;
     console.error('[aiLogStore.deleteByDate]', err?.message ?? err);
+    return false;
+  }
+}
+
+/** 删除某天的一条日志（按 id 重写 JSONL 文件） */
+export async function deleteEntryById(date: string, id: string): Promise<boolean> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !id) return false;
+  const entries = await readByDate(date);
+  const next = entries.filter(entry => entry.id !== id);
+  if (next.length === entries.length) return false;
+
+  try {
+    if (next.length === 0) {
+      await fs.unlink(pathFor(date));
+    } else {
+      const content = next.map(entry => JSON.stringify(entry)).join('\n') + '\n';
+      await fs.writeFile(pathFor(date), content, 'utf8');
+    }
+    return true;
+  } catch (err: any) {
+    if (err.code === 'ENOENT') return false;
+    console.error('[aiLogStore.deleteEntryById]', err?.message ?? err);
     return false;
   }
 }

@@ -228,6 +228,7 @@ export function useChatState({ char, activePreset, onNewAIMessage }) {
       apiKey: activePreset?.apiKey,
       baseURL: activePreset?.baseURL,
       model: activePreset?.model,
+      provider: activePreset?.provider,
       params: activePreset?.params,
     };
 
@@ -302,6 +303,7 @@ export function useChatState({ char, activePreset, onNewAIMessage }) {
       apiKey: activePreset?.apiKey,
       baseURL: activePreset?.baseURL,
       model: activePreset?.model,
+      provider: activePreset?.provider,
       params: activePreset?.params,
     };
 
@@ -410,6 +412,7 @@ export function useChatState({ char, activePreset, onNewAIMessage }) {
         apiKey:  activePreset?.apiKey,
         baseURL: activePreset?.baseURL,
         model:   activePreset?.model,
+        provider: activePreset?.provider,
       });
       setSegStates(prev => ({ ...prev, [key]: { ...prev[key], summaryStatus: 'ready', summary: data.content } }));
     } catch {

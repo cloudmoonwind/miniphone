@@ -9,10 +9,12 @@
 import OpenAI from 'openai';
 import {
   appendEntry,
+  createAiLogId,
   type AiLogEndpoint,
   type AiLogErrorPhase,
   type AiLogStreamAbortType,
 } from '../services/aiLogStore.js';
+import { getCurrentTrace } from '../services/trace.js';
 
 interface CallContext {
   /** 关联到本轮触发链路；本期暂未填充，保留字段 */
@@ -44,10 +46,22 @@ export class OpenAICompatProvider {
   ) {
     const t0 = Date.now();
     const endpoint: AiLogEndpoint = ctx.endpoint ?? 'chat';
+    const trace = getCurrentTrace();
+    const traceId = ctx.traceId ?? trace?.id ?? null;
+    const logId = createAiLogId();
+    trace?.linkAiCall(logId);
+    trace?.event({
+      module: 'ai',
+      type: 'ai.call',
+      level: 'summary',
+      message: `${this.providerName}/${model} ${endpoint}`,
+      data: { logId, endpoint, source: ctx.source ?? null, provider: this.providerName, model, baseURL: this.baseURL },
+    });
     try {
       const result = await this._chatCompletionInner(messages, { model, temperature, max_tokens });
       appendEntry({
-        traceId: ctx.traceId ?? null,
+        id: logId,
+        traceId,
         endpoint, source: ctx.source ?? null,
         provider: this.providerName, baseURL: this.baseURL, model,
         durationMs: Date.now() - t0,
@@ -58,10 +72,18 @@ export class OpenAICompatProvider {
         streamCompleted: null, streamAbortType: null,
         error: null, status: null, errorPhase: null,
       });
+      trace?.event({
+        module: 'ai',
+        type: 'ai.return',
+        level: 'summary',
+        message: `${this.providerName}/${model} ok ${Date.now() - t0}ms`,
+        data: { logId, usage: result.usage, durationMs: Date.now() - t0 },
+      });
       return result.content;
     } catch (err: any) {
       appendEntry({
-        traceId: ctx.traceId ?? null,
+        id: logId,
+        traceId,
         endpoint, source: ctx.source ?? null,
         provider: this.providerName, baseURL: this.baseURL, model,
         durationMs: Date.now() - t0,
@@ -72,6 +94,13 @@ export class OpenAICompatProvider {
         error: err?.message ?? String(err),
         status: err?.status ?? err?.statusCode ?? null,
         errorPhase: 'before-call',
+      });
+      trace?.event({
+        module: 'ai',
+        type: 'ai.error',
+        level: 'summary',
+        message: err?.message ?? String(err),
+        data: { logId, status: err?.status ?? err?.statusCode ?? null, durationMs: Date.now() - t0 },
       });
       throw err;
     }
@@ -131,6 +160,17 @@ export class OpenAICompatProvider {
     ctx: CallContext = {},
   ) {
     const t0 = Date.now();
+    const trace = getCurrentTrace();
+    const traceId = ctx.traceId ?? trace?.id ?? null;
+    const logId = createAiLogId();
+    trace?.linkAiCall(logId);
+    trace?.event({
+      module: 'ai',
+      type: 'ai.call',
+      level: 'summary',
+      message: `${this.providerName}/${model} chatStream`,
+      data: { logId, endpoint: 'chatStream', source: ctx.source ?? null, provider: this.providerName, model, baseURL: this.baseURL },
+    });
 
     let upstream;
     try {
@@ -139,7 +179,8 @@ export class OpenAICompatProvider {
       });
     } catch (err: any) {
       appendEntry({
-        traceId: ctx.traceId ?? null,
+        id: logId,
+        traceId,
         endpoint: 'chatStream', source: ctx.source ?? null,
         provider: this.providerName, baseURL: this.baseURL, model,
         durationMs: Date.now() - t0,
@@ -151,11 +192,19 @@ export class OpenAICompatProvider {
         status: err?.status ?? err?.statusCode ?? null,
         errorPhase: 'before-call',
       });
+      trace?.event({
+        module: 'ai',
+        type: 'ai.error',
+        level: 'summary',
+        message: err?.message ?? String(err),
+        data: { logId, status: err?.status ?? err?.statusCode ?? null, durationMs: Date.now() - t0 },
+      });
       throw err;
     }
 
     const meta = {
-      traceId: ctx.traceId ?? null,
+      logId,
+      traceId,
       provider: this.providerName,
       baseURL: this.baseURL,
       model,
@@ -170,10 +219,22 @@ export class OpenAICompatProvider {
   // ── 模型列表 ─────────────────────────────────────────────────────────────
   async listModels(ctx: CallContext = {}) {
     const t0 = Date.now();
+    const trace = getCurrentTrace();
+    const traceId = ctx.traceId ?? trace?.id ?? null;
+    const logId = createAiLogId();
+    trace?.linkAiCall(logId);
+    trace?.event({
+      module: 'ai',
+      type: 'ai.call',
+      level: 'summary',
+      message: `${this.providerName}/- listModels`,
+      data: { logId, endpoint: 'listModels', source: ctx.source ?? null, provider: this.providerName, baseURL: this.baseURL },
+    });
     try {
       const res = await this._client.models.list();
       appendEntry({
-        traceId: ctx.traceId ?? null,
+        id: logId,
+        traceId,
         endpoint: 'listModels', source: ctx.source ?? null,
         provider: this.providerName, baseURL: this.baseURL, model: '-',
         durationMs: Date.now() - t0,
@@ -184,10 +245,18 @@ export class OpenAICompatProvider {
         streamCompleted: null, streamAbortType: null,
         error: null, status: null, errorPhase: null,
       });
+      trace?.event({
+        module: 'ai',
+        type: 'ai.return',
+        level: 'summary',
+        message: `${this.providerName}/- listModels ok ${res.data.length} models`,
+        data: { logId, count: res.data.length, durationMs: Date.now() - t0 },
+      });
       return res.data;
     } catch (err: any) {
       appendEntry({
-        traceId: ctx.traceId ?? null,
+        id: logId,
+        traceId,
         endpoint: 'listModels', source: ctx.source ?? null,
         provider: this.providerName, baseURL: this.baseURL, model: '-',
         durationMs: Date.now() - t0,
@@ -199,6 +268,13 @@ export class OpenAICompatProvider {
         status: err?.status ?? err?.statusCode ?? null,
         errorPhase: 'before-call',
       });
+      trace?.event({
+        module: 'ai',
+        type: 'ai.error',
+        level: 'summary',
+        message: err?.message ?? String(err),
+        data: { logId, status: err?.status ?? err?.statusCode ?? null, durationMs: Date.now() - t0 },
+      });
       throw err;
     }
   }
@@ -207,6 +283,7 @@ export class OpenAICompatProvider {
 // ── 流式包装器 ──────────────────────────────────────────────────────────────
 
 interface StreamMeta {
+  logId: string;
   traceId: string | null;
   provider: string;
   baseURL: string;
@@ -246,6 +323,7 @@ async function* wrapStreamWithLogging(upstream: AsyncIterable<any>, meta: Stream
           ? 'client-disconnect'
           : 'consumer-break';
     appendEntry({
+      id: meta.logId,
       traceId: meta.traceId,
       endpoint: 'chatStream',
       source: meta.source,
@@ -263,6 +341,23 @@ async function* wrapStreamWithLogging(upstream: AsyncIterable<any>, meta: Stream
       error: caughtError?.message ?? null,
       status: caughtError?.status ?? caughtError?.statusCode ?? null,
       errorPhase: caughtError ? phase : null,
+    });
+    getCurrentTrace()?.event({
+      module: 'ai',
+      type: caughtError ? 'ai.error' : 'ai.return',
+      level: 'summary',
+      message: caughtError
+        ? `${meta.provider}/${meta.model} stream error: ${caughtError?.message ?? 'unknown'}`
+        : `${meta.provider}/${meta.model} stream ${abortType === 'none' ? 'ok' : abortType} ${Date.now() - meta.t0}ms`,
+      data: {
+        logId: meta.logId,
+        chunks,
+        streamCompleted: completed,
+        streamAbortType: abortType,
+        durationMs: Date.now() - meta.t0,
+        status: caughtError?.status ?? caughtError?.statusCode ?? null,
+        usage,
+      },
     });
   }
 }

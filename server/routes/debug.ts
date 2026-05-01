@@ -5,7 +5,10 @@ import {
 } from '../storage/index.js';
 import { genId } from '../storage/FileStore.js';
 import { seedValueEventData } from '../services/seed.js';
-import { listDates, readByDate, deleteByDate } from '../services/aiLogStore.js';
+import { listDates, readByDate, deleteByDate, deleteEntryById } from '../services/aiLogStore.js';
+import {
+  listTraceDates, readTracesByDate, deleteTracesByDate, deleteTraceById,
+} from '../services/traceStore.js';
 
 const router = Router();
 
@@ -32,6 +35,39 @@ router.get('/ai-log/dates', async (_req, res) => {
 router.delete('/ai-log', async (req, res) => {
   const date = (req.query.date as string) || todayKey();
   const ok = await deleteByDate(date);
+  res.json({ ok });
+});
+
+// DELETE /api/debug/ai-log/:id?date=YYYY-MM-DD — 删除指定日期内的一条日志
+router.delete('/ai-log/:id', async (req, res) => {
+  const date = (req.query.date as string) || todayKey();
+  const ok = await deleteEntryById(date, req.params.id);
+  res.json({ ok });
+});
+
+// GET /api/debug/traces?date=YYYY-MM-DD — 不带 date 默认取今天
+router.get('/traces', async (req, res) => {
+  const date = (req.query.date as string) || todayKey();
+  const entries = await readTracesByDate(date);
+  res.json(entries.slice().reverse());
+});
+
+// GET /api/debug/traces/dates — 倒序的可用日期列表
+router.get('/traces/dates', async (_req, res) => {
+  res.json(await listTraceDates());
+});
+
+// DELETE /api/debug/traces?date=YYYY-MM-DD — 删除指定日期 trace
+router.delete('/traces', async (req, res) => {
+  const date = (req.query.date as string) || todayKey();
+  const ok = await deleteTracesByDate(date);
+  res.json({ ok });
+});
+
+// DELETE /api/debug/traces/:id?date=YYYY-MM-DD — 删除单条 trace
+router.delete('/traces/:id', async (req, res) => {
+  const date = (req.query.date as string) || todayKey();
+  const ok = await deleteTraceById(date, req.params.id);
   res.json({ ok });
 });
 

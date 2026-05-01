@@ -69,7 +69,7 @@ router.post('/', async (req, res) => {
 router.post('/generate', async (req, res) => {
   try {
     const { charId } = req.params;
-    const { personaId, messageIds, periodFrom, periodTo, type = 'conversation', level = 'segment', apiKey, baseURL, model } = req.body;
+    const { personaId, messageIds, periodFrom, periodTo, type = 'conversation', level = 'segment', apiKey, baseURL, model, provider } = req.body;
 
     // Get the messages to summarize
     const allMsgs = await messageStore.getAll(m => m.charId === charId);
@@ -83,7 +83,7 @@ router.post('/generate', async (req, res) => {
     if (toSummarize.length === 0) return res.status(400).json({ error: '没有可总结的消息' });
 
     // Resolve AI client: feature preset first, then primary
-    let aiKey = apiKey, aiBase = baseURL, aiModel = model;
+    let aiKey = apiKey, aiBase = baseURL, aiModel = model, aiProvider = provider;
     let aiPreset = null;
     if (!aiKey) {
       const active = await activeStore.getObject();
@@ -92,7 +92,7 @@ router.post('/generate', async (req, res) => {
       const resolvedId = featurePresetId || primaryId;
       if (resolvedId) {
         const preset = await presetStore.getById(resolvedId);
-        if (preset) { aiPreset = preset; aiKey = preset.apiKey; aiBase = preset.baseURL; aiModel = preset.model; }
+        if (preset) { aiPreset = preset; aiKey = preset.apiKey; aiBase = preset.baseURL; aiModel = preset.model; aiProvider = preset.provider; }
       }
     }
 
@@ -104,7 +104,7 @@ router.post('/generate', async (req, res) => {
       { role: 'user', content: convText },
     ];
 
-    const client = getClient(aiPreset || { apiKey: aiKey, baseURL: aiBase });
+    const client = getClient(aiPreset || { apiKey: aiKey, baseURL: aiBase, provider: aiProvider });
     const content = await chatCompletion(
       client,
       promptMessages,

@@ -8,6 +8,7 @@
 import { eq, and } from 'drizzle-orm';
 import { getDrizzle } from '../db/database.js';
 import { characterValues, valueStages, valueRules } from '../db/schema.js';
+import { traceSummary, traceDetail } from './trace.js';
 
 // ── 类型 ──────────────────────────────────────────────────────
 
@@ -283,20 +284,43 @@ export function deleteRule(id: number): boolean {
  *   {{v:affection:prompt}} → 阶段提示词片段
  */
 export function resolveValuePlaceholders(template: string, characterId: string): string {
-  return template.replace(/\{\{v:(\w+)(?::(\w+))?\}\}/g, (_match, varName: string, field?: string) => {
+  const resolved: Array<{ variableName: string; field: string | null; result: string; status: string }> = [];
+  const output = template.replace(/\{\{v:(\w+)(?::(\w+))?\}\}/g, (_match, varName: string, field?: string) => {
     const val = getValueByVariable(characterId, varName);
-    if (!val) return `[未知变量:${varName}]`;
+    if (!val) {
+      const result = `[未知变量:${varName}]`;
+      resolved.push({ variableName: varName, field: field ?? null, result, status: 'unknown-variable' });
+      return result;
+    }
 
-    if (!field) return String(val.currentValue);
+    if (!field) {
+      const result = String(val.currentValue);
+      resolved.push({ variableName: varName, field: null, result, status: 'ok' });
+      return result;
+    }
 
     const stage = getCurrentStage(val.id);
+    let result: string;
+    let status = 'ok';
     switch (field) {
-      case 'stage':  return stage?.stageName ?? '未定义';
-      case 'desc':   return stage?.description ?? '';
-      case 'prompt': return stage?.promptSnippet ?? '';
-      default:       return `[未知字段:${field}]`;
+      case 'stage':  result = stage?.stageName ?? '未定义'; break;
+      case 'desc':   result = stage?.description ?? ''; break;
+      case 'prompt': result = stage?.promptSnippet ?? ''; break;
+      default:
+        result = `[未知字段:${field}]`;
+        status = 'unknown-field';
+        break;
     }
+    resolved.push({ variableName: varName, field, result, status });
+    return result;
   });
+  if (resolved.length) {
+    traceDetail('variables', 'variables.resolve', `${resolved.length} value placeholders resolved`, {
+      count: resolved.length,
+      resolved,
+    });
+  }
+  return output;
 }
 
 // ── 默认变量种子 ──────────────────────────────────────────────
@@ -373,10 +397,17 @@ export function parseAndApplyVarBlock(
 
   let emotionState: string | null = null;
   const changedVariables: ChangedVariable[] = [];
+  let parsedLines = 0;
+  let failedLines = 0;
+  const traceParentId = traceSummary('variables', 'var.parse.start', 'parse <var> block', {
+    characterId,
+    lineCount: varBlock.split('\n').filter(line => line.trim()).length,
+  });
 
   for (const raw of varBlock.split('\n')) {
     const line = raw.trim();
     if (!line) continue;
+    parsedLines++;
 
     // 情绪行：情绪：愤怒 40% | 委屈 35% | 不甘 25%
     if (/^情绪[：:]/.test(line)) {
@@ -385,26 +416,67 @@ export function parseAndApplyVarBlock(
       const sum  = pcts.reduce((a, b) => a + b, 0);
       if (pcts.length > 0 && Math.abs(sum - 100) <= 5) {
         emotionState = body;
+        traceDetail('variables', 'var.parse.emotion', 'emotion state accepted', {
+          line,
+          emotionState,
+          percentages: pcts,
+          sum,
+        }, traceParentId);
+      } else {
+        failedLines++;
+        traceDetail('variables', 'var.parse.failed', 'emotion percentages invalid', {
+          line,
+          percentages: pcts,
+          sum,
+          reason: 'emotion-percent-sum',
+        }, traceParentId);
       }
       continue;
     }
 
     // 数值行：变量名：原值→新值（→ 或 -> 均接受）
     const match = line.match(/^(.+?)[：:]([\d.]+)\s*(?:→|->)\s*([\d.]+)$/);
-    if (!match) continue;
+    if (!match) {
+      failedLines++;
+      traceDetail('variables', 'var.parse.failed', 'line format not recognized', { line, reason: 'format' }, traceParentId);
+      continue;
+    }
 
     const key    = match[1].trim();
     const oldVal = parseFloat(match[2]);
     const newVal = parseFloat(match[3]);
 
     const val = byVarName.get(key) ?? byName.get(key);
-    if (!val) continue;
+    if (!val) {
+      failedLines++;
+      traceDetail('variables', 'var.parse.failed', `${key} unknown variable`, { line, key, reason: 'unknown-variable' }, traceParentId);
+      continue;
+    }
 
     // 原值校验（±1 容忍，防止重新生成时错误 delta 累积）
-    if (Math.abs(val.currentValue - oldVal) > 1) continue;
+    if (Math.abs(val.currentValue - oldVal) > 1) {
+      failedLines++;
+      traceDetail('variables', 'var.parse.failed', `${val.variableName} old value mismatch`, {
+        line,
+        variableName: val.variableName,
+        expectedOldValue: oldVal,
+        currentValue: val.currentValue,
+        reason: 'old-value-mismatch',
+      }, traceParentId);
+      continue;
+    }
 
     const clamped = Math.max(val.minValue, Math.min(val.maxValue, newVal));
-    if (clamped === val.currentValue) continue;
+    if (clamped === val.currentValue) {
+      traceDetail('variables', 'var.parse.unchanged', `${val.variableName} unchanged`, {
+        line,
+        variableName: val.variableName,
+        currentValue: val.currentValue,
+        requestedValue: newVal,
+        clamped,
+      }, traceParentId);
+      continue;
+    }
 
     updateValue(val.id, { currentValue: clamped });
     changedVariables.push({
@@ -412,12 +484,27 @@ export function parseAndApplyVarBlock(
       oldValue: val.currentValue,
       newValue: clamped,
     });
+    traceDetail('variables', 'var.parse.applied', `${val.variableName}: ${val.currentValue} -> ${clamped}`, {
+      line,
+      variableName: val.variableName,
+      oldValue: val.currentValue,
+      requestedValue: newVal,
+      newValue: clamped,
+      clamped: clamped !== newVal,
+    }, traceParentId);
   }
 
   // 重新读取（含刚更新的值），构建快照
   const snapshot: Record<string, any> = buildVariableSnapshot(characterId);
   if (emotionState) snapshot['emotion_state'] = emotionState;
 
+  traceSummary('variables', 'var.parse.summary', `${changedVariables.length} applied, ${failedLines} failed`, {
+    parsedLines,
+    appliedCount: changedVariables.length,
+    failedLines,
+    emotionState,
+    changedVariables,
+  });
+
   return { snapshot, emotionState, changedVariables };
 }
-

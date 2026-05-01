@@ -29,6 +29,7 @@ import {
 import { getActivatedEntries } from './worldbook.js';
 import { getInjectionsByCharacter } from './events.js';
 import { getValuesByCharacter, getCurrentStage, seedDefaultVariables, resolveValuePlaceholders, getActiveRuleTexts } from './values.js';
+import { traceSummary, traceDetail } from './trace.js';
 
 const HOT_COUNT  = 20;
 const WARM_COUNT = 5;
@@ -123,6 +124,12 @@ function formatTimestampForAI(isoStr, timezone = '+08:00', hourOnly = false) {
  */
 export async function assembleMessages(charId, personaId, newUserContent, options: Record<string, any> = {}) {
   const { contextMode = 'flexible' } = options;
+  const contextTraceId = traceSummary('context', 'context.start', `assemble context (${contextMode})`, {
+    charId,
+    personaId,
+    hasNewUserContent: !!newUserContent,
+    contextMode,
+  });
 
   const char = await characterStore.getById(charId);
   if (!char) throw new Error(`Character not found: ${charId}`);
@@ -148,6 +155,13 @@ export async function assembleMessages(charId, personaId, newUserContent, option
     lifeStore.getAll(l => l.charId === charId).catch(() => []),
     dreamStore.getAll(d => d.charId === charId).catch(() => []),
   ]);
+  traceDetail('context', 'context.sources', `${allMsgs.length} messages, ${allSummaries.length} summaries, ${allMemories.length} memories`, {
+    messageCount: allMsgs.length,
+    summaryCount: allSummaries.length,
+    memoryCount: allMemories.length,
+    lifeCount: allLife.length,
+    dreamCount: allDreams.length,
+  }, contextTraceId);
 
   // 近期生活（最近 3 条，从旧到新）
   const recentLife = [...allLife]
@@ -169,6 +183,11 @@ export async function assembleMessages(charId, personaId, newUserContent, option
       if (!activatedWb[pos]) activatedWb['system-bottom'].push(e);
       else activatedWb[pos].push(e);
     }
+    traceDetail('context', 'context.worldbook', `${activated.length} worldbook entries activated`, {
+      activatedCount: activated.length,
+      byPosition: Object.fromEntries(Object.entries(activatedWb).map(([pos, entries]) => [pos, entries.length])),
+      entryIds: activated.map(e => e.id),
+    }, contextTraceId);
   } catch { /* 世界书读取失败时静默降级 */ }
 
   // 活跃马甲内容
@@ -300,6 +319,15 @@ export async function assembleMessages(charId, personaId, newUserContent, option
   const pendingInj = (() => {
     try { return getInjectionsByCharacter(charId); } catch { return []; }
   })();
+  traceDetail('pending', 'pending.available', `${pendingInj.length} pending injections available`, {
+    count: pendingInj.length,
+    ids: pendingInj.map(inj => inj.id),
+    byPosition: pendingInj.reduce((acc, inj) => {
+      const pos = inj.position || 'status_section';
+      acc[pos] = (acc[pos] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
+  }, contextTraceId);
   const injByPos: Record<string, string[]> = {};
   for (const inj of pendingInj) {
     const pos = inj.position || 'status_section';
@@ -311,6 +339,11 @@ export async function assembleMessages(charId, personaId, newUserContent, option
     if (!items?.length) return null;
     const merged = items.join('\n');
     delete injByPos[pos];
+    traceDetail('pending', 'pending.inject', `${items.length} injections inserted at ${pos}`, {
+      position: pos,
+      count: items.length,
+      tokenEstimate: estimateTokens(merged),
+    }, contextTraceId);
     return merged;
   };
 
@@ -358,8 +391,25 @@ export async function assembleMessages(charId, personaId, newUserContent, option
           filtered.unshift(histMsgs[i]);
         }
         messages.push(...filtered);
+        traceDetail('context', 'context.slot', `${item.entryId} history ${filtered.length}/${histMsgs.length} messages`, {
+          entryId: item.entryId,
+          blockType,
+          role,
+          messageCount: filtered.length,
+          originalMessageCount: histMsgs.length,
+          truncated: filtered.length < histMsgs.length,
+          maxTokens: item.maxTokens,
+          tokenEstimate: tokens,
+        }, contextTraceId);
       } else {
         messages.push(...histMsgs);
+        traceDetail('context', 'context.slot', `${item.entryId} history ${histMsgs.length} messages`, {
+          entryId: item.entryId,
+          blockType,
+          role,
+          messageCount: histMsgs.length,
+          tokenEstimate: histMsgs.reduce((sum, m) => sum + estimateTokens(m.content || ''), 0),
+        }, contextTraceId);
       }
       continue;
     }
@@ -484,6 +534,15 @@ export async function assembleMessages(charId, personaId, newUserContent, option
           try {
             const activeRules = getActiveRuleTexts(charId);
             if (activeRules.length > 0) {
+              traceDetail('variables', 'variables.rules', `${activeRules.length} active variable rules injected`, {
+                count: activeRules.length,
+                rules: activeRules.map(r => ({
+                  variableName: r.variableName,
+                  name: r.name,
+                  currentValue: r.currentValue,
+                  ruleText: r.ruleText,
+                })),
+              }, contextTraceId);
               lines.push('');
               lines.push('【变量更新规则】以下是各变量当前值范围适用的更新规则（自然语言描述，决策变量变化时参考）：');
               for (const r of activeRules) {
@@ -542,6 +601,15 @@ export async function assembleMessages(charId, personaId, newUserContent, option
     if (content.trim()) {
       const finalContent = item.maxTokens ? truncateToTokens(content, item.maxTokens) : content;
       messages.push({ role, content: finalContent });
+      traceDetail('context', 'context.slot', `${item.entryId} ${estimateTokens(finalContent)} tokens${finalContent !== content ? ' truncated' : ''}`, {
+        entryId: item.entryId,
+        blockType,
+        role,
+        tokenEstimate: estimateTokens(finalContent),
+        originalTokenEstimate: estimateTokens(content),
+        truncated: finalContent !== content,
+        maxTokens: item.maxTokens ?? null,
+      }, contextTraceId);
     }
 
     // after_char 注入点：在 char-sample（或兜底 char-desc）之后插入
@@ -555,6 +623,10 @@ export async function assembleMessages(charId, personaId, newUserContent, option
   const remaining = Object.values(injByPos).flat();
   if (remaining.length) {
     messages.push({ role: 'system', content: remaining.join('\n') });
+    traceDetail('pending', 'pending.remainingInjected', `${remaining.length} unmatched injections appended`, {
+      count: remaining.length,
+      positions: Object.keys(injByPos),
+    }, contextTraceId);
   }
 
   // 若上下文以 assistant 结尾且无新用户消息，追加 (继续) 占位
@@ -579,6 +651,13 @@ export async function assembleMessages(charId, personaId, newUserContent, option
       }
     }
   }
+
+  traceSummary('context', 'context.done', `${finalMessages.length} messages assembled`, {
+    mode: contextMode,
+    messageCount: finalMessages.length,
+    tokenEstimate: finalMessages.reduce((sum, msg) => sum + estimateTokens(msg.content || ''), 0),
+    strictMerged: finalMessages.length !== messages.length,
+  });
 
   return { messages: finalMessages, char };
 }

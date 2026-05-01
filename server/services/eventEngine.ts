@@ -30,6 +30,7 @@ import {
 } from './events.js';
 import { getValuesByCharacter, adjustValue, getValueByVariable } from './values.js';
 import { timelineStore } from '../storage/index.js';
+import { traceSummary, traceDetail } from './trace.js';
 
 // ── 类型 ──────────────────────────────────────────────────────────────────
 
@@ -76,13 +77,37 @@ export function checkAndFireEvents(charId: string, ctx: TriggerContext): FireRes
 
     // 2. 找相关 pending 事件
     const candidates = findCandidates(charId, ctx, snapshot);
+    const traceParentId = traceSummary('eventEngine', 'event.check', `${ctx.trigger}: ${candidates.length} candidates`, {
+      characterId: charId,
+      trigger: ctx.trigger,
+      candidateCount: candidates.length,
+      candidateIds: candidates.map(evt => evt.id),
+      changedVariable: ctx.changedVariable ?? null,
+      newValue: ctx.newValue ?? null,
+    });
 
     // 3. 逐一评估并触发
     for (const evt of candidates) {
-      if (!canFire(evt, ctx, snapshot)) continue;
+      const decision = canFire(evt, ctx, snapshot);
+      if (!decision.ok) {
+        traceDetail('eventEngine', 'event.skip', `${evt.id} skipped: ${decision.reason}`, {
+          eventId: evt.id,
+          name: evt.name,
+          reason: decision.reason,
+          ...decision.data,
+        }, traceParentId);
+        continue;
+      }
       const fired = fireEvent(charId, evt, ctx, snapshot);
       if (fired) result.fired.push(evt.id);
     }
+    traceSummary('eventEngine', 'event.check.summary', `${ctx.trigger}: ${result.fired.length} fired`, {
+      characterId: charId,
+      trigger: ctx.trigger,
+      candidateCount: candidates.length,
+      fired: result.fired,
+      unlocked: result.unlocked,
+    });
   } catch (e) {
     console.error('[eventEngine] checkAndFireEvents error:', e);
   }
@@ -231,34 +256,41 @@ function findCandidates(charId: string, ctx: TriggerContext, snapshot: Snapshot)
 
 // ── 触发前检查 ────────────────────────────────────────────────────────────
 
-function canFire(evt: Event, ctx: TriggerContext, snapshot: Snapshot): boolean {
+function canFire(evt: Event, ctx: TriggerContext, snapshot: Snapshot): { ok: boolean; reason?: string; data?: Record<string, any> } {
   // 1. 检查冷却
-  if ((evt.cooldownRemaining ?? 0) > 0) return false;
-  if ((evt.conditionCooldownRemaining ?? 0) > 0) return false;
+  if ((evt.cooldownRemaining ?? 0) > 0) return { ok: false, reason: 'cooldown', data: { remaining: evt.cooldownRemaining } };
+  if ((evt.conditionCooldownRemaining ?? 0) > 0) return { ok: false, reason: 'condition-cooldown', data: { remaining: evt.conditionCooldownRemaining } };
 
   // 2. 检查最大触发次数
-  if (evt.maxTriggers != null && evt.triggerCount >= evt.maxTriggers) return false;
+  if (evt.maxTriggers != null && evt.triggerCount >= evt.maxTriggers) {
+    return { ok: false, reason: 'max-triggers', data: { triggerCount: evt.triggerCount, maxTriggers: evt.maxTriggers } };
+  }
 
   // 3. 评估触发条件
   if (evt.triggerConditions) {
     try {
       const conds = JSON.parse(evt.triggerConditions);
-      if (!evaluateConditions(conds, snapshot)) return false;
-    } catch { return false; }
+      if (!evaluateConditions(conds, snapshot)) return { ok: false, reason: 'conditions-fail' };
+    } catch (err: any) {
+      return { ok: false, reason: 'conditions-parse-error', data: { error: err?.message ?? String(err) } };
+    }
   }
 
   // 4. 条件冷却计数更新（条件满足N次才触发）
   if ((evt.conditionCooldown ?? 0) > 0) {
     const remaining = (evt.conditionCooldownRemaining ?? evt.conditionCooldown ?? 0) - 1;
     updateEvent(evt.id, { conditionCooldownRemaining: remaining });
-    if (remaining > 0) return false;
+    if (remaining > 0) return { ok: false, reason: 'condition-cooldown-tick', data: { remaining } };
   }
 
   // 5. 概率检查
   const prob = evt.probability ?? 100;
-  if (prob < 100 && Math.random() * 100 >= prob) return false;
+  if (prob < 100) {
+    const roll = Math.random() * 100;
+    if (roll >= prob) return { ok: false, reason: 'probability', data: { probability: prob, roll } };
+  }
 
-  return true;
+  return { ok: true };
 }
 
 // ── 条件评估 ──────────────────────────────────────────────────────────────
@@ -389,13 +421,19 @@ function compareNumber(cur: number, op: string, threshold: number): boolean {
 
 function fireEvent(charId: string, evt: Event, ctx: TriggerContext, snapshot: Snapshot): boolean {
   try {
+    const traceParentId = traceDetail('eventEngine', 'event.fire', `${evt.id} fired`, {
+      eventId: evt.id,
+      name: evt.name,
+      trigger: ctx.trigger,
+      effects: evt.effects,
+    });
     // 执行 effects
     if (evt.effects) {
       try {
         const effectList = JSON.parse(evt.effects);
         if (Array.isArray(effectList)) {
           for (const effect of effectList) {
-            executeEffect(charId, evt.id, effect, snapshot);
+            executeEffect(charId, evt.id, effect, snapshot, traceParentId);
           }
         }
       } catch (e) {
@@ -451,8 +489,17 @@ function fireEvent(charId: string, evt: Event, ctx: TriggerContext, snapshot: Sn
 
 // ── Effect 执行 ───────────────────────────────────────────────────────────
 
-function executeEffect(charId: string, eventId: string, effect: any, snapshot: Snapshot): void {
+function executeEffect(charId: string, eventId: string, effect: any, snapshot: Snapshot, traceParentId?: string | null): void {
   const type = effect.类型 || effect.type;
+  const traceEffect = (status: string, extra: Record<string, any> = {}) => {
+    traceDetail('eventEngine', 'event.effect', `${type} ${status}`, {
+      eventId,
+      type,
+      status,
+      effect,
+      ...extra,
+    }, traceParentId ?? null);
+  };
 
   switch (type) {
     case '注入':
@@ -472,6 +519,7 @@ function executeEffect(charId: string, eventId: string, effect: any, snapshot: S
         durationValue: durationValue || undefined,
         remainingTurns,
       });
+      traceEffect('ok', { position, durationType, remainingTurns });
       break;
     }
 
@@ -482,17 +530,23 @@ function executeEffect(charId: string, eventId: string, effect: any, snapshot: S
       const amount = effect.值 ?? effect.value ?? 0;
 
       const val = getValueByVariable(charId, varName);
-      if (!val) break;
+      if (!val) {
+        traceEffect('skipped', { reason: 'unknown-variable', variableName: varName });
+        break;
+      }
 
       switch (op) {
         case 'add':
           adjustValue(val.id, amount);
+          traceEffect('ok', { variableName: varName, operation: op, amount });
           break;
         case 'set':
           adjustValue(val.id, amount - val.currentValue); // set = add (target - current)
+          traceEffect('ok', { variableName: varName, operation: op, amount });
           break;
         case 'multiply':
           adjustValue(val.id, val.currentValue * amount - val.currentValue);
+          traceEffect('ok', { variableName: varName, operation: op, amount });
           break;
       }
       break;
@@ -505,6 +559,7 @@ function executeEffect(charId: string, eventId: string, effect: any, snapshot: S
       updateEvent(targetEvtId, { outcome: outcomeVal } as any);
       // 更新快照（同次触发中后续效果可见）
       snapshot.eventOutcomes[targetEvtId] = outcomeVal;
+      traceEffect('ok', { targetEventId: targetEvtId, outcome: outcomeVal });
       break;
     }
 
@@ -515,6 +570,9 @@ function executeEffect(charId: string, eventId: string, effect: any, snapshot: S
       if (target && target.status === 'pending') {
         // 直接触发（跳过概率检查，视为外部强制触发）
         fireEvent(charId, target, { trigger: 'event_complete', completedEventId: targetId }, snapshot);
+        traceEffect('ok', { targetEventId: targetId });
+      } else {
+        traceEffect('skipped', { targetEventId: targetId, reason: target ? `status-${target.status}` : 'not-found' });
       }
       break;
     }
@@ -523,6 +581,7 @@ function executeEffect(charId: string, eventId: string, effect: any, snapshot: S
     case 'unlock_event': {
       const targetId = effect.目标 || effect.target;
       unlockEvent(targetId);
+      traceEffect('ok', { targetEventId: targetId });
       break;
     }
 
@@ -533,6 +592,9 @@ function executeEffect(charId: string, eventId: string, effect: any, snapshot: S
       if (target && target.status === 'pending') {
         updateEvent(targetId, { status: 'locked' });
         clearSubscriptions(targetId);
+        traceEffect('ok', { targetEventId: targetId });
+      } else {
+        traceEffect('skipped', { targetEventId: targetId, reason: target ? `status-${target.status}` : 'not-found' });
       }
       break;
     }
@@ -546,6 +608,7 @@ function executeEffect(charId: string, eventId: string, effect: any, snapshot: S
         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
       `).run(location, new Date().toISOString());
       snapshot.worldState['location'] = location;
+      traceEffect('ok', { location });
       break;
     }
 
@@ -564,11 +627,13 @@ function executeEffect(charId: string, eventId: string, effect: any, snapshot: S
         source: 'event_engine',
         linkedEventId: eventId,
       }).catch(e => console.error('[eventEngine/record_history]', e?.message ?? e));
+      traceEffect('ok', { contentSnippet: content.slice(0, 80) });
       break;
     }
 
     default:
       console.warn(`[eventEngine] 未知效果类型: ${type}`);
+      traceEffect('skipped', { reason: 'unknown-effect-type' });
   }
 }
 

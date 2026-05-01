@@ -14,6 +14,7 @@ import {
   worldbookEntries,
   worldbookEventEntries,
 } from '../db/schema.js';
+import { traceSummary, traceDetail } from './trace.js';
 
 // ── 类型导出 ─────────────────────────────────────────────────
 
@@ -248,6 +249,20 @@ export function getActivatedEntries(
       inArray(worldbookEntries.worldbookId, bookIds),
     ))
     .all();
+  const scanTraceId = traceSummary('worldbook', 'worldbook.scan', `${books.length} books / ${allEntries.length} entries scanned`, {
+    charId,
+    bookCount: books.length,
+    entryCount: allEntries.length,
+    bookIds,
+    scanDepth: books.map(b => ({ id: b.id, name: b.name, scanDepth: b.scanDepth })),
+  });
+  const decisionStats = {
+    matched: 0,
+    injected: 0,
+    probabilityDropped: 0,
+    groupDropped: 0,
+    cascaded: 0,
+  };
 
   // 取最大 scanDepth
   const maxScanDepth = books.reduce((max, b) => Math.max(max, b.scanDepth), 20);
@@ -268,9 +283,12 @@ export function getActivatedEntries(
     const nextRemaining: WbEntry[] = [];
     for (const entry of remaining) {
       let shouldActivate = false;
+      let reason = 'none';
+      let matchedKeywords: string[] = [];
 
       if (entry.strategy === 'constant') {
         shouldActivate = true;
+        reason = 'constant';
       } else if (entry.strategy === 'keyword') {
         const kws: string[] = entry.keywords ? JSON.parse(entry.keywords) : [];
         const cs = !!entry.caseSensitive;
@@ -279,12 +297,16 @@ export function getActivatedEntries(
 
         shouldActivate = kws.some(kw => {
           const needle = cs ? kw : kw.toLowerCase();
-          if (entry.matchWholeWord) {
+          const matched = entry.matchWholeWord
+            ? (() => {
             const re = new RegExp(`\\b${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, cs ? '' : 'i');
             return re.test(textToScan);
-          }
-          return haystack.includes(needle);
+          })()
+            : haystack.includes(needle);
+          if (matched) matchedKeywords.push(kw);
+          return matched;
         });
+        if (shouldActivate) reason = 'keyword';
 
         // 二级关键词过滤
         if (shouldActivate && entry.filterKeywords) {
@@ -302,21 +324,48 @@ export function getActivatedEntries(
               case 'AND_ANY':
               default:         shouldActivate = fMatches.length > 0; break;
             }
+            if (!shouldActivate) reason = `filter-${logic}`;
           }
         }
       }
 
       // 概率检查
       if (shouldActivate && entry.probability < 100) {
-        shouldActivate = Math.random() * 100 < entry.probability;
+        const roll = Math.random() * 100;
+        shouldActivate = roll < entry.probability;
+        if (!shouldActivate) {
+          decisionStats.probabilityDropped++;
+          traceDetail('worldbook', 'worldbook.drop', `${entry.id} dropped: probability ${entry.probability}%`, {
+            entryId: entry.id,
+            memo: entry.memo,
+            reason: 'probability',
+            probability: entry.probability,
+            roll,
+            matchedKeywords,
+          }, scanTraceId);
+        }
       }
 
       if (shouldActivate) {
+        decisionStats.matched++;
         activated.set(entry.id, entry);
         changed = true;
         if (!entry.noFurtherRecurse && entry.content) {
           scanText += ' ' + entry.content;
+          decisionStats.cascaded++;
         }
+        traceDetail('worldbook', 'worldbook.match', `${entry.id} ${reason} matched`, {
+          entryId: entry.id,
+          memo: entry.memo,
+          strategy: entry.strategy,
+          reason,
+          matchedKeywords,
+          position: entry.position,
+          inclusionGroup: entry.inclusionGroup,
+          groupWeight: entry.groupWeight,
+          noRecurse: entry.noRecurse,
+          noFurtherRecurse: entry.noFurtherRecurse,
+        }, scanTraceId);
       } else {
         nextRemaining.push(entry);
       }
@@ -345,14 +394,41 @@ export function getActivatedEntries(
       // 加权随机选一个
       const totalWeight = entries.reduce((s, e) => s + e.groupWeight, 0);
       let roll = Math.random() * totalWeight;
+      let selected: WbEntry | null = null;
       for (const e of entries) {
         roll -= e.groupWeight;
-        if (roll <= 0) { result.push(e); break; }
+        if (roll <= 0) { selected = e; result.push(e); break; }
+      }
+      for (const e of entries) {
+        if (selected && e.id !== selected.id) {
+          decisionStats.groupDropped++;
+          traceDetail('worldbook', 'worldbook.drop', `${e.id} dropped: same group as ${selected.id}`, {
+            entryId: e.id,
+            selectedEntryId: selected.id,
+            reason: 'inclusionGroup',
+            inclusionGroup: e.inclusionGroup,
+            groupWeight: e.groupWeight,
+          }, scanTraceId);
+        }
       }
     }
   }
 
-  return result.sort((a, b) => a.orderNum - b.orderNum);
+  const sorted = result.sort((a, b) => a.orderNum - b.orderNum);
+  decisionStats.injected = sorted.length;
+  traceSummary('worldbook', 'worldbook.summary', `${books.length} books / ${allEntries.length} entries / ${decisionStats.matched} matched / ${sorted.length} injected`, {
+    ...decisionStats,
+    bookCount: books.length,
+    entryCount: allEntries.length,
+    injectedIds: sorted.map(e => e.id),
+    byPosition: sorted.reduce((acc, entry) => {
+      const pos = entry.position || 'system-bottom';
+      acc[pos] = (acc[pos] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
+  });
+
+  return sorted;
 }
 
 // ════════════════════════════════════════════════════════════════

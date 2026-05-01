@@ -25,6 +25,7 @@
 import { Router } from 'express';
 import * as svc from '../services/values.js';
 import { checkAndFireEvents } from '../services/eventEngine.js';
+import { runWithTrace, traceSummary } from '../services/trace.js';
 
 const router = Router();
 
@@ -82,20 +83,37 @@ router.delete('/item/:id', (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/item/:id/adjust', (req, res) => {
+router.post('/item/:id/adjust', async (req, res) => {
   try {
     const { delta } = req.body;
     if (typeof delta !== 'number') return res.status(400).json({ error: 'delta 必须是数字' });
-    const result = svc.adjustValue(Number(req.params.id), delta);
+    const valueId = Number(req.params.id);
+    const before = svc.getValueById(valueId);
+    const result = await runWithTrace({
+      source: 'values.adjust',
+      characterId: before?.characterId ?? null,
+      metadata: { valueId, delta },
+    }, async () => {
+      const adjusted = svc.adjustValue(valueId, delta);
+      if (adjusted) {
+        traceSummary('variables', 'values.adjust', `${adjusted.variableName}: ${before?.currentValue ?? '?'} -> ${adjusted.currentValue}`, {
+          valueId,
+          variableName: adjusted.variableName,
+          oldValue: before?.currentValue ?? null,
+          newValue: adjusted.currentValue,
+          delta,
+        });
+        try {
+          checkAndFireEvents(adjusted.characterId, {
+            trigger: 'value_change',
+            changedVariable: adjusted.variableName,
+            newValue: adjusted.currentValue,
+          });
+        } catch (e: any) { console.error('[values/event-engine]', e.message); }
+      }
+      return adjusted;
+    });
     if (!result) return res.status(404).json({ error: 'Not found' });
-    // 事件引擎：触发 value_change 检查
-    try {
-      checkAndFireEvents(result.characterId, {
-        trigger: 'value_change',
-        changedVariable: result.variableName,
-        newValue: result.currentValue,
-      });
-    } catch (e: any) { console.error('[values/event-engine]', e.message); }
     res.json(result);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

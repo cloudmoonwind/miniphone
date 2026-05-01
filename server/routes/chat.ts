@@ -7,6 +7,7 @@ import { triggerExtraction } from '../services/extraction.js';
 import { checkAndFireEvents, parseOutcomeFromAIResponse, tickCooldowns } from '../services/eventEngine.js';
 import { consumeInjectionTurns } from '../services/events.js';
 import { extractVarBlock, parseAndApplyVarBlock } from '../services/values.js';
+import { runWithTrace, traceSummary } from '../services/trace.js';
 
 // 同一发送者 5 分钟内的消息合并为一条
 const GROUP_TIMEOUT_MS = 5 * 60 * 1000;
@@ -163,11 +164,16 @@ router.post('/message', async (req, res) => {
 router.post('/respond', async (req, res) => {
   const {
     characterId, personaId = null, mode = 'online',
-    apiKey, baseURL, model, params, contextMode,
+    apiKey, baseURL, model, provider, params, contextMode,
     stream: requestStream = false,
   } = req.body;
   if (!characterId) return res.status(400).json({ error: '缺少 characterId' });
 
+  return await runWithTrace({
+    source: 'chat.respond',
+    characterId,
+    metadata: { personaId, mode, requestStream, contextMode },
+  }, async () => {
   try {
     let aiKey = apiKey, aiBase = baseURL, aiModel = model, aiParams = params;
     let aiContextMode = contextMode || 'flexible';
@@ -190,7 +196,7 @@ router.post('/respond', async (req, res) => {
     }
 
     const { messages } = await assembleMessages(characterId, personaId, null, { contextMode: aiContextMode });
-    const client = getClient(aiPreset || { apiKey: aiKey, baseURL: aiBase });
+    const client = getClient(aiPreset || { apiKey: aiKey, baseURL: aiBase, provider });
 
     // ── 流式 SSE ──────────────────────────────────────────────────────
     if (presetStream) {
@@ -252,6 +258,12 @@ router.post('/respond', async (req, res) => {
           streamChangedVars = result.changedVariables;
           await messageStore.update(aiMsg.id, { variableSnapshot: result.snapshot } as any);
         } catch (e) { console.error('[chat/var-block]', e.message); }
+      } else {
+        traceSummary('variables', 'var.parse.summary', 'no <var> block', {
+          reason: 'missing-var-block',
+          appliedCount: 0,
+          failedLines: 0,
+        });
       }
 
       res.write(`data: ${JSON.stringify({ done: true, id: aiMsg.id, timestamp: aiMsg.timestamp })}\n\n`);
@@ -303,6 +315,12 @@ router.post('/respond', async (req, res) => {
         changedVars = result.changedVariables;
         await messageStore.update(aiMsg.id, { variableSnapshot: result.snapshot } as any);
       } catch (e) { console.error('[chat/var-block]', e.message); }
+    } else {
+      traceSummary('variables', 'var.parse.summary', 'no <var> block', {
+        reason: 'missing-var-block',
+        appliedCount: 0,
+        failedLines: 0,
+      });
     }
 
     triggerAutoSummaries(characterId);
@@ -324,9 +342,11 @@ router.post('/respond', async (req, res) => {
     } catch (e) { console.error('[chat/event-engine]', e.message); }
     res.json({ id: aiMsg.id, sender: 'character', content: cleanContent, mode, timestamp: aiMsg.timestamp });
   } catch (err) {
+    traceSummary('route', 'chat.respond.error', err.message, { error: err.message });
     console.error('[chat/respond]', err.message);
     res.status(500).json({ error: err.message });
   }
+  });
 });
 
 // POST /api/chat  – 主聊天接口（保留兼容旧流程）
@@ -335,20 +355,20 @@ router.post('/', async (req, res) => {
     content, mode = 'online',
     characterId, characterName, characterPersona,
     personaId = null,
-    apiKey, baseURL, model, params,
+    apiKey, baseURL, model, provider, params,
   } = req.body;
 
   if (!content?.trim()) return res.status(400).json({ error: '消息内容不能为空' });
 
   try {
     // 解析 AI preset：请求体优先，否则取 active preset
-    let aiKey = apiKey, aiBase = baseURL, aiModel = model, aiParams = params;
+    let aiKey = apiKey, aiBase = baseURL, aiModel = model, aiProvider = provider, aiParams = params;
     if (!aiKey) {
       const active    = await activeStore.getObject();
       const primaryId = active?.primaryPresetId ?? active?.activePresetId;
       if (primaryId) {
         const preset = await presetStore.getById(primaryId);
-        if (preset) { aiKey = preset.apiKey; aiBase = preset.baseURL; aiModel = preset.model; aiParams = preset.params; }
+        if (preset) { aiKey = preset.apiKey; aiBase = preset.baseURL; aiModel = preset.model; aiProvider = preset.provider; aiParams = preset.params; }
       }
     }
 
@@ -368,7 +388,7 @@ router.post('/', async (req, res) => {
       ];
     }
 
-    const client    = getClient({ apiKey: aiKey, baseURL: aiBase });
+    const client    = getClient({ apiKey: aiKey, baseURL: aiBase, provider: aiProvider });
     const aiContent = await chatCompletion(client, openAIMessages, {
       model: aiModel || 'gpt-3.5-turbo',
       temperature: aiParams?.temperature ?? 0.8,

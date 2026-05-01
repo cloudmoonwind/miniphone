@@ -16,6 +16,7 @@ import { getEventPool, type Event as PoolEvent } from '../services/events.js';
 import { getCharStats, getMergedStatDefs } from '../services/charstats.js';
 import { getPrompt } from '../services/promptPresets.js';
 import { checkAndFireEvents } from '../services/eventEngine.js';
+import { runWithTrace, traceSummary } from '../services/trace.js';
 
 const router = Router({ mergeParams: true });
 
@@ -73,8 +74,13 @@ router.delete('/:id', async (req, res) => {
  * }
  */
 router.post('/generate', async (req, res) => {
+  const { charId } = req.params;
+  return await runWithTrace({
+    source: 'life.generate',
+    characterId: charId,
+    metadata: { period: req.body?.period, eventCount: req.body?.eventCount, save: req.body?.save },
+  }, async () => {
   try {
-    const { charId } = req.params;
     const {
       period     = inferPeriod(),
       eventCount = 2,
@@ -102,6 +108,11 @@ router.post('/generate', async (req, res) => {
     // 4. 从事件池中选取事件
     const eventPool = getEventPool(charId);
     const selectedEvents = pickEvents(eventPool, stats, +eventCount);
+    traceSummary('eventEngine', 'life.eventPool', `${selectedEvents.length}/${eventPool.length} life events selected`, {
+      eventPoolCount: eventPool.length,
+      selectedEventIds: selectedEvents.map(e => e.id),
+      selectedEventNames: selectedEvents.map(e => e.name),
+    });
 
     // 5. 最近3条生活日志（从旧到新）
     const recentLogs = (await lifeStore.getAll(l => l.charId === charId))
@@ -168,9 +179,11 @@ router.post('/generate', async (req, res) => {
     });
 
   } catch (err) {
+    traceSummary('route', 'life.generate.error', err.message, { error: err.message });
     console.error('[life/generate]', err.message);
     res.status(500).json({ error: err.message });
   }
+  });
 });
 
 export default router;

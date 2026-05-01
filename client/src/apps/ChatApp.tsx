@@ -464,7 +464,8 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
             characterId: charId, mode, stream: true,
             contextMode: activePreset?.contextMode,
             apiKey: activePreset?.apiKey, baseURL: activePreset?.baseURL,
-            model: activePreset?.model, params: activePreset?.params,
+            model: activePreset?.model, provider: activePreset?.provider,
+            params: activePreset?.params,
           }),
         });
         if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
@@ -500,6 +501,7 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
           apiKey:  activePreset?.apiKey,
           baseURL: activePreset?.baseURL,
           model:   activePreset?.model,
+          provider: activePreset?.provider,
           params:  activePreset?.params,
         }),
       });
@@ -595,7 +597,8 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
       characterId: charId, mode: targetMode,
       contextMode: activePreset?.contextMode,
       apiKey: activePreset?.apiKey, baseURL: activePreset?.baseURL,
-      model: activePreset?.model, params: activePreset?.params,
+      model: activePreset?.model, provider: activePreset?.provider,
+      params: activePreset?.params,
     };
 
     if (useStream) {
@@ -654,7 +657,8 @@ const ChatMain = ({ onBack, activePreset, initialChar, onNewAIMessage }) => {
           periodFrom: validIds.length === 0 ? msgs[0]?.timestamp : undefined,
           periodTo:   validIds.length === 0 ? msgs[msgs.length - 1]?.timestamp : undefined,
           level: 'segment', type: 'conversation',
-          apiKey: activePreset?.apiKey, baseURL: activePreset?.baseURL, model: activePreset?.model,
+          apiKey: activePreset?.apiKey, baseURL: activePreset?.baseURL,
+          model: activePreset?.model, provider: activePreset?.provider,
         }),
       });
       if (!res.ok) throw new Error(await res.text());

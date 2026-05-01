@@ -13,6 +13,7 @@ import {
   eventBooks, events, eventTags, eventConnections,
   conditionSubscriptions, pendingInjections,
 } from '../db/schema.js';
+import { traceSummary, traceDetail } from './trace.js';
 
 // ── 类型 ──────────────────────────────────────────────────────
 
@@ -412,19 +413,58 @@ export function deleteInjection(id: number): boolean {
 export function consumeInjectionTurns(characterId: string): void {
   const db = getDrizzle();
   const all = getInjectionsByCharacter(characterId);
+  const traceParentId = traceSummary('pending', 'pending.consume', `${all.length} pending injections checked`, {
+    characterId,
+    count: all.length,
+    ids: all.map(inj => inj.id),
+  });
 
   for (const inj of all) {
     if (inj.durationType === 'once') {
       db.delete(pendingInjections).where(eq(pendingInjections.id, inj.id)).run();
+      traceDetail('pending', 'pending.consume.item', `inject_${inj.id} consumed once and deleted`, {
+        id: inj.id,
+        sourceEventId: inj.sourceEventId,
+        position: inj.position,
+        durationType: inj.durationType,
+        action: 'deleted',
+      }, traceParentId);
     } else if (inj.durationType === 'turns' && inj.remainingTurns != null) {
       const remaining = inj.remainingTurns - 1;
       if (remaining <= 0) {
         db.delete(pendingInjections).where(eq(pendingInjections.id, inj.id)).run();
+        traceDetail('pending', 'pending.consume.item', `inject_${inj.id} turns exhausted and deleted`, {
+          id: inj.id,
+          sourceEventId: inj.sourceEventId,
+          position: inj.position,
+          durationType: inj.durationType,
+          previousRemainingTurns: inj.remainingTurns,
+          remainingTurns: remaining,
+          action: 'deleted',
+        }, traceParentId);
       } else {
         db.update(pendingInjections)
           .set({ remainingTurns: remaining })
           .where(eq(pendingInjections.id, inj.id)).run();
+        traceDetail('pending', 'pending.consume.item', `inject_${inj.id} -> ${remaining} turns left`, {
+          id: inj.id,
+          sourceEventId: inj.sourceEventId,
+          position: inj.position,
+          durationType: inj.durationType,
+          previousRemainingTurns: inj.remainingTurns,
+          remainingTurns: remaining,
+          action: 'updated',
+        }, traceParentId);
       }
+    } else {
+      traceDetail('pending', 'pending.consume.item', `inject_${inj.id} kept (${inj.durationType})`, {
+        id: inj.id,
+        sourceEventId: inj.sourceEventId,
+        position: inj.position,
+        durationType: inj.durationType,
+        remainingTurns: inj.remainingTurns,
+        action: 'kept',
+      }, traceParentId);
     }
   }
 }

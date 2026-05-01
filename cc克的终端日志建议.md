@@ -25,9 +25,9 @@ endpoint,                          // 'chat' | 'chatStream' | 'listModels' | 'te
 durationMs, inputMessages, output, usage,
 streamChunks?,                     // 流式：分片数 + 是否中途断
 error?, status?, errorPhase?       // 'before-stream' | 'mid-stream' | 'after-stream'
-保留策略：默认保留 14 天，超过自动删（可调）。配置走环境变量。
+保留策略：默认保留 3 天，超过自动删（可调）。配置走环境变量。
 
-终端 UI：AIConsoleApp.tsx 改成读取按日期保存的 jsonl，默认最近一个有日志的日期，上限取消（不再 30 条封顶）。可选：加个"导出"按钮把当天日志打包下载。
+终端 UI：AIConsoleApp.tsx 改成读取按日期保存的 jsonl，默认最近一个有日志的日期，上限取消（不再 30 条封顶）。提供当前日期日志导出/删除，也提供单条日志导出/删除。
 
 .gitignore：加 server/data/logs/。
 
@@ -69,7 +69,7 @@ server/data/logs/trace/
 
 位置：server/data/logs/ai/
 格式：按本地日期分文件 2026-05-01.jsonl，每行一条 JSON 记录
-保留：14 天，超出自动删
+保留：3 天，超出自动删
 清理时机：服务启动时扫一遍 + 每次写入时顺手判断（轻量，不开 cron）
 .gitignore：加 server/data/logs/
 
@@ -125,8 +125,8 @@ server/services/aiLogStore.ts：
 appendEntry(entry) — 异步追加到当天文件，目录不存在自动建
 listDates() — 返回有日志的日期数组（倒序，新→旧）
 readByDate(date) — 返回某天的全部 entry 数组
-purgeOlderThan(days = 14) — 删过期文件
-启动时调用 purgeOlderThan(14) 一次
+purgeOlderThan(days = 3) — 删过期文件，可通过 AI_LOG_RETENTION_DAYS 调整
+启动时调用 purgeOlderThan() 一次
 
 ## 五、HTTP 接口变更
 
@@ -134,6 +134,7 @@ purgeOlderThan(days = 14) — 删过期文件
 GET /api/debug/ai-log	行为变更：增加 ?date=YYYY-MM-DD 参数，不传默认今天；返回该日全部条目
 GET /api/debug/ai-log/dates	新增：返回有日志的日期列表，给日期选择器用
 DELETE /api/debug/ai-log	保留：清空当前查看日期的文件；带 ?date= 删指定日
+DELETE /api/debug/ai-log/:id	新增：删除指定日期内的一条日志；带 ?date= 定位日期
 
 ## 六、前端改造（AIConsoleApp.tsx）
 
@@ -153,7 +154,7 @@ DELETE /api/debug/ai-log	保留：清空当前查看日期的文件；带 ?date=
 点击展开 → 显示完整 REQUEST + RESPONSE（用现在 renderRaw() 的格式）
 顶栏多两个按钮：「全展开」「全折叠」
 grep 时：命中的条目自动展开，未命中的隐藏（不只是高亮）
-保留：自动刷新（仅当查看的是"今天"时有效）、清空、token 统计
+保留：自动刷新（仅当查看的是"今天"时有效）、当前日期导出/清空、单条导出/删除、token 统计
 
 ## 七、改动文件清单
 
@@ -185,14 +186,13 @@ tsc --noEmit 通过
 
 ❌ traceId 内容（保留字段，方案 2 接入后填）
 ❌ 触发链路（事件 / 世界书 / 变量等）
-❌ 导出/打包下载日志按钮
 ❌ 按角色/会话过滤（终端目前是全局视角，方案 2 上来后可以加）
 如果这个计划没问题我就开始动手。有几处特别想确认：
 
 流式失败的"errorPhase"分类够用吗？（before-call / mid-stream / after-stream）
 结论：我会在流式 wrapper 里累积 partial output，无论怎么结束都写进 output 字段。
 
-删除策略是想要"我手动 DELETE 才删"还是"老文件自动消失"？我默认理解是后者（14 天硬清）。
+删除策略是想要"我手动 DELETE 才删"还是"老文件自动消失"？我默认理解是后者（3 天硬清）。
 结论：自动删除
 
 ## 改后复检
@@ -200,15 +200,15 @@ tsc --noEmit 通过
 改动落点
 新增
 
-server/services/aiLogStore.ts —— 按日期分文件的 JSONL 存储 + 14 天清理
+server/services/aiLogStore.ts —— 按日期分文件的 JSONL 存储 + 3 天清理
 修改
 
 server/providers/openai-compat.ts —— chatCompletion/chatCompletionStream/listModels 都包了日志层；流式用 async generator 包装 + try/catch/finally 保证任何结束方式（成功/中途失败/消费方提前断）都写入；流式失败保留已收到的 partial output
 server/providers/index.ts —— getProvider 把 providerKey 传进 provider 实例
 server/services/ai.ts —— 删掉内存 ringbuffer、pushLog、logStreamCompletion，瘦身成纯 facade
 server/routes/chat.ts —— 删掉 logStreamCompletion 两处调用与 lastUsage/usedModel/t0 等不再需要的变量
-server/routes/debug.ts —— GET /ai-log?date= + 新增 GET /ai-log/dates + DELETE /ai-log?date=
-server/index.ts —— 启动时调 purgeAiLogs(14)
+server/routes/debug.ts —— GET /ai-log?date= + 新增 GET /ai-log/dates + DELETE /ai-log?date= + DELETE /ai-log/:id?date=
+server/index.ts —— 启动时调 purgeAiLogs()
 .gitignore —— 加 server/data/logs/
 client/src/apps/AIConsoleApp.tsx —— 重写：有日志日期下拉、可折叠条目、grep 自动展开命中项、自动刷新仅"今天"生效、状态栏显示保留期
 
@@ -243,136 +243,281 @@ source 新增业务来源：chat.respond、chat.legacy、settings.testConnection
 
 修正 4：日期 UI 简化
 
-去掉左右箭头，不做日历。终端只提供"有日志日期"下拉列表，默认选最近一个有日志的日期。14 天保留期下，下拉比日历更简单，也不会点到一串空白日期。
+去掉左右箭头，不做日历。终端只提供"有日志日期"下拉列表，默认选最近一个有日志的日期。3 天保留期下，下拉比日历更简单，也不会点到一串空白日期。
 
 
-# Phase 2 实施建议
+# Phase 2 实施建议（修正版）
 
-## 一、核心原则：只记"决策点"，不记"操作步骤"
+## 一、核心原则：完整记录，分层阅读
 
-每个子系统都有两类代码：
+这套项目的规模不能按"普通轻量聊天"估算。你实际会常驻多本世界书，每本多个条目；同时还有事件书、变量系统、记忆、摘要、生活日志、pending injections 等注入源。因此 Phase 2 不应追求"一轮只有 30 条左右"，而应追求：
 
-决策点：分支判断、过滤、淘汰、覆盖、截断、跳过——"为什么走这条路"
-操作步骤：取数据、格式化、序列化、循环——"按部就班执行"
-只记决策点，故事就清晰；记操作步骤就成了噪音。
+存储层：尽量保存完整证据，方便事后复盘和交给 AI/开发者分析。
 
-举例对比：
+显示层：默认只看摘要层，按模块逐层展开到 detail/debug，避免一打开就是几百行。
+
+记录原则仍然是"决策点优先，不记机械操作"：
 
 ✓ 该记	✗ 不该记
-世界书条目 wb_a 与 wb_b 都激活，互斥组 g1 留 wb_a（权重高）	查询了 worldbook_entries 表
-evt_confession 候选但被冷却 3 轮跳过	取角色全部 events
-<var> 行"好感度: 50→52"原值校验失败（当前=48）	解析了 5 行
-context 槽 sys-history 因 maxTokens=2000 截掉 3 条最旧消息	拼接了字符串
+世界书扫描 5 本 41 条，命中 8 条，最终注入 5 条	查询了 worldbook_entries 表
+互斥组 g1 留 wb_a，淘汰 wb_b	遍历数组第几项
+evt_confession 候选但冷却剩 3 轮	取角色全部 events
+<var> 行"好感度: 50→52"原值校验失败（当前=48）	解析了 5 行字符串
+sys-history 因 maxTokens 截掉 3 条最旧消息	拼接了 prompt 字符串
 pending_injection inject_42 消费一轮，剩 2 轮	查询 pending_injections 表
-每一轮 30~100 条这种粒度，是有用的故事；500 条 SQL 调用是垃圾。
 
-## 二、架构：每"轮"一个 trace
+默认视图看 summary/detail 里的关键决策；完整 JSON 里可以保留更多 detail/debug 证据。
 
-"轮"的定义：一次用户触发的请求生命周期。最常见的 3 个入口：
+## 二、"一轮"的定义
 
-POST /api/chat/respond（聊天主入口）
-POST /api/values/item/:id/adjust（手动调数值）
-POST /api/characters/:id/life/generate（生成生活日志）
-机制：Node AsyncLocalStorage
+"一轮"不等于"一次 AI API 调用"。
 
-路由进入时 runWithTrace(traceId, () => ...) 包裹整个 handler
-整个调用栈里任意子系统调 trace.event(...)，不需要传参，不需要 import 复杂的东西
-没有活跃 trace 时（比如 cron、健康检查、setInterval 跑的代码）静默跳过——零侵入
-API 极简化：
+"一轮" = 一次用户或系统触发的业务生命周期。它可能包含 AI 调用，也可能完全不涉及 AI。
 
+常见有 AI 的轮：
 
-trace.event('worldbook.activated', `entry=${id} ${selected ? '✓' : 'dropped'}`, {
-  entryId, strategy, group, weight, selected,
-});
-三个参数：
+- `chat.respond`：用户发消息，角色回复
+- `life.generate`：生成生活日志
+- `dream.generate`：生成梦境
+- `summaries.generate` / `summaries.generateDaily`：生成总结
+- `dafu.hostNarrative` / `dafu.charReply`：大富翁叙事或角色回应
 
-type：点分命名（用于前端折叠/过滤），如 worldbook.activated、event.skip、var.parse
-message：一句人话（学习者直接读这一列就懂）
-data：结构化字段（点开看细节、AI 调试时方便提取）
-存储：跟 AI 日志同模式
+常见无 AI 的内部轮：
 
+- `values.adjust`：手动调整变量
+- `event.fireManual`：手动触发事件
+- `timePass.hourly` / `timePass.daily`：定时器推进
+- `pending.consume`：只消费注入轮次
+- 未来规则引擎自动推进的内部任务
 
+trace 需要有 `source/kind` 字段，例如 `chat.respond`、`values.adjust`、`life.generate`。AI 日志通过 `traceId` 反向关联到同一轮；没有 AI 的轮也应有 trace，只是 `aiCallCount=0`。
+
+## 三、事件结构：summary / detail / debug
+
+每条 trace event 建议包含：
+
+```ts
+{
+  id: string,
+  parentId: string | null,
+  ts: string,
+  offsetMs: number,
+  module: 'context' | 'worldbook' | 'variables' | 'memory' | 'eventEngine' | 'pending' | 'ai' | 'route',
+  type: string,        // worldbook.summary / worldbook.match / event.skip 等
+  level: 'summary' | 'detail' | 'debug',
+  message: string,     // 给人看的短句
+  data: object | null, // 给机器和展开详情看的结构化字段
+}
+```
+
+层级含义：
+
+- `summary`：默认展示，一眼看懂这轮发生了什么。
+- `detail`：点开某个 summary 后展示，例如每个命中的世界书条目、每个候选事件的跳过原因。
+- `debug`：默认隐藏，只在需要深查时展示，例如未命中的大量条目的原因分布或原始片段。
+
+示例：
+
+```text
+summary  worldbook.summary  5 books / 41 entries / 8 matched / 5 injected / 3 dropped
+detail   worldbook.match    wb_intro_001 constant injected
+detail   worldbook.match    wb_angry_a keyword="生气" injected
+detail   worldbook.drop     wb_angry_b dropped: same group, wb_angry_a wins
+detail   worldbook.drop     wb_secret_01 dropped: probability roll failed
+```
+
+## 四、存储：一轮一行，但不是一坨字符串
+
+存储仍建议：
+
+```text
 server/data/logs/trace/2026-05-01.jsonl
-一行 = 一轮（不是一条事件）。一轮内的所有事件作为数组嵌在 trace 对象里。这样每一轮的故事完整在一行里，肉眼直接 cat | grep 都能用。
+```
 
-与 AI 日志互联：AI 日志已经预留了 traceId 字段——provider 层调用时如果 trace 活跃就把 traceId 写进去。前端能双向跳转。
+一行 = 一个完整 trace 对象，不是一条事件。
 
-## 三、显示：把"一轮"渲染成时间线
+这样一轮的证据是原子的，复制给 AI 或开发者时不会丢上下文。trace 对象内部包含 metadata、events、aiCallIds、summaryStats 等字段。
 
-我觉得直接做个 trace tab，跟 AI 终端同结构（日期切换器 + 折叠条目），每个折叠条目展开后是这样的故事视图：
+示意：
 
+```ts
+{
+  id: 'trace_xxx',
+  source: 'chat.respond',
+  startedAt: '...',
+  durationMs: 2850,
+  characterId: 'char_xxx',
+  aiCallIds: ['log_abc123'],
+  eventCount: 143,
+  summaryStats: {
+    aiCallCount: 1,
+    worldbookMatched: 8,
+    worldbookInjected: 5,
+    variablesApplied: 3,
+    eventsFired: 2,
+  },
+  events: [...]
+}
+```
 
-▾ trace_xxx  16:20:23  [chat.respond]  char_legacy_ally  2.45s  37 events  1 ai-call
-  ───── timeline (relative ms) ─────
-  +0     [chat.respond]      start (mode=online)
-  +12    [context.assemble]  start (mode=flexible)
-  +33    [context.slot]      sys-syspre        24 tokens
-  +35    [context.slot]      sys-tools         skipped (disabled)
-  +48    [worldbook.scan]    book=主世界 (depth=20, 6 entries)
-  +50    [worldbook.match]   wb_intro_001 constant ✓
-  +52    [worldbook.match]   wb_g1_a keyword="生气" group=g1 weight=100 selected
-  +53    [worldbook.match]   wb_g1_b keyword="生气" group=g1 weight=80 dropped (g1_a wins)
-  +60    [context.slot]      sys-variables     4 rules injected
-  +62    [variables.resolve] {{v:affection:desc}} → "朋友"
-  +75    [context.slot]      sys-history       12 msgs (3 truncated, maxTokens=2000)
-  +80    [pendingInject.consume]  inject_42 → 2 turns left
-  +82    [ai.call]           openai/gpt-4o-mini → log_abc123  (click)
-  +2401  [ai.return]         in=1234 out=89  2.32s
-  +2420  [var.parse]         "好感度：50→52" applied
-  +2421  [var.parse]         "心情：50→55" applied
-  +2430  [event.check]       trigger=value_change var=affection (2 subscribers)
-  +2432  [event.skip]        evt_confession cooldown=3 left
-  +2433  [event.fire]        evt_milestone_50 effects=[inject, set_outcome, record_history]
-  +2441  [event.effect]      inject → pending_injections+1
-  +2442  [event.effect]      set_outcome evt_milestone_50='success'
-  +2443  [event.effect]      record_history → timeline+1
-  +2452  [chat.respond]      done
-学习者从上往下读，整个轮次里"什么触发了什么、谁覆盖了谁、谁被跳过"都清楚。点 [ai.call] log_abc123 跳到 AI 日志看完整 prompt。
+UI 展示时不是把这一行 JSON 原样丢出来，而是把 events 渲染成可展开表格/时间线。
 
-支持的过滤：
+## 五、显示：从单行逐层展开
 
-按 type 折叠分组（只看 event.*、只看 worldbook.*）
-按 traceId 跳来跳去
-grep 关键词（变量名、事件 id 等）
+第一层：轮次列表。
 
-## 四、量级估算
+```text
+trace_abc  chat.respond   14:23:05  2.8s  143 events  1 ai-call
+trace_def  values.adjust  14:25:11  0.1s   18 events  0 ai-call
+```
 
-按上面的标准，每轮事件数：
+第二层：点开某一轮，默认只显示 summary 时间线。
 
-简单聊天（无世界书命中、无事件触发）：~15 条
-普通聊天：~30 条
-重头戏（多个事件 fire + 多 effect + 世界书互斥）：~80 条
-每条 JSON 大约 200-500 字节。一天 50 轮重对话 ≈ 1-3 MB jsonl。14 天 ≈ 30-50 MB。完全可接受。
+```text
++0ms    chat.start          online mode
++20ms   context.summary     12 slots, 4180 tokens, 2 slots truncated
++35ms   worldbook.summary   5 books, 41 entries, 8 matched, 5 injected
++50ms   memory.summary      6 memories injected, 820 tokens
++65ms   variables.summary   4 rules injected, 12 placeholders resolved
++80ms   ai.call             log_xxx
++3100ms ai.return           ok, 1234 in / 220 out
++3120ms var.summary         3 applied, 1 failed
++3140ms event.summary       12 candidates, 2 fired, 5 skipped, 5 failed conditions
++3160ms pending.summary     1 consumed, 2 remaining
+```
 
-## 五、分阶段实施（每阶段都可独立完成停手）
+第三层：点开某个 summary，展示它的 detail。
 
-Phase 2a · trace 基础设施（1~2 小时）
+```text
+worldbook.summary
+  主世界书：12 条，命中 3，注入 2
+  角色关系书：8 条，命中 1，注入 1
+  当前场景书：10 条，命中 4，注入 2
 
-新文件 server/services/trace.ts：AsyncLocalStorage + trace.event API
-新文件 server/services/traceStore.ts：写 jsonl + 14 天清理（跟 aiLogStore 同结构，可以抽公共代码）
-路由 chat.respond / values.../adjust / life.generate 入口处套 runWithTrace
-provider 层把 traceId 自动写进 AI log 的 traceId 字段
-此时没有任何业务子系统埋点，trace 是空的，但管道通了
-Phase 2b · 主链路埋点（2~3 小时）
+  wb_intro_001     constant        injected
+  wb_angry_a       keyword=生气     injected
+  wb_angry_b       keyword=生气     dropped, same group as wb_angry_a
+  wb_secret_01     probability     dropped, roll failed
+```
 
-context.ts：assembleMessages 入口/出口、每个槽的状态、截断
-worldbook.ts：扫描、匹配、互斥淘汰、级联激活
-values.ts：占位符解析、<var> 块每行的处理
-eventEngine.ts：checkAndFireEvents 每个候选的判定、effect 执行
-此时已经能看到完整的故事，对调试和学习足够
-Phase 2c · 前端 trace 查看器（1~2 小时）
+支持过滤：
 
-把现有 AIConsoleApp 改成 tab 结构：AI Calls / Traces
-Traces tab：日期切换器 + 折叠 + 时间线渲染
-AI 日志条目里增加 → trace_xxx 跳转链接
-Phase 2d · 扩展埋点（按需）
+- 按 `source`：只看 chat.respond / values.adjust / life.generate
+- 按 `module`：只看 worldbook / eventEngine / variables
+- 按 `level`：只看 summary，或显示 detail/debug
+- 按 `traceId` 在 AI 日志与 trace 之间跳转
+- grep 变量名、事件 id、世界书 id、关键词
 
-摘要、提取、dafu、life 生成等次要入口
-这部分按你后续遇到具体调试需求再补
+## 六、量级估算（修正版）
 
-## 六、要你拍的几件事
+原先"普通聊天 30 条"只适合小系统。按本项目规模，估计应改成：
 
-每轮一行 vs 每事件一行：我建议每轮一行（人读友好、原子写入）。如果你想直接 tail -f trace.jsonl 看实时事件流，得改成每事件一行。
-Phase 2c（前端）做不做：如果你只是想自己学习、并发给我们 jsonl 看，前端可以跳过；如果你希望在终端 UI 直接读，那要做。
-从哪步开始：建议 2a + 2b 一起做（管道通了但没埋点 = 无意义），2c 看你需要。
-trace 在 AsyncLocalStorage 里"找不到"时的行为：静默跳过（推荐）还是 console.warn？前者干净，后者能帮我们发现"哪些代码路径没被 wrap"。
+- 简单聊天：50-100 条 events，其中默认 summary 约 15-30 行
+- 普通聊天：100-250 条 events，其中默认 summary 约 20-50 行
+- 重配置聊天：300+ 条 events，例如多本世界书、多候选事件、多变量更新同轮发生
+- 无 AI 内部轮：5-50 条 events，取决于变量/事件链路复杂度
+
+存储上仍可接受，因为一轮一 JSON 行，且只保留 3 天。UI 必须默认折叠 detail/debug，否则不可读。
+
+默认上限建议：
+
+- 每个 trace 最多 1000 条 events。
+- 单个 event 的 `data` 序列化后最多 8KB。
+- 单个 trace 序列化后最多 2MB。
+- 上限可通过环境变量调整：`TRACE_MAX_EVENTS_PER_TURN`、`TRACE_MAX_EVENT_BYTES`、`TRACE_MAX_TRACE_BYTES`。
+
+这些值适合作为第一版防护栏：普通轮不会碰到，重配置轮也大多能保留完整证据；真正爆量时避免日志无限膨胀。后续如果发现常规使用频繁触顶，再按真实样本调大。
+
+一旦发生丢弃/截断，必须显式标记"不完整"：
+
+- trace 顶层写 `incomplete: true`。
+- trace 顶层写 `truncationReason`，例如 `max-events` / `max-event-bytes` / `max-trace-bytes`。
+- trace 顶层写 `droppedEventCount`、`truncatedEventCount`。
+- events 末尾追加一条 `trace.truncated` summary 事件，message 里说明丢弃了多少内容。
+- 单个 event 的 data 被截断时，该 event 写 `truncated: true`，并保留 `originalBytes` / `keptBytes`。
+
+这样即使日志不完整，UI 和 AI 分析也会知道"这份证据被截过"，不会把缺失误判成没有发生。
+
+## 七、分阶段实施（每阶段都可独立停手）
+
+Phase 2a · trace 基础设施
+
+- 新增 `server/services/trace.ts`：AsyncLocalStorage + `runWithTrace()` + `trace.event()`。
+- 新增 `server/services/traceStore.ts`：按日期写 `server/data/logs/trace/YYYY-MM-DD.jsonl`，同样 3 天保留。
+- trace event 支持 `level`、`module`、`type`、`parentId`、`data`。
+- provider 层自动读取当前 traceId，写入 AI log 的 `traceId`。
+- 路由先包 `chat.respond`、`values.adjust`、`life.generate`，后续再扩。
+
+Phase 2b · 最小主链路埋点
+
+- `context.ts`：组装开始/结束、槽位 summary、token 估算、截断、记忆/摘要/生活日志注入数量。
+- `worldbook.ts`：扫描 summary、命中 detail、互斥淘汰、概率失败、级联激活；大量未命中默认只做统计。
+- `values.ts`：变量规则注入 summary、占位符解析 summary/detail、`<var>` 每行应用/失败原因。
+- `eventEngine.ts`：候选数量 summary、fire/skip/fail detail、effect 执行结果。
+- `events.ts`：pending injection 消费、剩余轮次、删除/保留原因。
+
+Phase 2c · Trace UI
+
+- AIConsoleApp 增加 `AI Calls / Traces` tab。
+- Traces tab 使用"有日志日期"下拉，列表一行一个 trace。
+- 展开 trace 后默认只显示 summary 时间线。
+- summary 行可展开 detail；debug 默认隐藏。
+- `ai.call` 行可跳到对应 AI log；AI log 也可跳回 trace。
+- AI Calls 和 Traces 都支持导出/删除当前日期日志，也支持导出/删除单条日志。
+
+Phase 2d · 扩展入口
+
+- dream.generate、summaries.generate、summaries.generateDaily、charSystem.extraction、charSystem.timelineEval、charSystem.lifeExtract、dafu.*。
+- 定时器类轮次：timePass.hourly / timePass.daily。这里要决定是否静默记录，避免后台日志太多。
+
+## 八、待确认点
+
+- trace 找不到时：默认静默跳过，避免污染普通路径。
+- debug level 是否默认写入：建议先写入但 UI 隐藏；如果文件膨胀明显，再加环境变量控制。
+- 定时器轮次是否记录：建议先只记录有实际 fired/changed 的轮次。
+- 第一版是否只做 `chat.respond + values.adjust + life.generate`：建议是，等主链路稳定后再扩展 dream/summary/dafu。
+
+## Phase 2 实施落地记录（Codex）
+
+新增：
+
+- `server/services/trace.ts`：AsyncLocalStorage、`runWithTrace()`、`traceSummary()`、`traceDetail()`、`traceDebug()`、超限截断与 incomplete 标记。
+- `server/services/traceStore.ts`：按日期写 `server/data/logs/trace/YYYY-MM-DD.jsonl`，3 天保留，支持按日期/单条读取删除。
+
+已接入入口：
+
+- `POST /api/chat/respond` → `source=chat.respond`
+- `POST /api/values/item/:id/adjust` → `source=values.adjust`
+- `POST /api/characters/:charId/life/generate` → `source=life.generate`
+
+已接入模块埋点：
+
+- `openai-compat.ts`：AI 调用自动读取当前 traceId，AI 日志写入 traceId；trace 中记录 `ai.call`、`ai.return`、`ai.error`。
+- `chat.ts` / `ChatApp.tsx` / `useChatState.ts` / `summaries.ts`：聊天、重新生成、段落总结会把当前 preset 的 `provider` 一起传到后端；旧聊天入口也保留 provider 兜底，避免 DeepSeek baseURL/model 被日志误标成默认 `openai`。
+- `context.ts`：上下文开始/结束、数据源数量、世界书激活分布、pending injection 插入、槽位 token 估算/截断、变量规则注入。
+- `worldbook.ts`：扫描 summary、命中 detail、概率淘汰、互斥组淘汰、最终注入数量。
+- `values.ts`：变量占位符解析、`<var>` 块解析、变量应用/失败/未变化原因；聊天回复没有 `<var>` 块时也会写一条 summary，方便区分“确实没有变量块”和“变量解析链路没跑”。
+- `eventEngine.ts`：候选事件数量、跳过原因、触发事件、effect 执行结果。
+- `events.ts`：pending injection 消费、删除、剩余轮次、保留原因。
+
+新增接口：
+
+- `GET /api/debug/traces?date=YYYY-MM-DD`
+- `GET /api/debug/traces/dates`
+- `DELETE /api/debug/traces?date=YYYY-MM-DD`
+- `DELETE /api/debug/traces/:id?date=YYYY-MM-DD`
+
+终端 UI：
+
+- `AIConsoleApp.tsx` 增加 `AI / Trace` tab。
+- AI 和 Trace 都支持有日志日期下拉、当前日期导出/删除、单条导出/删除。
+- Trace 展开后默认展示 summary 时间线；summary 行可展开 detail；debug 默认隐藏，由 `DBG` 开关显示。
+- AI 日志行显示 traceId；Trace 行显示 aiCallIds。
+
+当前暂未接入但接口/source 已适合后续扩展：
+
+- `dream.generate`
+- `summaries.generate` / `summaries.generateDaily`
+- `charSystem.extraction` / `charSystem.timelineEval` / `charSystem.lifeExtract`
+- `dafu.*`
+- `timePass.hourly` / `timePass.daily`

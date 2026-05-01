@@ -34,6 +34,7 @@ import eventsRouter, { injectionsRouter, eventBooksRouter } from './routes/event
 import worldstateRouter  from './routes/worldstate.js';
 import { checkAndFireEvents, tickCooldowns } from './services/eventEngine.js';
 import { purgeOlderThan as purgeAiLogs } from './services/aiLogStore.js';
+import { purgeOlderThan as purgeTraceLogs } from './services/traceStore.js';
 
 const PORT = 3000;
 const app  = express();
@@ -108,8 +109,9 @@ app.use((err, req, res, next) => {
     console.error('[ICS server] 种子数据注入失败:', err.message);
   }
 
-  // 清理超过 14 天的 AI 调用日志
-  purgeAiLogs(14).catch(err => console.error('[ICS server] AI 日志清理失败:', err.message));
+  // 清理超过保留期的 AI 调用日志（默认 3 天，可用 AI_LOG_RETENTION_DAYS 调整）
+  purgeAiLogs().catch(err => console.error('[ICS server] AI 日志清理失败:', err.message));
+  purgeTraceLogs().catch(err => console.error('[ICS server] Trace 日志清理失败:', err.message));
 
   app.listen(PORT, () => {
     console.log(`[ICS server] listening on http://localhost:${PORT}`);
