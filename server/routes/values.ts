@@ -7,7 +7,6 @@
  *   PUT    /api/values/item/:id                - 更新数值
  *   DELETE /api/values/item/:id                - 删除数值
  *   POST   /api/values/item/:id/adjust         - 增减数值
- *   POST   /api/values/:charId/execute-rules   - 执行指定触发时机的规则
  *
  * 阶段 (value_stages):
  *   GET    /api/values/item/:valueId/stages          - 获取阶段列表
@@ -101,14 +100,6 @@ router.post('/item/:id/adjust', (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/:charId/execute-rules', (req, res) => {
-  try {
-    const { triggerOn } = req.body;
-    if (!triggerOn) return res.status(400).json({ error: 'triggerOn 必须提供' });
-    const changes = svc.executeRules(req.params.charId, triggerOn);
-    res.json({ changes });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
 
 // ── 阶段 CRUD ─────────────────────────────────────────────────
 
@@ -169,14 +160,16 @@ router.get('/item/:valueId/rules', (req, res) => {
 
 router.post('/item/:valueId/rules', (req, res) => {
   try {
-    const { triggerOn, operation, amount, rangeMin, rangeMax, conditions, description, enabled } = req.body;
-    if (!triggerOn || !operation || amount == null) {
-      return res.status(400).json({ error: 'triggerOn, operation, amount 不能为空' });
+    const { ruleText, rangeMin, rangeMax, enabled } = req.body;
+    if (!ruleText?.trim()) {
+      return res.status(400).json({ error: 'ruleText 不能为空' });
     }
     const rule = svc.createRule({
       valueId: Number(req.params.valueId),
-      triggerOn, operation, amount,
-      rangeMin, rangeMax, conditions, description, enabled,
+      ruleText: ruleText.trim(),
+      rangeMin: rangeMin ?? null,
+      rangeMax: rangeMax ?? null,
+      enabled,
     });
     res.status(201).json(rule);
   } catch (e: any) { res.status(500).json({ error: e.message }); }

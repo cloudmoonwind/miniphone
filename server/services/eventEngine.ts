@@ -3,7 +3,6 @@
  *
  * 入口：
  *   checkAndFireEvents(charId, trigger, context?) → 检查并触发满足条件的事件
- *   fireValueRules(charId, triggerOn) → 执行数值规则
  *   parseOutcomeFromAIResponse(text) → 从 AI 回复中提取 [EVENT:id:outcome] 标签
  *   tickCooldowns(charId, mode) → 每轮/每天减少冷却计数
  *
@@ -29,7 +28,8 @@ import {
   registerSubscriptions, clearSubscriptions, createInjection,
   findSubscribers,
 } from './events.js';
-import { getValuesByCharacter, adjustValue, getValueByVariable, executeRules } from './values.js';
+import { getValuesByCharacter, adjustValue, getValueByVariable } from './values.js';
+import { timelineStore } from '../storage/index.js';
 
 // ── 类型 ──────────────────────────────────────────────────────────────────
 
@@ -551,9 +551,19 @@ function executeEffect(charId: string, eventId: string, effect: any, snapshot: S
 
     case '记录历史':
     case 'record_history': {
-      // 预留：写入历史记录系统（暂时只 console.log）
       const content = effect.内容 || effect.content || '';
-      console.log(`[eventEngine] 历史记录: ${content}`);
+      if (!content) break;
+      // executeEffect 是同步签名（fireEvent 链路依赖此假设），timelineStore.create 是 async；
+      // 失败不应阻塞事件触发主流程，故 fire-and-forget。
+      timelineStore.create({
+        charId,
+        title: content.slice(0, 30),
+        content,
+        timestamp: new Date().toISOString(),
+        type: 'event',
+        source: 'event_engine',
+        linkedEventId: eventId,
+      }).catch(e => console.error('[eventEngine/record_history]', e?.message ?? e));
       break;
     }
 
@@ -668,26 +678,6 @@ export function tickCooldowns(charId: string, mode: 'turns' | 'days'): void {
   }
 }
 
-// ── 数值规则执行 ──────────────────────────────────────────────────────────
-
-/**
- * 执行指定触发时机的数值规则，然后触发 value_change 事件检查。
- */
-export function fireValueRules(
-  charId: string,
-  triggerOn: string,
-): void {
-  const changes = executeRules(charId, triggerOn);
-
-  for (const change of changes) {
-    // 每个变化的数值都触发 value_change 事件检查
-    checkAndFireEvents(charId, {
-      trigger: 'value_change',
-      changedVariable: change.variableName,
-      newValue: change.next,
-    });
-  }
-}
 
 // ── 辅助：提取条件中需要订阅的目标 ──────────────────────────────────────
 

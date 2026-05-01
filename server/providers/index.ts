@@ -65,5 +65,5 @@ export function getProvider(preset) {
   const baseURL = rawURL.replace(/\/+$/, '');
 
   // 目前所有已实现的 provider 均使用 OpenAI 兼容格式
-  return new OpenAICompatProvider({ apiKey, baseURL });
+  return new OpenAICompatProvider({ apiKey, baseURL, providerName: providerKey });
 }

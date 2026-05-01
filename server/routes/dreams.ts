@@ -135,6 +135,8 @@ ${chatCtx}${triggerCtx}
       model:      preset.model,
       max_tokens: preset.maxTokens ?? 600,
       temperature: 0.9,
+    }, {
+      source: 'dream.generate',
     });
 
     // 5. 解析内容和元数据

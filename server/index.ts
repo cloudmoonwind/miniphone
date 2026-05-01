@@ -32,7 +32,8 @@ import dafuRouter        from './routes/dafu.js';
 import valuesRouter      from './routes/values.js';
 import eventsRouter, { injectionsRouter, eventBooksRouter } from './routes/events.js';
 import worldstateRouter  from './routes/worldstate.js';
-import { checkAndFireEvents, tickCooldowns, fireValueRules } from './services/eventEngine.js';
+import { checkAndFireEvents, tickCooldowns } from './services/eventEngine.js';
+import { purgeOlderThan as purgeAiLogs } from './services/aiLogStore.js';
 
 const PORT = 3000;
 const app  = express();
@@ -107,6 +108,9 @@ app.use((err, req, res, next) => {
     console.error('[ICS server] 种子数据注入失败:', err.message);
   }
 
+  // 清理超过 14 天的 AI 调用日志
+  purgeAiLogs(14).catch(err => console.error('[ICS server] AI 日志清理失败:', err.message));
+
   app.listen(PORT, () => {
     console.log(`[ICS server] listening on http://localhost:${PORT}`);
   });
@@ -126,7 +130,6 @@ app.use((err, req, res, next) => {
     for (const charId of charIds) {
       try {
         checkAndFireEvents(charId, { trigger: 'time_pass_hourly' });
-        fireValueRules(charId, 'time_pass_hourly');
       } catch (e: any) { console.error('[time_pass_hourly]', charId, e.message); }
     }
     if (charIds.length) console.log('[time_pass_hourly] checked', charIds.length, 'characters');
@@ -140,7 +143,6 @@ app.use((err, req, res, next) => {
       try {
         checkAndFireEvents(charId, { trigger: 'time_pass_daily' });
         tickCooldowns(charId, 'days');
-        fireValueRules(charId, 'time_pass_daily');
       } catch (e: any) { console.error('[time_pass_daily]', charId, e.message); }
     }
     if (charIds.length) console.log('[time_pass_daily] checked', charIds.length, 'characters');

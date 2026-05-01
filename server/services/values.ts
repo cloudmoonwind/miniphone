@@ -199,21 +199,52 @@ export function getRulesByValue(valueId: number): ValueRule[] {
     .all();
 }
 
+/** 获取某角色当前值范围内匹配的规则文本（用于 sys-variables 注入） */
+export function getActiveRuleTexts(characterId: string): Array<{
+  variableName: string;
+  name: string;
+  currentValue: number;
+  ruleText: string;
+}> {
+  const charVars = getValuesByCharacter(characterId);
+  const result: Array<{ variableName: string; name: string; currentValue: number; ruleText: string }> = [];
+
+  for (const val of charVars) {
+    const rules = getRulesByValue(val.id).filter(r => {
+      if (r.enabled === 0) return false;
+      if (!r.ruleText?.trim()) return false;
+      if (r.rangeMin != null && val.currentValue < r.rangeMin) return false;
+      if (r.rangeMax != null && val.currentValue > r.rangeMax) return false;
+      return true;
+    });
+
+    for (const rule of rules) {
+      result.push({
+        variableName: val.variableName,
+        name: val.name,
+        currentValue: val.currentValue,
+        ruleText: rule.ruleText,
+      });
+    }
+  }
+
+  return result;
+}
+
 /** 创建规则 */
 export function createRule(data: {
   valueId: number;
-  rangeMin?: number;
-  rangeMax?: number;
-  triggerOn: string;
-  conditions?: string;
-  operation: string;
-  amount: number;
-  description?: string;
+  rangeMin?: number | null;
+  rangeMax?: number | null;
+  ruleText: string;
   enabled?: number;
 }): ValueRule {
   const db = getDrizzle();
   return db.insert(valueRules).values({
-    ...data,
+    valueId: data.valueId,
+    rangeMin: data.rangeMin ?? null,
+    rangeMax: data.rangeMax ?? null,
+    ruleText: data.ruleText,
     enabled: data.enabled ?? 1,
     createdAt: new Date().toISOString(),
   }).returning().get();
@@ -223,11 +254,7 @@ export function createRule(data: {
 export function updateRule(id: number, patch: Partial<{
   rangeMin: number | null;
   rangeMax: number | null;
-  triggerOn: string;
-  conditions: string | null;
-  operation: string;
-  amount: number;
-  description: string | null;
+  ruleText: string;
   enabled: number;
 }>): ValueRule | undefined {
   const db = getDrizzle();
@@ -318,23 +345,34 @@ export function extractVarBlock(content: string): { cleanContent: string; varBlo
   return { cleanContent, varBlock };
 }
 
+/** parseAndApplyVarBlock 应用后实际发生变化的变量 */
+export interface ChangedVariable {
+  variableName: string;
+  oldValue: number;
+  newValue: number;
+}
+
 /**
  * 解析并应用 <var> 块：
  * - 数值行格式：`变量名：原值→新值`（支持显示名或变量名，原值需与当前值相差 ≤1）
  * - 情绪行格式：`情绪：情绪词 X% | 情绪词 Y%`（百分比之和应在 95~105）
  *
- * 返回应用后的完整快照（含 emotion_state 字符串，若有效则写入）。
+ * 返回：
+ *   - snapshot: 应用后的完整快照（含 emotion_state 字符串，若有效则写入）
+ *   - emotionState: 情绪行的原文（无则 null）
+ *   - changedVariables: 实际发生变化的变量列表，调用方需为每项触发 value_change 事件检查
  */
 export function parseAndApplyVarBlock(
   characterId: string,
   varBlock: string,
-): { snapshot: Record<string, any>; emotionState: string | null } {
+): { snapshot: Record<string, any>; emotionState: string | null; changedVariables: ChangedVariable[] } {
   const allValues = getValuesByCharacter(characterId);
   // 同时支持按 variableName 和 name 查找
   const byVarName = new Map<string, CharacterValue>(allValues.map(v => [v.variableName, v]));
   const byName    = new Map<string, CharacterValue>(allValues.map(v => [v.name, v]));
 
   let emotionState: string | null = null;
+  const changedVariables: ChangedVariable[] = [];
 
   for (const raw of varBlock.split('\n')) {
     const line = raw.trim();
@@ -366,63 +404,20 @@ export function parseAndApplyVarBlock(
     if (Math.abs(val.currentValue - oldVal) > 1) continue;
 
     const clamped = Math.max(val.minValue, Math.min(val.maxValue, newVal));
+    if (clamped === val.currentValue) continue;
+
     updateValue(val.id, { currentValue: clamped });
+    changedVariables.push({
+      variableName: val.variableName,
+      oldValue: val.currentValue,
+      newValue: clamped,
+    });
   }
 
   // 重新读取（含刚更新的值），构建快照
   const snapshot: Record<string, any> = buildVariableSnapshot(characterId);
   if (emotionState) snapshot['emotion_state'] = emotionState;
 
-  return { snapshot, emotionState };
+  return { snapshot, emotionState, changedVariables };
 }
 
-// ── 规则执行引擎 ──────────────────────────────────────────────
-
-/**
- * 对某个角色执行指定触发时机的所有规则
- * @returns 变化的数值列表 [{ valueId, variableName, prev, next }]
- */
-export function executeRules(characterId: string, triggerOn: string): Array<{
-  valueId: number;
-  variableName: string;
-  prev: number;
-  next: number;
-}> {
-  const values = getValuesByCharacter(characterId);
-  const changes: Array<{ valueId: number; variableName: string; prev: number; next: number }> = [];
-
-  for (const val of values) {
-    const rules = getRulesByValue(val.id).filter(r =>
-      r.enabled === 1 &&
-      r.triggerOn === triggerOn &&
-      (r.rangeMin == null || val.currentValue >= r.rangeMin) &&
-      (r.rangeMax == null || val.currentValue <= r.rangeMax)
-    );
-
-    if (!rules.length) continue;
-
-    let newValue = val.currentValue;
-    for (const rule of rules) {
-      switch (rule.operation) {
-        case 'add':      newValue += rule.amount; break;
-        case 'set':      newValue = rule.amount; break;
-        case 'multiply': newValue *= rule.amount; break;
-      }
-    }
-
-    // clamp
-    newValue = Math.max(val.minValue, Math.min(val.maxValue, newValue));
-
-    if (newValue !== val.currentValue) {
-      updateValue(val.id, { currentValue: newValue });
-      changes.push({
-        valueId: val.id,
-        variableName: val.variableName,
-        prev: val.currentValue,
-        next: newValue,
-      });
-    }
-  }
-
-  return changes;
-}

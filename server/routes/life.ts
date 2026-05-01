@@ -15,7 +15,7 @@ import { genId } from '../storage/FileStore.js';
 import { getEventPool, type Event as PoolEvent } from '../services/events.js';
 import { getCharStats, getMergedStatDefs } from '../services/charstats.js';
 import { getPrompt } from '../services/promptPresets.js';
-import { checkAndFireEvents, fireValueRules } from '../services/eventEngine.js';
+import { checkAndFireEvents } from '../services/eventEngine.js';
 
 const router = Router({ mergeParams: true });
 
@@ -131,6 +131,8 @@ router.post('/generate', async (req, res) => {
       model: preset.model || 'gpt-3.5-turbo',
       temperature: preset.params?.temperature ?? 0.9,
       max_tokens: 800,
+    }, {
+      source: 'life.generate',
     });
 
     // 8. 可选保存
@@ -153,7 +155,6 @@ router.post('/generate', async (req, res) => {
       // 事件引擎：time_pass_life 触发
       try {
         checkAndFireEvents(charId, { trigger: 'time_pass_life' });
-        fireValueRules(charId, 'time_pass_life');
       } catch (e) { console.error('[life/event-engine]', e.message); }
     }
 

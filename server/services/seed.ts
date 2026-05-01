@@ -31,9 +31,7 @@ interface SeedValueDef {
   rules: Array<{
     rangeMin?: number;
     rangeMax?: number;
-    triggerOn: string;
-    operation: string;
-    amount: number;
+    ruleText: string;
   }>;
 }
 
@@ -75,11 +73,10 @@ const VALUE_DEFS: SeedValueDef[] = [
         promptSnippet: '对用户非常热情，会主动关心嘘寒问暖，分享深层想法，语气中带着依赖和信任' },
     ],
     rules: [
-      { rangeMin: 0, rangeMax: 20, triggerOn: 'chat_end', operation: 'add', amount: 3 },
-      { rangeMin: 20, rangeMax: 50, triggerOn: 'chat_end', operation: 'add', amount: 2 },
-      { rangeMin: 50, rangeMax: 80, triggerOn: 'chat_end', operation: 'add', amount: 1 },
-      { rangeMin: 80, rangeMax: 100, triggerOn: 'chat_end', operation: 'add', amount: 0.5 },
-      { triggerOn: 'time_pass', operation: 'add', amount: -0.5 },
+      { rangeMin: 0, rangeMax: 20, ruleText: '陌生阶段：主动交谈增加2-4，被无视或态度冷漠减1-2，进退有礼且留有余地加1-3' },
+      { rangeMin: 20, rangeMax: 50, ruleText: '认识阶段：轻松愉快的交谈增加1-3，深度倾诉或帮助增加3-5，无聊敷衍减0-1' },
+      { rangeMin: 50, rangeMax: 80, ruleText: '朋友阶段：真诚互动增加1-2，亲密接触过度减1-3，长时间不联系自然消退0.5' },
+      { rangeMin: 80, rangeMax: 100, ruleText: '亲密阶段：深度情感交流增加0.5-1，背叛或伤害减5-15，维持亲密日常加0.5' },
     ],
   },
   {
@@ -100,9 +97,8 @@ const VALUE_DEFS: SeedValueDef[] = [
         promptSnippet: '心情极好，兴奋地分享各种事情，语气热烈，笑声不断，充满感染力' },
     ],
     rules: [
-      { rangeMin: 0, rangeMax: 60, triggerOn: 'chat_end', operation: 'add', amount: 2 },
-      { rangeMin: 60, rangeMax: 100, triggerOn: 'chat_end', operation: 'add', amount: 1 },
-      { triggerOn: 'time_pass', operation: 'add', amount: -1 },
+      { rangeMin: 0, rangeMax: 60, ruleText: '低落/平静阶段：被倾听和安慰增加3-6，有趣的话题和笑话增加2-4，被忽视或无聊减0-1' },
+      { rangeMin: 60, rangeMax: 100, ruleText: '愉快/兴奋阶段：维持轻松氛围增加0-1，突然的负面话题减2-4，好消息或惊喜增加2-5' },
     ],
   },
   {
@@ -123,8 +119,8 @@ const VALUE_DEFS: SeedValueDef[] = [
         promptSnippet: '精力充沛，反应敏捷，话多且思维活跃，愿意尝试新事物' },
     ],
     rules: [
-      { triggerOn: 'chat_end', operation: 'add', amount: -2 },
-      { rangeMin: 0, rangeMax: 75, triggerOn: 'time_pass', operation: 'add', amount: 5 },
+      { ruleText: '每轮对话消耗精力1-3点（对话长度和投入度影响消耗量）；休息或短暂沉默可恢复1-2点' },
+      { rangeMin: 0, rangeMax: 50, ruleText: '低精力状态：积极互动可小幅恢复1-2，持续对话继续消耗1-2' },
     ],
   },
   {
@@ -145,8 +141,8 @@ const VALUE_DEFS: SeedValueDef[] = [
         promptSnippet: '压力到达极限，情绪不稳定，可能突然哭泣或发火，需要被安慰和理解' },
     ],
     rules: [
-      { rangeMin: 25, rangeMax: 100, triggerOn: 'chat_end', operation: 'add', amount: -1 },
-      { rangeMin: 0, rangeMax: 75, triggerOn: 'time_pass', operation: 'add', amount: 2 },
+      { rangeMin: 25, rangeMax: 100, ruleText: '有压力状态：轻松愉快的话题减压1-3，被理解和安慰减压2-5，被否定或批评增压1-3' },
+      { rangeMin: 0, rangeMax: 75, ruleText: '日常积压：没有明显缓解的对话，压力缓慢增加0-1' },
     ],
   },
   {
@@ -167,8 +163,8 @@ const VALUE_DEFS: SeedValueDef[] = [
         promptSnippet: '完全信任用户，愿意把最脆弱的一面展现出来，会毫无保留地倾诉' },
     ],
     rules: [
-      { rangeMin: 0, rangeMax: 60, triggerOn: 'chat_end', operation: 'add', amount: 1 },
-      { rangeMin: 60, rangeMax: 100, triggerOn: 'chat_end', operation: 'add', amount: 0.5 },
+      { rangeMin: 0, rangeMax: 60, ruleText: '警惕/中立阶段：诚实守信增加1-3，分享秘密或脆弱面增加2-4，欺骗或言行不一减3-8' },
+      { rangeMin: 60, rangeMax: 100, ruleText: '信赖/托付阶段：深度情感交流和被保护增加0.5-2，背叛或失约减5-15' },
     ],
   },
 ];

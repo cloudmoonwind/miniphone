@@ -4,6 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx index.ts",
+    "db:backup": "tsx scripts/db-backup.ts",
+    "db:reset:dev": "tsx scripts/db-reset-dev.ts",
+    "db:health": "tsx scripts/db-health.ts",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config drizzle.config.ts"

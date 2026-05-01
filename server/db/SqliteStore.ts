@@ -41,17 +41,20 @@ export class SqliteStore<T extends { id: string }> implements IFileStore<T> {
 
   // ── 建表 ────────────────────────────────────────────────────
   private initTable(): void {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS "${this.table}" (
-        id         TEXT PRIMARY KEY,
-        char_id    TEXT,
-        data       TEXT NOT NULL,
-        created_at TEXT
-      )
-    `);
-    this.db.exec(
-      `CREATE INDEX IF NOT EXISTS "idx_${this.table}_char_id" ON "${this.table}"(char_id)`
+    const exists = this.db
+      .prepare<[string], { name: string }>("SELECT name FROM sqlite_schema WHERE type = 'table' AND name = ?")
+      .get(this.table);
+    if (!exists) {
+      throw new Error(`SqliteStore(${this.table}): table is missing. Run database migrations first.`);
+    }
+
+    const columns = new Set(
+      this.db.prepare(`PRAGMA table_info("${this.table.replaceAll('"', '""')}")`).all().map((row: any) => row.name),
     );
+    const missing = ['id', 'char_id', 'data', 'created_at'].filter(column => !columns.has(column));
+    if (missing.length) {
+      throw new Error(`SqliteStore(${this.table}): missing columns ${missing.join(', ')}. Run dev reset or migrations.`);
+    }
   }
 
   // ── 内部工具 ─────────────────────────────────────────────────

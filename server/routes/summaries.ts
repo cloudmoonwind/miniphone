@@ -105,7 +105,12 @@ router.post('/generate', async (req, res) => {
     ];
 
     const client = getClient(aiPreset || { apiKey: aiKey, baseURL: aiBase });
-    const content = await chatCompletion(client, promptMessages, { model: aiModel || 'gpt-4o-mini', max_tokens: 300 });
+    const content = await chatCompletion(
+      client,
+      promptMessages,
+      { model: aiModel || 'gpt-4o-mini', max_tokens: 300 },
+      { source: 'summaries.generate' },
+    );
 
     const period = {
       from: toSummarize[0].timestamp,
@@ -201,7 +206,12 @@ router.post('/generate-daily', async (req, res) => {
     ];
 
     const client  = getClient(aiPreset);
-    const content = await chatCompletion(client, promptMessages, { model: aiPreset.model || 'gpt-3.5-turbo', max_tokens: 500 });
+    const content = await chatCompletion(
+      client,
+      promptMessages,
+      { model: aiPreset.model || 'gpt-3.5-turbo', max_tokens: 500 },
+      { source: 'summaries.generateDaily' },
+    );
 
     const summary = await summaryStore.create({
       id: genId('sum'), charId, personaId: null,

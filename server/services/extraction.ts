@@ -75,6 +75,8 @@ export async function triggerExtraction(charId) {
       model: ai.model || 'gpt-3.5-turbo',
       max_tokens: 1200,
       temperature: 0.3,
+    }, {
+      source: 'charSystem.extraction',
     });
 
     // 解析 JSON（容忍 markdown 代码块包裹）

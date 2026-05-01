@@ -10,6 +10,13 @@ server/data/*.db
 server/data/*.db-wal
 server/data/*.db-shm
 
+# 数据库备份目录与健康报告（含真实角色/对话数据）
+server/data/backups/
+server/data/health-latest.md
+
+# AI 调用日志（含 prompt 全文）
+server/data/logs/
+
 # 迁移备份
 server/data/*.json.bak
 

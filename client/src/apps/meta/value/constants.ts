@@ -11,20 +11,6 @@ export const VALUE_TYPES = [
   { value: 'discrete',   label: '离散状态', desc: '有限选项，如平静 / 喜悦 / 愤怒' },
 ];
 
-export const TRIGGER_OPTIONS = [
-  { value: 'chat_end',       label: '每轮对话结束' },
-  { value: 'time_pass',      label: '时间流逝'     },
-  { value: 'receive_gift',   label: '收到礼物'     },
-  { value: 'event_complete', label: '事件完成'     },
-  { value: 'value_change',   label: '数值变化'     },
-];
-
-export const OP_OPTIONS = [
-  { value: 'add',      label: '加减' },
-  { value: 'set',      label: '设为' },
-  { value: 'multiply', label: '乘以' },
-];
-
 // 浅色星云主题 — 柔和粉彩色系
 export const STAGE_PALETTE = [
   '#a5b4fc', // 薰衣草

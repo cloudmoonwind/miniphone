@@ -278,7 +278,12 @@ ${options.generateChoices
     const history = (game.hostHistory || []).slice(-10);
     const msgs = [{ role: 'system', content: system }, ...history, { role: 'user', content: eventDesc }];
     const client = getClient(preset);
-    return await chatCompletion(client, msgs, { model: preset.model, max_tokens: maxTokens, temperature: 0.92 });
+    return await chatCompletion(
+      client,
+      msgs,
+      { model: preset.model, max_tokens: maxTokens, temperature: 0.92 },
+      { source: 'dafu.hostNarrative' },
+    );
   } catch { return null; }
 }
 
@@ -321,7 +326,12 @@ async function callCharAI(game, preset, userMsg, charInfo, charCtx: Record<strin
     ].slice(-16);
     const msgs = [{ role: 'system', content: system }, ...history, { role: 'user', content: userMsg }];
     const client = getClient(preset);
-    return await chatCompletion(client, msgs, { model: preset.model, max_tokens: 200, temperature: 0.88 });
+    return await chatCompletion(
+      client,
+      msgs,
+      { model: preset.model, max_tokens: 200, temperature: 0.88 },
+      { source: 'dafu.charReply' },
+    );
   } catch { return null; }
 }
 
@@ -608,7 +618,8 @@ router.post('/game', async (req, res) => {
           const client = getClient(cPreset);
           const narrative = await chatCompletion(client,
             [{ role: 'system', content: sys }, { role: 'user', content: prompt }],
-            { model: cPreset.model, max_tokens: 100, temperature: 0.9 }
+            { model: cPreset.model, max_tokens: 100, temperature: 0.9 },
+            { source: 'dafu.openingNarrative' },
           );
           if (narrative) logs.push(mkLog('chat', 'char', narrative));
         } catch { /* 叙事失败不阻断 */ }
@@ -675,7 +686,8 @@ router.post('/invite', async (req, res) => {
         const client = getClient(preset);
         reply = await chatCompletion(client,
           [...charCtx.messages, { role: 'system', content: sys }, { role: 'user', content: `用户邀请你${gameDesc}（${mode}模式）。用角色的语气自然地回应，要符合你的性格。` }],
-          { model: preset.model, max_tokens: 150, temperature: 0.9 }
+          { model: preset.model, max_tokens: 150, temperature: 0.9 },
+          { source: 'dafu.inviteReply' },
         );
         accepted = parseAcceptance(reply);
       } catch { /* fallback */ }

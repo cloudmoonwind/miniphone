@@ -1,24 +1,38 @@
 import { Router } from 'express';
-import { getAICallLog, clearAICallLog } from '../services/ai.js';
 import {
   characterStore, charStatStore, itemStore, timelineStore,
   skillStore, relationStore, activeStore,
 } from '../storage/index.js';
 import { genId } from '../storage/FileStore.js';
 import { seedValueEventData } from '../services/seed.js';
+import { listDates, readByDate, deleteByDate } from '../services/aiLogStore.js';
 
 const router = Router();
 
-// GET /api/debug/ai-log?limit=30
-router.get('/ai-log', (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit) || 30, 50);
-  res.json(getAICallLog().slice(0, limit));
+function todayKey(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// GET /api/debug/ai-log?date=YYYY-MM-DD  — 不带 date 默认取今天
+router.get('/ai-log', async (req, res) => {
+  const date = (req.query.date as string) || todayKey();
+  const entries = await readByDate(date);
+  // 最新在前，与旧接口语义一致
+  res.json(entries.slice().reverse());
 });
 
-// DELETE /api/debug/ai-log
-router.delete('/ai-log', (_req, res) => {
-  clearAICallLog();
-  res.json({ ok: true });
+// GET /api/debug/ai-log/dates — 倒序的可用日期列表
+router.get('/ai-log/dates', async (_req, res) => {
+  res.json(await listDates());
+});
+
+// DELETE /api/debug/ai-log?date=YYYY-MM-DD  — 不带 date 默认删今天
+router.delete('/ai-log', async (req, res) => {
+  const date = (req.query.date as string) || todayKey();
+  const ok = await deleteByDate(date);
+  res.json({ ok });
 });
 
 /* ═══════════════════════════════════════════════════════════════════════

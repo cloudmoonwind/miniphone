@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { messageStore, summaryStore, presetStore, activeStore } from '../storage/index.js';
-import { getClient, chatCompletion, chatCompletionStream, logStreamCompletion } from '../services/ai.js';
+import { getClient, chatCompletion, chatCompletionStream } from '../services/ai.js';
 import { assembleMessages, MSG_SEP } from '../services/context.js';
 import { genId } from '../storage/FileStore.js';
 import { triggerExtraction } from '../services/extraction.js';
-import { checkAndFireEvents, parseOutcomeFromAIResponse, tickCooldowns, fireValueRules } from '../services/eventEngine.js';
+import { checkAndFireEvents, parseOutcomeFromAIResponse, tickCooldowns } from '../services/eventEngine.js';
 import { consumeInjectionTurns } from '../services/events.js';
 import { extractVarBlock, parseAndApplyVarBlock } from '../services/values.js';
 
@@ -37,7 +37,12 @@ async function generateAndStoreSummary(charId, msgs, extraFields = {}) {
     { role: 'user', content: convText },
   ];
 
-  const content = await chatCompletion(ai.client, promptMessages, { model: ai.model || 'gpt-3.5-turbo', max_tokens: 300 });
+  const content = await chatCompletion(
+    ai.client,
+    promptMessages,
+    { model: ai.model || 'gpt-3.5-turbo', max_tokens: 300 },
+    { source: 'summary.auto' },
+  );
   const period  = { from: msgs[0].timestamp, to: msgs[msgs.length - 1].timestamp };
 
   await summaryStore.create({
@@ -189,19 +194,26 @@ router.post('/respond', async (req, res) => {
 
     // ── 流式 SSE ──────────────────────────────────────────────────────
     if (presetStream) {
+      let clientDisconnected = false;
+      req.on('close', () => {
+        if (!res.writableEnded) clientDisconnected = true;
+      });
+
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       res.flushHeaders();
 
-      const { stream, model: usedModel, t0 } = await chatCompletionStream(client, messages, {
+      const { stream } = await chatCompletionStream(client, messages, {
         model: aiModel || 'gpt-3.5-turbo',
         temperature: aiParams?.temperature ?? 0.8,
         max_tokens: aiPreset?.maxReplyTokens ?? 3000,
+      }, {
+        source: 'chat.respond',
+        isClientDisconnected: () => clientDisconnected,
       });
 
       let fullContent = '';
-      let lastUsage = null;
       try {
         for await (const chunk of stream) {
           const delta = chunk.choices[0]?.delta?.content || '';
@@ -209,7 +221,6 @@ router.post('/respond', async (req, res) => {
             fullContent += delta;
             res.write(`data: ${JSON.stringify({ delta })}\n\n`);
           }
-          if (chunk.usage) lastUsage = chunk.usage;
         }
       } catch (streamErr) {
         res.write(`data: ${JSON.stringify({ error: streamErr.message })}\n\n`);
@@ -218,7 +229,6 @@ router.post('/respond', async (req, res) => {
       }
 
       if (!fullContent.trim()) {
-        logStreamCompletion({ model: usedModel, messages, fullContent: '', t0, usage: lastUsage });
         res.write(`data: ${JSON.stringify({ error: '模型返回了空内容，可能被安全策略拦截或参数有误' })}\n\n`);
         res.end();
         return;
@@ -235,25 +245,33 @@ router.post('/respond', async (req, res) => {
       });
 
       // 应用变量更新，将快照写回消息
+      let streamChangedVars: ReturnType<typeof parseAndApplyVarBlock>['changedVariables'] = [];
       if (streamVarBlock) {
         try {
-          const { snapshot } = parseAndApplyVarBlock(characterId, streamVarBlock);
-          await messageStore.update(aiMsg.id, { variableSnapshot: snapshot } as any);
+          const result = parseAndApplyVarBlock(characterId, streamVarBlock);
+          streamChangedVars = result.changedVariables;
+          await messageStore.update(aiMsg.id, { variableSnapshot: result.snapshot } as any);
         } catch (e) { console.error('[chat/var-block]', e.message); }
       }
 
-      logStreamCompletion({ model: usedModel, messages, fullContent: streamClean, t0, usage: lastUsage });
       res.write(`data: ${JSON.stringify({ done: true, id: aiMsg.id, timestamp: aiMsg.timestamp })}\n\n`);
       res.end();
       triggerAutoSummaries(characterId);
       triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
-      // 事件引擎：解析 AI 回复中的结果标签 + 触发 chat_end 事件检查 + 消耗注入轮次
+      // 事件引擎：先为每个 AI 改动的变量触发 value_change（与 /api/values/.../adjust 路径对称），
+      // 再解析结果标签 + 触发 chat_end + 消耗注入轮次
       try {
+        for (const change of streamChangedVars) {
+          checkAndFireEvents(characterId, {
+            trigger: 'value_change',
+            changedVariable: change.variableName,
+            newValue: change.newValue,
+          });
+        }
         parseOutcomeFromAIResponse(streamClean);
         checkAndFireEvents(characterId, { trigger: 'chat_end', chatContent: streamClean });
         tickCooldowns(characterId, 'turns');
         consumeInjectionTurns(characterId);
-        fireValueRules(characterId, 'chat_end');
       } catch (e) { console.error('[chat/event-engine]', e.message); }
       return;
     }
@@ -263,6 +281,8 @@ router.post('/respond', async (req, res) => {
       model: aiModel || 'gpt-3.5-turbo',
       temperature: aiParams?.temperature ?? 0.8,
       max_tokens: aiPreset?.maxReplyTokens ?? 3000,
+    }, {
+      source: 'chat.respond',
     });
 
     // 提取并移除 <var> 块
@@ -276,22 +296,31 @@ router.post('/respond', async (req, res) => {
     });
 
     // 应用变量更新，将快照写回消息
+    let changedVars: ReturnType<typeof parseAndApplyVarBlock>['changedVariables'] = [];
     if (varBlock) {
       try {
-        const { snapshot } = parseAndApplyVarBlock(characterId, varBlock);
-        await messageStore.update(aiMsg.id, { variableSnapshot: snapshot } as any);
+        const result = parseAndApplyVarBlock(characterId, varBlock);
+        changedVars = result.changedVariables;
+        await messageStore.update(aiMsg.id, { variableSnapshot: result.snapshot } as any);
       } catch (e) { console.error('[chat/var-block]', e.message); }
     }
 
     triggerAutoSummaries(characterId);
     triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
-    // 事件引擎：解析 AI 回复中的结果标签 + 触发 chat_end 事件检查 + 消耗注入轮次
+    // 事件引擎：先为每个 AI 改动的变量触发 value_change（与 /api/values/.../adjust 路径对称），
+    // 再解析结果标签 + 触发 chat_end + 消耗注入轮次
     try {
+      for (const change of changedVars) {
+        checkAndFireEvents(characterId, {
+          trigger: 'value_change',
+          changedVariable: change.variableName,
+          newValue: change.newValue,
+        });
+      }
       parseOutcomeFromAIResponse(cleanContent);
       checkAndFireEvents(characterId, { trigger: 'chat_end', chatContent: cleanContent });
       tickCooldowns(characterId, 'turns');
       consumeInjectionTurns(characterId);
-      fireValueRules(characterId, 'chat_end');
     } catch (e) { console.error('[chat/event-engine]', e.message); }
     res.json({ id: aiMsg.id, sender: 'character', content: cleanContent, mode, timestamp: aiMsg.timestamp });
   } catch (err) {
@@ -343,6 +372,8 @@ router.post('/', async (req, res) => {
     const aiContent = await chatCompletion(client, openAIMessages, {
       model: aiModel || 'gpt-3.5-turbo',
       temperature: aiParams?.temperature ?? 0.8,
+    }, {
+      source: 'chat.legacy',
     });
 
     const now = new Date().toISOString();

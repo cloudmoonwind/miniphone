@@ -4,7 +4,78 @@
 // schema 变更通过 drizzle-kit generate 生成 migration，不要直接改数据库
 // ============================================================
 
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
+
+// Core entity tables. These used to be SqliteStore JSON rows. They are columnar
+// now because the app queries and validates these entities as first-class data.
+export const characters = sqliteTable('characters', {
+  id:            text('id').primaryKey(),
+  name:          text('name').notNull(),
+  avatar:        text('avatar'),
+  tags:          text('tags'),
+  groupName:     text('group_name'),
+  core:          text('core').notNull().default(''),
+  persona:       text('persona'),
+  description:   text('description'),
+  sample:        text('sample'),
+  timezone:      text('timezone'),
+  apiPresetId:   text('api_preset_id'),
+  isFavorite:    integer('is_favorite').notNull().default(0),
+  isBlacklisted: integer('is_blacklisted').notNull().default(0),
+  createdAt:     text('created_at').notNull(),
+  updatedAt:     text('updated_at'),
+  metadata:      text('metadata'),
+});
+
+export const messages = sqliteTable('messages', {
+  id:               text('id').primaryKey(),
+  charId:           text('char_id').references(() => characters.id, { onDelete: 'cascade' }),
+  personaId:        text('persona_id'),
+  sender:           text('sender').notNull(),
+  role:             text('role'),
+  content:          text('content').notNull(),
+  mode:             text('mode').notNull().default('online'),
+  timestamp:        text('timestamp').notNull(),
+  userTimestamp:    text('user_timestamp'),
+  charTimestamp:    text('char_timestamp'),
+  variableSnapshot: text('variable_snapshot'),
+  createdAt:        text('created_at').notNull(),
+  metadata:         text('metadata'),
+});
+
+export const summaries = sqliteTable('summaries', {
+  id:          text('id').primaryKey(),
+  charId:      text('char_id').references(() => characters.id, { onDelete: 'cascade' }),
+  personaId:   text('persona_id'),
+  type:        text('type').notNull(),
+  level:       text('level'),
+  content:     text('content').notNull().default(''),
+  date:        text('date'),
+  messageIds:  text('message_ids'),
+  sourceIds:   text('source_ids'),
+  startMsgId:  text('start_msg_id'),
+  importance:  real('importance'),
+  keywords:    text('keywords'),
+  period:      text('period'),
+  createdAt:   text('created_at').notNull(),
+  metadata:    text('metadata'),
+});
+
+export const memories = sqliteTable('memories', {
+  id:          text('id').primaryKey(),
+  charId:      text('char_id').references(() => characters.id, { onDelete: 'cascade' }),
+  content:     text('content').notNull().default(''),
+  textAlias:   text('text_alias'),
+  type:        text('type'),
+  category:    text('category'),
+  source:      text('source'),
+  sourceId:    text('source_id'),
+  tags:        text('tags'),
+  importance:  real('importance'),
+  timestamp:   text('timestamp'),
+  createdAt:   text('created_at').notNull(),
+  metadata:    text('metadata'),
+});
 
 // ── 会话表 ────────────────────────────────────────────────────
 
@@ -35,7 +106,9 @@ export const characterValues = sqliteTable('character_values', {
   groupName:     text('group_name'),
   createdAt:     text('created_at').notNull(),
   updatedAt:     text('updated_at'),
-});
+}, (table) => [
+  uniqueIndex('ux_character_values_character_variable').on(table.characterId, table.variableName),
+]);
 
 /** 数值阶段表：不同数值范围的阶段名称、描述、提示词 */
 export const valueStages = sqliteTable('value_stages', {
@@ -48,19 +121,15 @@ export const valueStages = sqliteTable('value_stages', {
   promptSnippet: text('prompt_snippet'),            // 注入的提示词片段
 });
 
-/** 数值规则表：不同范围的变化规则 */
+/** 数值规则表：告知 AI 如何更新变量的自然语言规则 */
 export const valueRules = sqliteTable('value_rules', {
-  id:          integer('id').primaryKey({ autoIncrement: true }),
-  valueId:     integer('value_id').notNull().references(() => characterValues.id, { onDelete: 'cascade' }),
-  rangeMin:    real('range_min'),    // null = 全范围生效
-  rangeMax:    real('range_max'),
-  triggerOn:   text('trigger_on').notNull(),  // 'chat_end' | 'time_pass' | 'receive_gift' | 'event_complete' | 'value_change'
-  conditions:  text('conditions'),   // JSON，额外条件
-  operation:   text('operation').notNull(),   // 'set' | 'add' | 'multiply'
-  amount:      real('amount').notNull(),
-  description: text('description'),   // 文字说明，如"亲密接触时减少3-8"
-  enabled:     integer('enabled').notNull().default(1), // 0/1
-  createdAt:   text('created_at'),
+  id:        integer('id').primaryKey({ autoIncrement: true }),
+  valueId:   integer('value_id').notNull().references(() => characterValues.id, { onDelete: 'cascade' }),
+  rangeMin:  real('range_min'),   // null = 全范围生效
+  rangeMax:  real('range_max'),
+  ruleText:  text('rule_text').notNull().default(''),  // ★ 自然语言规则文本，注入给 AI
+  enabled:   integer('enabled').notNull().default(1),  // 0/1
+  createdAt: text('created_at'),
 });
 
 // ── 事件系统 ──────────────────────────────────────────────────
@@ -230,4 +299,132 @@ export const worldState = sqliteTable('world_state', {
   key:       text('key').primaryKey(),
   value:     text('value').notNull(),
   updatedAt: text('updated_at').notNull(),
+});
+
+// Low-frequency or feature-local JSON stores. These remain JSON-in-TEXT by
+// design, but their tables are owned by migrations rather than runtime DDL.
+export const activeBlob = sqliteTable('active', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const presetsBlob = sqliteTable('presets', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const promptPresetsBlob = sqliteTable('prompt_presets', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const charStatsBlob = sqliteTable('char_stats', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const statDefsBlob = sqliteTable('stat_defs', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const lifeBlob = sqliteTable('life', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const itemsBlob = sqliteTable('items', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const timelineBlob = sqliteTable('timeline', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const skillsBlob = sqliteTable('skills', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const relationsBlob = sqliteTable('relations', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const dreamsBlob = sqliteTable('dreams', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const personasBlob = sqliteTable('personas', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const mapsBlob = sqliteTable('maps', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const calendarEventsBlob = sqliteTable('calendar_events', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const dafuGameBlob = sqliteTable('dafu_game', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const diaryBlob = sqliteTable('diary', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const suixiangCardsBlob = sqliteTable('suixiang_cards', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
+});
+
+export const suixiangEntriesBlob = sqliteTable('suixiang_entries', {
+  id:        text('id').primaryKey(),
+  charId:    text('char_id'),
+  data:      text('data').notNull(),
+  createdAt: text('created_at'),
 });

@@ -74,7 +74,13 @@
       "Bash(curl -s http://localhost:3000/api/characters)",
       "Bash(curl -s http://localhost:3000/api/worldbook/entries)",
       "Bash(node -e ' *)",
-      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const j=JSON.parse\\(d\\); console.log\\('角色数量:', j.length || Object.keys\\(j\\).length, '\\\\n示例:', JSON.stringify\\(j[0]||Object.values\\(j\\)[0], null, 2\\).slice\\(0,300\\)\\)\")"
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const j=JSON.parse\\(d\\); console.log\\('角色数量:', j.length || Object.keys\\(j\\).length, '\\\\n示例:', JSON.stringify\\(j[0]||Object.values\\(j\\)[0], null, 2\\).slice\\(0,300\\)\\)\")",
+      "Bash(node_modules/.bin/tsc --noEmit -p server/tsconfig.json)",
+      "Bash(find server/data -name \"*.db\")",
+      "Bash(ls server/data/)",
+      "Bash(sqlite3 server/data/ics.db \".schema character_values\")",
+      "Bash(sqlite3 server/data/ics.db \".schema value_rules\")",
+      "Bash(sqlite3 server/data/ics.db \".schema events\")"
     ],
     "additionalDirectories": [
       "d:\\Project\\personal\\miniphone\\client\\src\\core",

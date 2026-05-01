@@ -89,7 +89,9 @@ export async function evaluateSummaryForTimeline(charId, summary) {
         const raw = await chatCompletion(ai.client, [
           { role: 'system', content: prompt },
           { role: 'user', content: '请评估' },
-        ], { model: ai.model || 'gpt-3.5-turbo', max_tokens: 250, temperature: 0.3 });
+        ], { model: ai.model || 'gpt-3.5-turbo', max_tokens: 250, temperature: 0.3 }, {
+          source: 'charSystem.timelineEval',
+        });
 
         const cleaned = raw.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim();
         const result = JSON.parse(cleaned);
@@ -265,7 +267,9 @@ export async function processLifeLog(charId, lifeLog) {
     const raw = await chatCompletion(ai.client, [
       { role: 'system', content: prompt },
       { role: 'user', content: '请提取' },
-    ], { model: ai.model || 'gpt-3.5-turbo', max_tokens: 800, temperature: 0.3 });
+    ], { model: ai.model || 'gpt-3.5-turbo', max_tokens: 800, temperature: 0.3 }, {
+      source: 'charSystem.lifeExtract',
+    });
 
     let data;
     try {

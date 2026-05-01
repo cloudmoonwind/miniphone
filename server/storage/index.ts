@@ -1,4 +1,5 @@
 import { getDb } from '../db/database.js';
+import { ColumnarStore } from '../db/ColumnarStore.js';
 import { SqliteStore } from '../db/SqliteStore.js';
 import type {
   Message, Summary, Character, CharStats, LifeLog,
@@ -10,11 +11,56 @@ import type {
 const db = getDb();
 
 // ── 聊天 ─────────────────────────────────────────────────────
-export const messageStore   = new SqliteStore<Message>(db, 'messages');
-export const summaryStore   = new SqliteStore<Summary>(db, 'summaries');
+export const messageStore = new ColumnarStore<Message>(db, 'messages', [
+  { prop: 'id', column: 'id', required: true },
+  { prop: 'charId', column: 'char_id' },
+  { prop: 'personaId', column: 'persona_id' },
+  { prop: 'sender', column: 'sender', required: true },
+  { prop: 'role', column: 'role' },
+  { prop: 'content', column: 'content', required: true, defaultValue: '' },
+  { prop: 'mode', column: 'mode', required: true, defaultValue: 'online' },
+  { prop: 'timestamp', column: 'timestamp', required: true },
+  { prop: 'userTimestamp', column: 'user_timestamp' },
+  { prop: 'charTimestamp', column: 'char_timestamp' },
+  { prop: 'variableSnapshot', column: 'variable_snapshot', kind: 'json' },
+  { prop: 'createdAt', column: 'created_at', required: true },
+], { orderBy: 'timestamp ASC' });
+
+export const summaryStore = new ColumnarStore<Summary>(db, 'summaries', [
+  { prop: 'id', column: 'id', required: true },
+  { prop: 'charId', column: 'char_id' },
+  { prop: 'personaId', column: 'persona_id' },
+  { prop: 'type', column: 'type', required: true, defaultValue: 'summary' },
+  { prop: 'level', column: 'level' },
+  { prop: 'content', column: 'content', required: true, defaultValue: '' },
+  { prop: 'date', column: 'date' },
+  { prop: 'messageIds', column: 'message_ids', kind: 'json' },
+  { prop: 'sourceIds', column: 'source_ids', kind: 'json' },
+  { prop: 'startMsgId', column: 'start_msg_id' },
+  { prop: 'importance', column: 'importance', kind: 'number' },
+  { prop: 'keywords', column: 'keywords', kind: 'json' },
+  { prop: 'period', column: 'period', kind: 'json' },
+  { prop: 'createdAt', column: 'created_at', required: true },
+], { orderBy: 'created_at ASC' });
 
 // ── 角色主数据 ────────────────────────────────────────────────
-export const characterStore = new SqliteStore<Character>(db, 'characters');
+export const characterStore = new ColumnarStore<Character>(db, 'characters', [
+  { prop: 'id', column: 'id', required: true },
+  { prop: 'name', column: 'name', required: true },
+  { prop: 'avatar', column: 'avatar' },
+  { prop: 'tags', column: 'tags', kind: 'json' },
+  { prop: 'group', column: 'group_name' },
+  { prop: 'core', column: 'core', required: true, defaultValue: '' },
+  { prop: 'persona', column: 'persona' },
+  { prop: 'description', column: 'description' },
+  { prop: 'sample', column: 'sample' },
+  { prop: 'timezone', column: 'timezone' },
+  { prop: 'apiPresetId', column: 'api_preset_id' },
+  { prop: 'isFavorite', column: 'is_favorite', kind: 'boolean', defaultValue: false },
+  { prop: 'isBlacklisted', column: 'is_blacklisted', kind: 'boolean', defaultValue: false },
+  { prop: 'createdAt', column: 'created_at', required: true },
+  { prop: 'updatedAt', column: 'updated_at' },
+], { orderBy: 'created_at ASC' });
 export const charStatStore  = new SqliteStore<CharStats>(db, 'char_stats');
 export const statDefStore   = new SqliteStore<any>(db, 'stat_defs');
 export const lifeStore      = new SqliteStore<LifeLog>(db, 'life');
@@ -24,7 +70,20 @@ export const itemStore      = new SqliteStore<Item>(db, 'items');
 export const timelineStore  = new SqliteStore<TimelineEvent>(db, 'timeline');
 export const skillStore     = new SqliteStore<Skill>(db, 'skills');
 export const relationStore  = new SqliteStore<Relation>(db, 'relations');
-export const memoryStore    = new SqliteStore<Memory>(db, 'memories');
+export const memoryStore = new ColumnarStore<Memory>(db, 'memories', [
+  { prop: 'id', column: 'id', required: true },
+  { prop: 'charId', column: 'char_id' },
+  { prop: 'content', column: 'content', required: true, defaultValue: '' },
+  { prop: 'text', column: 'text_alias' },
+  { prop: 'type', column: 'type' },
+  { prop: 'category', column: 'category' },
+  { prop: 'source', column: 'source' },
+  { prop: 'sourceId', column: 'source_id' },
+  { prop: 'tags', column: 'tags', kind: 'json' },
+  { prop: 'importance', column: 'importance', kind: 'number' },
+  { prop: 'timestamp', column: 'timestamp' },
+  { prop: 'createdAt', column: 'created_at', required: true },
+], { orderBy: 'created_at ASC' });
 export const dreamStore     = new SqliteStore<Dream>(db, 'dreams');
 
 // ── 系统配置 ──────────────────────────────────────────────────

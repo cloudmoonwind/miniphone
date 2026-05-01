@@ -28,7 +28,7 @@ import {
 } from '../storage/index.js';
 import { getActivatedEntries } from './worldbook.js';
 import { getInjectionsByCharacter } from './events.js';
-import { getValuesByCharacter, getCurrentStage, seedDefaultVariables } from './values.js';
+import { getValuesByCharacter, getCurrentStage, seedDefaultVariables, resolveValuePlaceholders, getActiveRuleTexts } from './values.js';
 
 const HOT_COUNT  = 20;
 const WARM_COUNT = 5;
@@ -379,15 +379,15 @@ export async function assembleMessages(charId, personaId, newUserContent, option
       case 'char-core': {
         // 角色核心：名字 + core + 时间戳说明（仅 chat 模式需要）
         const parts = [`你是${char.name}。`];
-        if (char.core) parts.push(char.core);
+        if (char.core) parts.push(resolveValuePlaceholders(char.core, charId));
         if (injectTsHint) parts.push('\n【消息时间标记说明】对话中会穿插 role=user 的独立 <meta timestamp="..."/> 消息，这是系统注入的时间元数据，表示其后消息的发送时间。你应利用这些时间信息感知对话时间线，但不要在回复中输出或引用 <meta> 标签本身。');
         content = parts.filter(Boolean).join('\n');
         break;
       }
 
       case 'char-desc':
-        // 角色描述：persona 字段
-        content = char.persona || '';
+        // 角色描述：persona 字段（支持变量占位符）
+        content = resolveValuePlaceholders(char.persona || '', charId);
         break;
 
       case 'char-sample':
@@ -401,17 +401,17 @@ export async function assembleMessages(charId, personaId, newUserContent, option
         break;
 
       case 'wb-pre':
-        // 世界书前置：system-top 条目
-        content = wbText(activatedWb['system-top']);
+        // 世界书前置：system-top 条目（支持变量占位符）
+        content = resolveValuePlaceholders(wbText(activatedWb['system-top']), charId);
         break;
 
       case 'wb-post':
-        // 世界书后置：before-chat + system-bottom + after-chat 条目
-        content = [
+        // 世界书后置：before-chat + system-bottom + after-chat 条目（支持变量占位符）
+        content = resolveValuePlaceholders([
           wbText(activatedWb['before-chat']),
           wbText(activatedWb['system-bottom']),
           wbText(activatedWb['after-chat']),
-        ].filter(Boolean).join('\n\n');
+        ].filter(Boolean).join('\n\n'), charId);
         break;
 
       case 'memories':
@@ -479,6 +479,19 @@ export async function assembleMessages(charId, personaId, newUserContent, option
           lines.push('sanity（理智）：负值=理性崩溃混乱，正值=冷静清醒');
           lines.push('stability（稳定）：负值=情绪剧烈波动，正值=情绪稳定平静');
           lines.push('intensity（强度）：负值=麻木压抑低迷，正值=情绪强烈激越');
+
+          // 当前范围匹配的规则文本注入
+          try {
+            const activeRules = getActiveRuleTexts(charId);
+            if (activeRules.length > 0) {
+              lines.push('');
+              lines.push('【变量更新规则】以下是各变量当前值范围适用的更新规则（自然语言描述，决策变量变化时参考）：');
+              for (const r of activeRules) {
+                lines.push(`${r.variableName}（${r.name}，当前${r.currentValue}）：${r.ruleText}`);
+              }
+            }
+          } catch {}
+
           lines.push('');
           lines.push('【变量更新】每轮回复末尾必须附加此块，只写本轮有变化的项，不变的自动继承：');
           lines.push('<var>');

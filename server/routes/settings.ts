@@ -285,7 +285,7 @@ router.post('/models', async (req, res) => {
   if (!apiKey) return res.status(400).json({ success: false, message: 'API Key 不能为空' });
   try {
     const client = getClient({ apiKey, baseURL, provider });
-    const models = await listModels(client);
+    const models = await listModels(client, { source: 'settings.models' });
     res.json({ success: true, models });
   } catch (err) {
     // 不透传服务商的原始状态码（如 404），统一返回 502 让前端识别为上游错误
@@ -302,7 +302,7 @@ router.post('/test-connection', async (req, res) => {
     await p.chatCompletion([{ role: 'user', content: 'Hi' }], {
       model: model || 'gpt-4o-mini',
       max_tokens: 500,
-    });
+    }, { endpoint: 'testConnection', source: 'settings.testConnection' });
     res.json({ success: true, message: '连接成功' });
   } catch (err) {
     res.status(502).json({ success: false, message: err.message });
