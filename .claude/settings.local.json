@@ -43,7 +43,19 @@
       "Bash(python -c \"import json; d=json.load\\(open\\(''d:/Project/personal/miniphone/server/data/presets.json''\\)\\); print\\(json.dumps\\(d[0], indent=2, ensure_ascii=False\\)\\)\")",
       "Bash(npm install:*)",
       "Bash(python -c \"import json,sys; chars=json.load\\(sys.stdin\\); [print\\(c[''''id''''], c[''''name'''']\\) for c in chars]\")",
-      "Bash(python -c \"import json,sys; chars=json.load\\(sys.stdin\\); [print\\(c[''''id''''], c[''''name'''']\\) for c in \\(chars if isinstance\\(chars,list\\) else []\\)]\")"
+      "Bash(python -c \"import json,sys; chars=json.load\\(sys.stdin\\); [print\\(c[''''id''''], c[''''name'''']\\) for c in \\(chars if isinstance\\(chars,list\\) else []\\)]\")",
+      "Bash(sqlite3 server/data/ics.db \"SELECT id, title, substr\\(content,1,80\\) FROM worldbook_entries WHERE content LIKE '%{{%}}%' LIMIT 20;\")",
+      "Bash(sqlite3 server/data/ics.db \"SELECT id, substr\\(data,1,150\\) FROM prompt_presets WHERE data LIKE '%{{%}}%' LIMIT 20;\")",
+      "Bash(sqlite3 server/data/ics.db \"SELECT id, name, substr\\(coalesce\\(core,''\\),1,80\\) FROM characters WHERE coalesce\\(core,''\\)||coalesce\\(persona,''\\) LIKE '%{{%}}%';\")",
+      "Bash(sqlite3 server/data/ics.db \"SELECT id, name, substr\\(coalesce\\(content,''\\),1,80\\) FROM personas WHERE coalesce\\(content,''\\) LIKE '%{{%}}%';\")",
+      "Bash(sqlite3 server/data/ics.db \"SELECT id, substr\\(content,1,80\\) FROM pending_injections WHERE content LIKE '%{{%}}%';\")",
+      "Bash(sqlite3 server/data/ics.db \".schema worldbook_entries\")",
+      "Bash(sqlite3 server/data/ics.db \".schema personas\")",
+      "Bash(sqlite3 server/data/ics.db \"SELECT id, memo, substr\\(content,1,100\\) FROM worldbook_entries WHERE content LIKE '%{{%}}%';\")",
+      "Bash(sqlite3 server/data/ics.db \"SELECT id, char_id, substr\\(data,1,150\\) FROM personas WHERE data LIKE '%{{%}}%';\")",
+      "Bash(sqlite3 server/data/ics.db \"SELECT id, name FROM characters WHERE coalesce\\(core,''\\) LIKE '%{{%}}%' OR coalesce\\(persona,''\\) LIKE '%{{%}}%' OR coalesce\\(sample,''\\) LIKE '%{{%}}%';\")",
+      "Bash(sqlite3 server/data/ics.db \"SELECT id FROM prompt_presets WHERE data LIKE '%{{%}}%';\")",
+      "Bash(sqlite3 server/data/ics.db \"SELECT count\\(*\\) FROM summaries WHERE content LIKE '%{{%}}%';\")"
     ]
   }
 }

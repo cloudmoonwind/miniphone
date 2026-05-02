@@ -15,7 +15,7 @@ import { genId } from '../storage/FileStore.js';
 import { getEventPool, type Event as PoolEvent } from '../services/events.js';
 import { getCharStats, getMergedStatDefs } from '../services/charstats.js';
 import { getPrompt } from '../services/promptPresets.js';
-import { checkAndFireEvents } from '../services/eventEngine.js';
+import { dispatchTrigger } from '../services/triggerBus.js';
 import { runWithTrace, traceSummary } from '../services/trace.js';
 
 const router = Router({ mergeParams: true });
@@ -165,7 +165,7 @@ router.post('/generate', async (req, res) => {
       processLifeLog(charId, log).catch(e => console.error('[charSystem]', e.message));
       // 事件引擎：time_pass_life 触发
       try {
-        checkAndFireEvents(charId, { trigger: 'time_pass_life' });
+        dispatchTrigger(charId, { trigger: 'time_pass_life' });
       } catch (e) { console.error('[life/event-engine]', e.message); }
     }
 

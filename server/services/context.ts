@@ -28,7 +28,8 @@ import {
 } from '../storage/index.js';
 import { getActivatedEntries } from './worldbook.js';
 import { getInjectionsByCharacter } from './events.js';
-import { getValuesByCharacter, getCurrentStage, seedDefaultVariables, resolveValuePlaceholders, getActiveRuleTexts } from './values.js';
+import { getValuesByCharacter, getCurrentStage, seedDefaultVariables, getActiveRuleTexts } from './values.js';
+import { resolvePlaceholders, type ResolveContext } from './placeholders.js';
 import { traceSummary, traceDetail } from './trace.js';
 
 const HOT_COUNT  = 20;
@@ -52,6 +53,8 @@ function truncateToTokens(text, maxTokens) {
 export const MSG_SEP = '\u001E';
 
 // 系统槽 → blockType 映射（新槽位 + 老槽位向后兼容）
+// skipPlaceholders=true 表示该槽内容是"系统生成的指令文本"，不应过占位符解析器
+//   （sys-variables 含 {{val:...}} 字面量作为给 AI 看的格式说明；sys-mode 在 case 内部已显式调过解析器）
 const SLOT_DEFS = {
   // ── 新槽位（v2，与 FilesApp SYSTEM_SLOTS 保持同步）────────────────────
   'sys-syspre':      { blockType: 'sys-pre',    defaultRole: 'system' }, // 系统提示_前（可编辑）
@@ -66,7 +69,8 @@ const SLOT_DEFS = {
   'sys-scene':       { blockType: 'scene',      defaultRole: 'system' }, // 场景（可编辑）
   'sys-life':        { blockType: 'life',        defaultRole: 'system' }, // 近期生活
   'sys-dreams':      { blockType: 'dreams',     defaultRole: 'system' }, // 梦境
-  'sys-variables':   { blockType: 'variables',  defaultRole: 'system' }, // 变量系统状态
+  'sys-variables':   { blockType: 'variables',  defaultRole: 'system', skipPlaceholders: true }, // 变量系统状态（含给 AI 的格式指令）
+  'sys-mode':        { blockType: 'mode',       defaultRole: 'system', skipPlaceholders: true }, // 对话模式提示（case 内手动解析当前模式模板）
   'sys-summaries':   { blockType: 'summaries',  defaultRole: 'system' }, // chat history摘要
   'sys-history':     { blockType: 'history',    defaultRole: null     }, // chat history（特殊：展开为多条）
   'sys-syspost':     { blockType: 'sys-post',   defaultRole: 'system' }, // 系统提示_后（可编辑）
@@ -79,21 +83,30 @@ const SLOT_DEFS = {
   'sys-wbbottom':    { blockType: 'wb-post',    defaultRole: 'system' }, // → wb-post
 };
 
+// sys-mode 默认 content：JSON 映射，作者可在 FilesApp 编辑
+const DEFAULT_MODE_TEMPLATES = JSON.stringify({
+  online:  '（聊天气泡场景：短消息为主，口语化、自然停顿，避免长段叙事）',
+  offline: '（长文叙事场景：每段 200-800 字，描写动作环境、内心活动）',
+});
+
 // 无预设时的默认顺序（使用新槽位结构）
+// sys-mode 放在 sys-history 之后、sys-syspost 之前：
+//   - 避免 mode 切换破坏 history 部分的 prompt 缓存
+//   - 仍在 syspost 之前，作者写的"末尾系统提示"语境不被 mode 抢走
 const DEFAULT_CONTEXT_ITEMS = [
   'sys-syspre', 'sys-tools', 'sys-wbpre',
   'sys-char-core', 'sys-char-desc', 'sys-char-sample',
   'sys-user-desc', 'sys-memories', 'sys-wbpost',
   'sys-scene', 'sys-life', 'sys-dreams',
   'sys-variables',
-  'sys-summaries', 'sys-history', 'sys-syspost',
+  'sys-summaries', 'sys-history', 'sys-mode', 'sys-syspost',
 ].map(id => ({
   entryId: id,
   enabled: id !== 'sys-tools' && id !== 'sys-char-sample',
   roleOverride: null,
   maxTokens: null,
   historyCount: id === 'sys-history' ? 20 : null,
-  content: null,
+  content: id === 'sys-mode' ? DEFAULT_MODE_TEMPLATES : null,
 }));
 
 // ── 时间戳格式化 ────────────────────────────────────────────────────────────
@@ -121,14 +134,16 @@ function formatTimestampForAI(isoStr, timezone = '+08:00', hourOnly = false) {
  * @param {string}  newUserContent  新用户消息；null = 使用已存消息
  * @param {object}  options
  * @param {'flexible'|'strict'} options.contextMode
+ * @param {'online'|'offline'|string} options.mode  当前对话模式（决定 sys-mode 槽注入哪段模板）
  */
 export async function assembleMessages(charId, personaId, newUserContent, options: Record<string, any> = {}) {
-  const { contextMode = 'flexible' } = options;
+  const { contextMode = 'flexible', mode: currentMode = null } = options;
   const contextTraceId = traceSummary('context', 'context.start', `assemble context (${contextMode})`, {
     charId,
     personaId,
     hasNewUserContent: !!newUserContent,
     contextMode,
+    currentMode,
   });
 
   const char = await characterStore.getById(charId);
@@ -141,6 +156,13 @@ export async function assembleMessages(charId, personaId, newUserContent, option
   const hotTsEnabled  = tsSettings.hotTimestampEnabled ?? true; // 最近1小时逐条标注（可选）
   const charTz        = char.timezone || '+08:00';
   const injectTsHint  = sendUserTs;
+
+  // 占位符解析上下文（一次构造、整次组装复用）。personaId 优先入参、否则取 active。
+  const placeholderCtx: ResolveContext = {
+    characterId: charId,
+    personaId: personaId ?? active?.activePersonaId ?? null,
+    mode: currentMode ?? null,
+  };
 
   // 过滤条件
   const matchesContext = (item) =>
@@ -361,19 +383,19 @@ export async function assembleMessages(charId, personaId, newUserContent, option
     // before_char 注入点：在 char-core 之前插入
     if (blockType === 'char-core') {
       const inj = consumeInj('before_char');
-      if (inj) messages.push({ role: 'system', content: inj });
+      if (inj) messages.push({ role: 'system', content: resolvePlaceholders(inj, placeholderCtx) });
     }
 
     // before_history 注入点：在 history 之前插入
     if (blockType === 'history') {
       const inj = consumeInj('before_history');
-      if (inj) messages.push({ role: 'system', content: inj });
+      if (inj) messages.push({ role: 'system', content: resolvePlaceholders(inj, placeholderCtx) });
     }
 
     // status_section 注入点：在 scene/life 之前插入
     if (blockType === 'scene' || blockType === 'life') {
       const inj = consumeInj('status_section');
-      if (inj) { messages.push({ role: 'system', content: inj }); }
+      if (inj) { messages.push({ role: 'system', content: resolvePlaceholders(inj, placeholderCtx) }); }
     }
 
     // 特殊：history 展开为多条消息
@@ -429,15 +451,15 @@ export async function assembleMessages(charId, personaId, newUserContent, option
       case 'char-core': {
         // 角色核心：名字 + core + 时间戳说明（仅 chat 模式需要）
         const parts = [`你是${char.name}。`];
-        if (char.core) parts.push(resolveValuePlaceholders(char.core, charId));
+        if (char.core) parts.push(char.core);
         if (injectTsHint) parts.push('\n【消息时间标记说明】对话中会穿插 role=user 的独立 <meta timestamp="..."/> 消息，这是系统注入的时间元数据，表示其后消息的发送时间。你应利用这些时间信息感知对话时间线，但不要在回复中输出或引用 <meta> 标签本身。');
         content = parts.filter(Boolean).join('\n');
         break;
       }
 
       case 'char-desc':
-        // 角色描述：persona 字段（支持变量占位符）
-        content = resolveValuePlaceholders(char.persona || '', charId);
+        // 角色描述：persona 字段
+        content = char.persona || '';
         break;
 
       case 'char-sample':
@@ -451,17 +473,17 @@ export async function assembleMessages(charId, personaId, newUserContent, option
         break;
 
       case 'wb-pre':
-        // 世界书前置：system-top 条目（支持变量占位符）
-        content = resolveValuePlaceholders(wbText(activatedWb['system-top']), charId);
+        // 世界书前置：system-top 条目
+        content = wbText(activatedWb['system-top']);
         break;
 
       case 'wb-post':
-        // 世界书后置：before-chat + system-bottom + after-chat 条目（支持变量占位符）
-        content = resolveValuePlaceholders([
+        // 世界书后置：before-chat + system-bottom + after-chat 条目
+        content = [
           wbText(activatedWb['before-chat']),
           wbText(activatedWb['system-bottom']),
           wbText(activatedWb['after-chat']),
-        ].filter(Boolean).join('\n\n'), charId);
+        ].filter(Boolean).join('\n\n');
         break;
 
       case 'memories':
@@ -552,14 +574,55 @@ export async function assembleMessages(charId, personaId, newUserContent, option
           } catch {}
 
           lines.push('');
-          lines.push('【变量更新】每轮回复末尾必须附加此块，只写本轮有变化的项，不变的自动继承：');
-          lines.push('<var>');
-          lines.push('variableName: 原值→新值');
-          lines.push('情绪: 情绪词 X% | 情绪词 Y%（百分比之和=100，选2~5个主要情绪）');
-          lines.push('</var>');
+          lines.push('【输出协议】如本轮有变量变化或事件标记，在正文末尾空一行后附加 <sys> 块；没有任何变化时可省略整个块。结构：');
+          lines.push('<sys>');
+          lines.push('  <var>');
+          lines.push('  变量名: 旧值→新值                       —— 数值更新（旧值需与当前值一致，±1 容忍）');
+          lines.push('  变量名: 旧值→新值 | 原因: 简短说明      —— 可选附加原因');
+          lines.push('  情绪: 情绪词1 X% | 情绪词2 Y%            —— 情绪快照，百分比之和≈100，选2~5个');
+          lines.push('  </var>');
+          lines.push('  <event>');
+          lines.push('  事件ID: outcome                          —— 标记某事件结果（仅在剧情节点触达时使用）');
+          lines.push('  事件ID: outcome | 原因: 简短说明');
+          lines.push('  </event>');
+          lines.push('</sys>');
+          lines.push('约束：变量名用 variableName 或显示名都行；情绪行不支持 | 原因；<sys> 块不会展示给用户。');
 
           content = lines.join('\n');
         }
+        break;
+      }
+
+      case 'mode': {
+        // sys-mode 槽：item.content 是 JSON 映射 { online: "...", offline: "...", ... }
+        // 按当前 mode 取对应模板，过解析器后注入。无 mode 或映射里没匹配的 mode → 跳过
+        if (!currentMode) {
+          traceDetail('context', 'context.mode.skip', 'no current mode provided', null, contextTraceId);
+          break;
+        }
+        let modeMap: Record<string, string> | null = null;
+        if (item.content && typeof item.content === 'string') {
+          try { modeMap = JSON.parse(item.content); } catch { /* 留空 */ }
+        } else if (item.content && typeof item.content === 'object') {
+          modeMap = item.content as any;
+        }
+        if (!modeMap || typeof modeMap !== 'object') {
+          traceDetail('context', 'context.mode.skip', 'sys-mode content not a JSON map', { content: item.content }, contextTraceId);
+          break;
+        }
+        const template = modeMap[currentMode];
+        if (typeof template !== 'string' || !template.trim()) {
+          traceDetail('context', 'context.mode.skip', `mode "${currentMode}" not configured`, {
+            currentMode,
+            availableKeys: Object.keys(modeMap),
+          }, contextTraceId);
+          break;
+        }
+        content = resolvePlaceholders(template, placeholderCtx);
+        traceDetail('context', 'context.mode.injected', `mode "${currentMode}" template injected`, {
+          currentMode,
+          tokenEstimate: estimateTokens(content),
+        }, contextTraceId);
         break;
       }
 
@@ -599,15 +662,19 @@ export async function assembleMessages(charId, personaId, newUserContent, option
     }
 
     if (content.trim()) {
-      const finalContent = item.maxTokens ? truncateToTokens(content, item.maxTokens) : content;
+      // 占位符解析：slotDef.skipPlaceholders=true 的槽（如 sys-variables / sys-mode）是系统生成或已自行解析的内容，跳过统一出口的解析
+      const skipResolve = (slotDef as any)?.skipPlaceholders === true;
+      const resolved = skipResolve ? content : resolvePlaceholders(content, placeholderCtx);
+      const finalContent = item.maxTokens ? truncateToTokens(resolved, item.maxTokens) : resolved;
       messages.push({ role, content: finalContent });
-      traceDetail('context', 'context.slot', `${item.entryId} ${estimateTokens(finalContent)} tokens${finalContent !== content ? ' truncated' : ''}`, {
+      traceDetail('context', 'context.slot', `${item.entryId} ${estimateTokens(finalContent)} tokens${finalContent !== content ? ' resolved/truncated' : ''}`, {
         entryId: item.entryId,
         blockType,
         role,
         tokenEstimate: estimateTokens(finalContent),
         originalTokenEstimate: estimateTokens(content),
-        truncated: finalContent !== content,
+        resolved: resolved !== content,
+        truncated: finalContent !== resolved,
         maxTokens: item.maxTokens ?? null,
       }, contextTraceId);
     }
@@ -615,14 +682,14 @@ export async function assembleMessages(charId, personaId, newUserContent, option
     // after_char 注入点：在 char-sample（或兜底 char-desc）之后插入
     if (blockType === 'char-sample' || blockType === 'char-desc') {
       const inj = consumeInj('after_char');
-      if (inj) messages.push({ role: 'system', content: inj });
+      if (inj) messages.push({ role: 'system', content: resolvePlaceholders(inj, placeholderCtx) });
     }
   }
 
   // 所有未消耗的注入（position 未匹配或 permanent 类型）→ 追加到最后的 system 块前
   const remaining = Object.values(injByPos).flat();
   if (remaining.length) {
-    messages.push({ role: 'system', content: remaining.join('\n') });
+    messages.push({ role: 'system', content: resolvePlaceholders(remaining.join('\n'), placeholderCtx) });
     traceDetail('pending', 'pending.remainingInjected', `${remaining.length} unmatched injections appended`, {
       count: remaining.length,
       positions: Object.keys(injByPos),

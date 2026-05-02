@@ -44,11 +44,17 @@ mood(心情)：70
 sanity（理智）：...
 ...
 
-【变量更新】每轮回复末尾必须附加此块，只写本轮有变化的项：
-<var>
-variableName: 原值→新值
-情绪: 情绪词 X% | 情绪词 Y%
-</var>
+【输出协议】如本轮有变量变化或事件标记，在正文末尾空一行后附加 <sys> 块：
+<sys>
+  <var>
+  变量名: 旧值→新值                          —— 数值更新（旧值±1 容忍）
+  变量名: 旧值→新值 | 原因: 简短说明          —— 可选附加原因
+  情绪: 情绪词1 X% | 情绪词2 Y%               —— 情绪快照，百分比之和≈100
+  </var>
+  <event>
+  事件ID: outcome                            —— 标记事件结果（可选）
+  </event>
+</sys>
 ```
 
 **待补充（TODO）：** 在变量状态后附上当前范围匹配的规则文本：
@@ -81,12 +87,13 @@ content = resolveValuePlaceholders(wbText(entries), charId);
 content = resolveValuePlaceholders(item.content || '', charId);
 ```
 
-占位符格式：
+占位符格式（统一三段式，命名空间见 placeholders.ts）：
 ```
-{{v:affection}}          → 当前值数字
-{{v:affection:stage}}    → 当前阶段名
-{{v:affection:desc}}     → 当前阶段描述
-{{v:affection:prompt}}   → 当前阶段提示词片段（最重要）
+{{val:affection}}          → 当前值数字
+{{val:affection:stage}}    → 当前阶段名
+{{val:affection:desc}}     → 当前阶段描述
+{{val:affection:prompt}}   → 当前阶段提示词片段（最重要）
+{{char:name}} {{user:name}} {{world:weather}} {{time:date}} 等同理
 ```
 
 ---

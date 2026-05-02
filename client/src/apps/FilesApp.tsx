@@ -139,6 +139,17 @@ const SYSTEM_SLOTS = {
     desc: '当前角色变量状态 + 情绪底色三轴 + 变量更新格式指令',
     sourceLabel: '在「元系统 → 变量系统」中管理',
   },
+  'sys-mode': {
+    name: '对话模式',
+    blockType: 'mode',
+    defaultRole: 'system',
+    color: 'rose',
+    icon: Layers,
+    desc: '按当前模式（线上/线下）注入对应模板，引导 AI 输出风格',
+    editable: true,
+    kind: 'mode-map', // 特殊：content 是 JSON 映射 { online, offline }
+    placeholder: '编辑当前模式的提示词（线上/线下分别配置）…',
+  },
   'sys-summaries': {
     name: 'chat history摘要',
     blockType: 'summaries',
@@ -195,6 +206,7 @@ const SLOT_COLOR_CLASSES = {
   indigo:  { bg: 'bg-indigo-50',  border: 'border-indigo-200',  text: 'text-indigo-600',  dot: 'bg-indigo-400' },
   blue:    { bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-600',    dot: 'bg-blue-400' },
   teal:    { bg: 'bg-teal-50',    border: 'border-teal-200',    text: 'text-teal-600',    dot: 'bg-teal-400' },
+  rose:    { bg: 'bg-rose-50',    border: 'border-rose-200',    text: 'text-rose-600',    dot: 'bg-rose-400' },
   gray:    { bg: 'bg-gray-50',    border: 'border-gray-200',    text: 'text-gray-600',    dot: 'bg-gray-400' },
 };
 
@@ -234,14 +246,21 @@ const api = {
 
 // ── 默认上下文条目（新建预设时填充）─────────────────────────────────────────
 
-// 默认聊天预设：15 个槽位按用户设计顺序排列
+// sys-mode 默认 content：JSON 字符串，作者可在编辑器分别填线上/线下提示词
+const DEFAULT_MODE_TEMPLATES = JSON.stringify({
+  online:  '（聊天气泡场景：短消息为主，口语化、自然停顿，避免长段叙事）',
+  offline: '（长文叙事场景：每段 200-800 字，描写动作环境、内心活动）',
+});
+
+// 默认聊天预设：16 个槽位按用户设计顺序排列
+// sys-mode 放在 sys-history 之后、sys-syspost 之前：避免 mode 切换破坏 history 缓存
 const DEFAULT_CHAT_ITEMS = [
   'sys-syspre', 'sys-tools', 'sys-wbpre',
   'sys-char-core', 'sys-char-desc', 'sys-char-sample',
   'sys-user-desc', 'sys-memories', 'sys-wbpost',
   'sys-scene', 'sys-life', 'sys-dreams',
   'sys-variables',
-  'sys-summaries', 'sys-history', 'sys-syspost',
+  'sys-summaries', 'sys-history', 'sys-mode', 'sys-syspost',
 ].map(id => ({
   entryId: id,
   // 工具和语料默认关闭（内容为空时无用）
@@ -249,7 +268,7 @@ const DEFAULT_CHAT_ITEMS = [
   roleOverride: null,
   maxTokens: null,
   historyCount: id === 'sys-history' ? 20 : null,
-  content: null, // 可编辑槽位的自定义内容
+  content: id === 'sys-mode' ? DEFAULT_MODE_TEMPLATES : null,
 }));
 
 // 默认总结预设：不含工具和梦境，历史深度更大
@@ -453,22 +472,41 @@ function CustomEntryRow({ item, entry, onToggle, onRemove, onEdit }) {
 
 // 系统槽编辑弹窗
 function SystemSlotEditModal({ item, slot, resolvedInfo, onSave, onClose }) {
+  // sys-mode 槽的 content 是 JSON 映射 { online, offline }，需要拆开当各 mode 的 textarea 内容
+  const isModeMap = slot.kind === 'mode-map';
+  const initialModeMap = (() => {
+    if (!isModeMap) return null;
+    const raw = item.content;
+    if (raw && typeof raw === 'string') {
+      try { return JSON.parse(raw) || {}; } catch { return {}; }
+    }
+    if (raw && typeof raw === 'object') return raw;
+    return {};
+  })();
+
   const [form, setForm] = useState({
     roleOverride: item.roleOverride ?? null,
     maxTokens: item.maxTokens ?? '',
     historyCount: item.historyCount ?? 20,
     content: item.content ?? '',
   });
+  // sys-mode 专用：维护两个 mode 的内容；当前显示哪个 mode 的 textarea
+  const [modeMap, setModeMap] = useState<Record<string, string>>(
+    isModeMap ? { online: initialModeMap?.online ?? '', offline: initialModeMap?.offline ?? '' } : {}
+  );
+  const [activeMode, setActiveMode] = useState<'online' | 'offline'>('online');
   const [showFull, setShowFull] = useState(false);
   const colors = SLOT_COLOR_CLASSES[slot.color] || SLOT_COLOR_CLASSES.indigo;
   const Ic = slot.icon;
 
   const handleSave = () => {
+    // mode-map 槽保存为 JSON 字符串
+    const contentToSave = isModeMap ? JSON.stringify(modeMap) : form.content;
     onSave(item.entryId, {
       roleOverride: form.roleOverride,
       maxTokens: form.maxTokens !== '' ? parseInt(form.maxTokens) : null,
       ...(slot.hasDepth ? { historyCount: Math.max(1, parseInt(form.historyCount) || 20) } : {}),
-      ...(slot.editable ? { content: form.content } : {}),
+      ...(slot.editable ? { content: contentToSave } : {}),
     });
   };
 
@@ -496,8 +534,8 @@ function SystemSlotEditModal({ item, slot, resolvedInfo, onSave, onClose }) {
             <p className="text-xs text-gray-400 italic">{slot.sourceLabel}</p>
           )}
 
-          {/* 可编辑槽：textarea */}
-          {slot.editable && (
+          {/* 可编辑槽：textarea（普通槽） */}
+          {slot.editable && !isModeMap && (
             <div>
               <div className="flex items-baseline justify-between mb-1.5">
                 <label className="text-xs font-semibold text-gray-500">内容</label>
@@ -510,6 +548,47 @@ function SystemSlotEditModal({ item, slot, resolvedInfo, onSave, onClose }) {
                 rows={6}
                 className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 leading-relaxed placeholder:text-gray-300"
               />
+            </div>
+          )}
+
+          {/* 可编辑槽：mode-map（sys-mode 专用，tab 切换两个 mode 的 textarea） */}
+          {slot.editable && isModeMap && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-gray-500">模式提示词</label>
+                <span className="text-[10px] text-gray-400">
+                  约 {estimateTokens(modeMap[activeMode] || '')} tokens（{activeMode === 'online' ? '线上' : '线下'}）
+                </span>
+              </div>
+              <div className="flex items-center gap-1 mb-2 p-0.5 bg-gray-100 rounded-lg w-fit">
+                {(['online', 'offline'] as const).map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setActiveMode(m)}
+                    className={`px-3 h-7 rounded-md text-xs font-semibold transition-all ${
+                      activeMode === m
+                        ? 'bg-white text-rose-600 shadow-sm'
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    {m === 'online' ? '线上' : '线下'}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={modeMap[activeMode] || ''}
+                onChange={e => setModeMap(mm => ({ ...mm, [activeMode]: e.target.value }))}
+                placeholder={
+                  activeMode === 'online'
+                    ? '线上模式提示词（聊天气泡场景，短消息为主）…'
+                    : '线下模式提示词（长文叙事场景，描写动作环境）…'
+                }
+                rows={6}
+                className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-rose-300 leading-relaxed placeholder:text-gray-300"
+              />
+              <p className="mt-1.5 text-[10px] text-gray-400">
+                两种模式分别配置；聊天时按当前所选模式自动注入对应内容。
+              </p>
             </div>
           )}
 

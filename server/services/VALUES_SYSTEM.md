@@ -14,22 +14,25 @@
 **用法：** 在角色设定（char.core / char.persona）或世界书条目里写占位符：
 
 ```
-{{v:affection}}           → 替换为当前数值（如 65）
-{{v:affection:stage}}     → 替换为当前阶段名（如 朋友）
-{{v:affection:desc}}      → 替换为当前阶段描述（如 态度温和，愿意分享）
-{{v:affection:prompt}}    → 替换为当前阶段的提示词片段（完整行为描述）
+{{val:affection}}           → 替换为当前数值（如 65）
+{{val:affection:stage}}     → 替换为当前阶段名（如 朋友）
+{{val:affection:desc}}      → 替换为当前阶段描述（如 态度温和，愿意分享）
+{{val:affection:prompt}}    → 替换为当前阶段的提示词片段（完整行为描述）
+{{val:affection:name}}      → 显示名（如 好感度）
+{{val:affection:min}}       → 最小值
+{{val:affection:max}}       → 最大值
 ```
 
 **示例：** 世界书条目写：
 ```
-{{char}}对{{user}}的好感度处于{{v:affection:stage}}阶段。
-{{v:affection:prompt}}
+{{char:name}}对{{user:name}}的好感度处于{{val:affection:stage}}阶段。
+{{val:affection:prompt}}
 ```
 组装上下文时自动替换为当前阶段的具体文本。
 
-**实现位置：** `resolveValuePlaceholders()` 函数已写好，但**尚未接入 context.ts**。
-需要在 `assembleMessages()` 组装 char-core、char-desc、wb-pre、wb-post 等文本时，
-对每段内容调用 `resolveValuePlaceholders(content, charId)` 进行替换。
+**实现位置：** `valResolver` / `valList` 已挂入通用变量管道（`server/services/placeholders.ts`）。
+组装时由 `context.ts` 统一对所有作者可写槽位调用 `resolvePlaceholders(content, ctx)` 完成解析。
+sys-variables 槽自身的指令文本不解析（含给 AI 看的格式说明）。
 
 ---
 
@@ -56,24 +59,32 @@
 
 ---
 
-## 机制三：AI 自主更新（<var> 块）
+## 机制三：AI 自主更新（<sys> 协议块）
 
-**用途：** AI 在每轮回复末尾输出变量变化，服务端解析后写入数据库。
+**用途：** AI 在每轮回复末尾输出变量变化（与事件结果），服务端解析后写入数据库。
 
 **AI 输出格式（由 sys-variables 槽指令要求）：**
 ```
-<var>
-affection: 65→68
-情绪: 温柔 45% | 期待 30% | 平静 25%
-</var>
+<sys>
+  <var>
+  affection: 65→68
+  affection: 65→68 | 原因: 用户主动分享了童年回忆
+  情绪: 温柔 45% | 期待 30% | 平静 25%
+  </var>
+  <event>
+  evt_confession: success
+  </event>
+</sys>
 ```
 
-**解析规则：**
-- 变量行：`变量名（或显示名）: 原值→新值`，原值需与数据库当前值相差 ≤1（防重复执行时漂移）
-- 情绪行：`情绪: 词 X% | 词 Y%`，百分比之和在 95~105 之间有效
-- 解析后通过 `updateValue()` 写入，并将快照存入消息记录（`variableSnapshot`）
+完整协议规范见 [ICS_AI输出协议_v1.md](../../ICS_AI输出协议_v1.md)。
 
-**实现位置：** `extractVarBlock()` + `parseAndApplyVarBlock()` 已完整实现，chat.ts 已接入。✅
+**解析与应用分层：**
+- **解析层**（`server/services/aiProtocol.ts`）：`parseAIOutput(content)` 把字符串拆为 `{ cleanContent, varUpdates, emotion, events, diagnostics }` 结构化结果
+- **应用层**（`server/services/values.ts`）：`applyVarBlock(charId, varUpdates, emotion?)` 校验旧值（±1 容忍）、clamp、写库、生成 changedVariables
+- **事件应用层**（`server/services/eventEngine.ts`）：`applyEventOutcomes(parsed)` 写 outcome 字段、按 branch 连接的 requiredOutcome 触发后续事件
+
+[chat.ts](../routes/chat.ts) 流式与非流式两路均使用此链路（已接入 ✅）。
 
 ---
 

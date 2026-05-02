@@ -29,6 +29,13 @@
       "when": 1777597465277,
       "tag": "0003_storage_boundary",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1777996800000,
+      "tag": "0004_event_required_outcome",
+      "breakpoints": true
     }
   ]
 }

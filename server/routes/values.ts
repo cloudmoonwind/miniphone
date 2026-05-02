@@ -24,7 +24,7 @@
 
 import { Router } from 'express';
 import * as svc from '../services/values.js';
-import { checkAndFireEvents } from '../services/eventEngine.js';
+import { dispatchTrigger } from '../services/triggerBus.js';
 import { runWithTrace, traceSummary } from '../services/trace.js';
 
 const router = Router();
@@ -104,7 +104,7 @@ router.post('/item/:id/adjust', async (req, res) => {
           delta,
         });
         try {
-          checkAndFireEvents(adjusted.characterId, {
+          dispatchTrigger(adjusted.characterId, {
             trigger: 'value_change',
             changedVariable: adjusted.variableName,
             newValue: adjusted.currentValue,

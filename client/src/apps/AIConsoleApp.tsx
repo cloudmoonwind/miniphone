@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   ChevronLeft, RefreshCw, Trash2, Calendar, Download,
-  Search, Database, Activity, ChevronsDown, ChevronsUp,
+  Search, Database, Activity, ChevronsDown, ChevronsUp, Layers,
 } from 'lucide-react';
 import type { LogEntry, TraceEntry, TabKey, LevelFilter } from './console/types';
 import { todayKey, downloadJsonl } from './console/utils';
 import { AILogTab } from './console/AILogTab';
 import { TraceTab } from './console/TraceTab';
+import { CapabilitiesTab } from './console/CapabilitiesTab';
 
 function stringify(value: any): string {
   if (value == null) return '';
@@ -278,10 +279,22 @@ const AIConsoleApp = ({ onBack }: { onBack: () => void }) => {
               <Activity size={11} />
               Trace
             </button>
+            <button
+              onClick={() => setTab('caps')}
+              className={`flex items-center gap-1 rounded-full px-2.5 h-7 text-xs font-semibold transition-all ${
+                tab === 'caps'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-indigo-400 hover:text-indigo-600'
+              }`}
+            >
+              <Layers size={11} />
+              能力
+            </button>
           </div>
         </div>
 
-        {/* Row 2: Date · Search · View controls · Data actions */}
+        {/* Row 2: Date · Search · View controls · Data actions（caps 模式无意义，隐藏） */}
+        {tab !== 'caps' && (
         <div className="flex items-center gap-1.5 px-3 pb-2">
 
           {/* Date picker */}
@@ -371,6 +384,7 @@ const AIConsoleApp = ({ onBack }: { onBack: () => void }) => {
             <Trash2 size={13} />
           </button>
         </div>
+        )}
 
         {/* Row 3 (Trace only): Level + Module filters */}
         {tab === 'trace' && (
@@ -401,7 +415,9 @@ const AIConsoleApp = ({ onBack }: { onBack: () => void }) => {
 
       {/* ── Content area ── */}
       <div className="flex-1 overflow-y-auto p-3 min-h-0">
-        {loading ? (
+        {tab === 'caps' ? (
+          <CapabilitiesTab />
+        ) : loading ? (
           <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
             <RefreshCw size={16} className="animate-spin mr-2 text-indigo-400" />
             加载中…
@@ -433,19 +449,29 @@ const AIConsoleApp = ({ onBack }: { onBack: () => void }) => {
 
       {/* ── Status bar ── */}
       <div className="shrink-0 flex items-center gap-1.5 px-3 h-7 border-t border-indigo-100/50 bg-white/80 text-[10px] text-slate-400">
-        <span className="font-semibold text-indigo-400">{tab === 'ai' ? 'AI' : 'Trace'}</span>
-        <span>·</span>
-        <span>{activeDate}{isToday ? ' · 今天' : ''}</span>
-        <span>·</span>
-        <span>{visibleCount}/{totalCount}</span>
-        {autoRefresh && isToday && (
-          <><span>·</span><span className="text-emerald-500">↻ 3s</span></>
+        <span className="font-semibold text-indigo-400">{tab === 'ai' ? 'AI' : tab === 'trace' ? 'Trace' : '能力'}</span>
+        {tab !== 'caps' && (
+          <>
+            <span>·</span>
+            <span>{activeDate}{isToday ? ' · 今天' : ''}</span>
+            <span>·</span>
+            <span>{visibleCount}/{totalCount}</span>
+            {autoRefresh && isToday && (
+              <><span>·</span><span className="text-emerald-500">↻ 3s</span></>
+            )}
+            {filter && (
+              <><span>·</span><span className="italic">"{filter}"</span></>
+            )}
+            {tab === 'trace' && moduleFilter !== 'all' && (
+              <><span>·</span><span>{moduleFilter}</span></>
+            )}
+          </>
         )}
-        {filter && (
-          <><span>·</span><span className="italic">"{filter}"</span></>
-        )}
-        {tab === 'trace' && moduleFilter !== 'all' && (
-          <><span>·</span><span>{moduleFilter}</span></>
+        {tab === 'caps' && (
+          <>
+            <span>·</span>
+            <span>变量管道自省 · 阶段 1.5</span>
+          </>
         )}
         <span className="ml-auto text-slate-300">debug workspace</span>
       </div>

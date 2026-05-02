@@ -4,9 +4,11 @@ import { getClient, chatCompletion, chatCompletionStream } from '../services/ai.
 import { assembleMessages, MSG_SEP } from '../services/context.js';
 import { genId } from '../storage/FileStore.js';
 import { triggerExtraction } from '../services/extraction.js';
-import { checkAndFireEvents, parseOutcomeFromAIResponse, tickCooldowns } from '../services/eventEngine.js';
+import { applyEventOutcomes, tickCooldowns } from '../services/eventEngine.js';
+import { dispatchTrigger } from '../services/triggerBus.js';
 import { consumeInjectionTurns } from '../services/events.js';
-import { extractVarBlock, parseAndApplyVarBlock } from '../services/values.js';
+import { applyVarBlock } from '../services/values.js';
+import { parseAIOutput } from '../services/aiProtocol.js';
 import { runWithTrace, traceSummary } from '../services/trace.js';
 
 // 同一发送者 5 分钟内的消息合并为一条
@@ -195,7 +197,7 @@ router.post('/respond', async (req, res) => {
       }
     }
 
-    const { messages } = await assembleMessages(characterId, personaId, null, { contextMode: aiContextMode });
+    const { messages } = await assembleMessages(characterId, personaId, null, { contextMode: aiContextMode, mode });
     const client = getClient(aiPreset || { apiKey: aiKey, baseURL: aiBase, provider });
 
     // ── 流式 SSE ──────────────────────────────────────────────────────
@@ -240,8 +242,9 @@ router.post('/respond', async (req, res) => {
         return;
       }
 
-      // 提取并移除 <var> 块，保留干净内容
-      const { cleanContent: streamClean, varBlock: streamVarBlock } = extractVarBlock(fullContent);
+      // 解析 AI 协议块（<sys>...</sys>），分离正文与结构化更新
+      const parsed = parseAIOutput(fullContent);
+      const streamClean = parsed.cleanContent;
 
       const aiNow = new Date().toISOString();
       const aiMsg = await messageStore.create({
@@ -251,18 +254,16 @@ router.post('/respond', async (req, res) => {
       });
 
       // 应用变量更新，将快照写回消息
-      let streamChangedVars: ReturnType<typeof parseAndApplyVarBlock>['changedVariables'] = [];
-      if (streamVarBlock) {
+      let streamChangedVars: ReturnType<typeof applyVarBlock>['changedVariables'] = [];
+      if (parsed.varUpdates.length > 0 || parsed.emotion) {
         try {
-          const result = parseAndApplyVarBlock(characterId, streamVarBlock);
+          const result = applyVarBlock(characterId, parsed.varUpdates, parsed.emotion);
           streamChangedVars = result.changedVariables;
           await messageStore.update(aiMsg.id, { variableSnapshot: result.snapshot } as any);
         } catch (e) { console.error('[chat/var-block]', e.message); }
-      } else {
-        traceSummary('variables', 'var.parse.summary', 'no <var> block', {
-          reason: 'missing-var-block',
-          appliedCount: 0,
-          failedLines: 0,
+      } else if (!parsed.diagnostics.sysBlockFound) {
+        traceSummary('aiProtocol', 'protocol.parse.empty', 'no <sys> block in AI output', {
+          contentLength: fullContent.length,
         });
       }
 
@@ -271,17 +272,17 @@ router.post('/respond', async (req, res) => {
       triggerAutoSummaries(characterId);
       triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
       // 事件引擎：先为每个 AI 改动的变量触发 value_change（与 /api/values/.../adjust 路径对称），
-      // 再解析结果标签 + 触发 chat_end + 消耗注入轮次
+      // 再应用 <event> outcome + 触发 chat_end + 消耗注入轮次
       try {
         for (const change of streamChangedVars) {
-          checkAndFireEvents(characterId, {
+          dispatchTrigger(characterId, {
             trigger: 'value_change',
             changedVariable: change.variableName,
             newValue: change.newValue,
           });
         }
-        parseOutcomeFromAIResponse(streamClean);
-        checkAndFireEvents(characterId, { trigger: 'chat_end', chatContent: streamClean });
+        applyEventOutcomes(parsed.events);
+        dispatchTrigger(characterId, { trigger: 'chat_end', chatContent: streamClean });
         tickCooldowns(characterId, 'turns');
         consumeInjectionTurns(characterId);
       } catch (e) { console.error('[chat/event-engine]', e.message); }
@@ -297,8 +298,9 @@ router.post('/respond', async (req, res) => {
       source: 'chat.respond',
     });
 
-    // 提取并移除 <var> 块
-    const { cleanContent, varBlock } = extractVarBlock(aiContent);
+    // 解析 AI 协议块
+    const parsed = parseAIOutput(aiContent);
+    const cleanContent = parsed.cleanContent;
 
     const aiNow = new Date().toISOString();
     const aiMsg = await messageStore.create({
@@ -308,35 +310,33 @@ router.post('/respond', async (req, res) => {
     });
 
     // 应用变量更新，将快照写回消息
-    let changedVars: ReturnType<typeof parseAndApplyVarBlock>['changedVariables'] = [];
-    if (varBlock) {
+    let changedVars: ReturnType<typeof applyVarBlock>['changedVariables'] = [];
+    if (parsed.varUpdates.length > 0 || parsed.emotion) {
       try {
-        const result = parseAndApplyVarBlock(characterId, varBlock);
+        const result = applyVarBlock(characterId, parsed.varUpdates, parsed.emotion);
         changedVars = result.changedVariables;
         await messageStore.update(aiMsg.id, { variableSnapshot: result.snapshot } as any);
       } catch (e) { console.error('[chat/var-block]', e.message); }
-    } else {
-      traceSummary('variables', 'var.parse.summary', 'no <var> block', {
-        reason: 'missing-var-block',
-        appliedCount: 0,
-        failedLines: 0,
+    } else if (!parsed.diagnostics.sysBlockFound) {
+      traceSummary('aiProtocol', 'protocol.parse.empty', 'no <sys> block in AI output', {
+        contentLength: aiContent.length,
       });
     }
 
     triggerAutoSummaries(characterId);
     triggerExtraction(characterId).catch(e => console.error('[extraction]', e.message));
     // 事件引擎：先为每个 AI 改动的变量触发 value_change（与 /api/values/.../adjust 路径对称），
-    // 再解析结果标签 + 触发 chat_end + 消耗注入轮次
+    // 再应用 <event> outcome + 触发 chat_end + 消耗注入轮次
     try {
       for (const change of changedVars) {
-        checkAndFireEvents(characterId, {
+        dispatchTrigger(characterId, {
           trigger: 'value_change',
           changedVariable: change.variableName,
           newValue: change.newValue,
         });
       }
-      parseOutcomeFromAIResponse(cleanContent);
-      checkAndFireEvents(characterId, { trigger: 'chat_end', chatContent: cleanContent });
+      applyEventOutcomes(parsed.events);
+      dispatchTrigger(characterId, { trigger: 'chat_end', chatContent: cleanContent });
       tickCooldowns(characterId, 'turns');
       consumeInjectionTurns(characterId);
     } catch (e) { console.error('[chat/event-engine]', e.message); }
@@ -375,7 +375,7 @@ router.post('/', async (req, res) => {
     let openAIMessages;
 
     if (characterId) {
-      const assembled = await assembleMessages(characterId, personaId, content.trim());
+      const assembled = await assembleMessages(characterId, personaId, content.trim(), { mode });
       openAIMessages  = assembled.messages;
     } else {
       const systemContent = [

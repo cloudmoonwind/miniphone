@@ -251,11 +251,14 @@ router.get('/item/:eventId/connections', (req, res) => {
 
 router.post('/connections', (req, res) => {
   try {
-    const { fromEventId, toEventId, relationType } = req.body;
+    const { fromEventId, toEventId, relationType, requiredOutcome } = req.body;
     if (!fromEventId || !toEventId || !relationType) {
       return res.status(400).json({ error: 'fromEventId, toEventId, relationType 不能为空' });
     }
-    const conn = svc.createConnection({ fromEventId, toEventId, relationType });
+    const conn = svc.createConnection({
+      fromEventId, toEventId, relationType,
+      requiredOutcome: requiredOutcome ?? null,
+    });
     res.status(201).json(conn);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

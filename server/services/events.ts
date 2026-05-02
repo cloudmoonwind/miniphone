@@ -305,13 +305,21 @@ export function createConnection(data: {
   fromEventId: string;
   toEventId: string;
   relationType: string;
+  /** 仅 relationType='branch' 时使用：null 表示该分支接受任意 outcome */
+  requiredOutcome?: string | null;
 }): EventConnection {
   const db = getDrizzle();
-  return db.insert(eventConnections).values(data).returning().get();
+  return db.insert(eventConnections).values({
+    fromEventId: data.fromEventId,
+    toEventId: data.toEventId,
+    relationType: data.relationType,
+    requiredOutcome: data.requiredOutcome ?? null,
+  }).returning().get();
 }
 
 export function updateConnection(id: number, patch: Partial<{
   relationType: string;
+  requiredOutcome: string | null;
 }>): EventConnection | undefined {
   const db = getDrizzle();
   return db.update(eventConnections)

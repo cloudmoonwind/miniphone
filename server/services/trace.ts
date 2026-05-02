@@ -15,6 +15,8 @@ export type TraceModule =
   | 'context'
   | 'worldbook'
   | 'variables'
+  | 'placeholders'
+  | 'aiProtocol'
   | 'memory'
   | 'eventEngine'
   | 'pending'

@@ -3,7 +3,7 @@
  *
  * 入口：
  *   checkAndFireEvents(charId, trigger, context?) → 检查并触发满足条件的事件
- *   parseOutcomeFromAIResponse(text) → 从 AI 回复中提取 [EVENT:id:outcome] 标签
+ *   applyEventOutcomes(parsed) → 应用 AI 协议解析后的事件 outcome 列表（写库 + 触发 branch）
  *   tickCooldowns(charId, mode) → 每轮/每天减少冷却计数
  *
  * trigger 枚举：
@@ -487,154 +487,255 @@ function fireEvent(charId: string, evt: Event, ctx: TriggerContext, snapshot: Sn
   }
 }
 
-// ── Effect 执行 ───────────────────────────────────────────────────────────
+// ── Effect 注册表与执行 ──────────────────────────────────────────────────
+// 阶段 4 改造：把原本的 switch 拆成可注册的 handler。
+// 内部消费者（events 系统）走查表；未来加新 effect 类型只需 registerEffect 即可。
 
+export type EffectHandler = (
+  charId: string,
+  eventId: string,
+  effect: any,
+  snapshot: Snapshot,
+  traceParentId: string | null,
+) => void;
+
+export interface EffectMeta {
+  /** 主类型名（英文） */
+  type: string;
+  /** 别名（中文等） */
+  aliases?: string[];
+  /** 简短说明，用于能力清单页 */
+  description: string;
+  /** 参数提示，用于能力清单页 */
+  paramsHint?: string;
+}
+
+interface EffectRegistration {
+  meta: EffectMeta;
+  handler: EffectHandler;
+}
+
+const effectRegistry = new Map<string, EffectRegistration>();
+/** 用于列出 metas（不重复别名） */
+const effectMetas: EffectMeta[] = [];
+
+/** 注册 effect 类型；同 type 重复注册覆盖 */
+export function registerEffect(meta: EffectMeta, handler: EffectHandler): void {
+  // 先清理同名旧注册（覆盖语义）
+  if (effectRegistry.has(meta.type)) {
+    const oldReg = effectRegistry.get(meta.type)!;
+    const idx = effectMetas.findIndex(m => m.type === oldReg.meta.type);
+    if (idx >= 0) effectMetas.splice(idx, 1);
+  }
+  effectRegistry.set(meta.type, { meta, handler });
+  for (const alias of meta.aliases ?? []) {
+    effectRegistry.set(alias, { meta, handler });
+  }
+  effectMetas.push(meta);
+}
+
+/** 列出已注册的 effect meta（去重，不含别名） */
+export function listRegisteredEffects(): EffectMeta[] {
+  return [...effectMetas];
+}
+
+/** 通用 trace 助手 */
+function traceEffectStatus(
+  type: string,
+  eventId: string,
+  effect: any,
+  status: 'ok' | 'skipped',
+  extra: Record<string, any>,
+  traceParentId: string | null,
+): void {
+  traceDetail('eventEngine', 'event.effect', `${type} ${status}`, {
+    eventId,
+    type,
+    status,
+    effect,
+    ...extra,
+  }, traceParentId);
+}
+
+/** dispatch 入口（替代旧 switch） */
 function executeEffect(charId: string, eventId: string, effect: any, snapshot: Snapshot, traceParentId?: string | null): void {
   const type = effect.类型 || effect.type;
-  const traceEffect = (status: string, extra: Record<string, any> = {}) => {
-    traceDetail('eventEngine', 'event.effect', `${type} ${status}`, {
-      eventId,
-      type,
-      status,
-      effect,
-      ...extra,
-    }, traceParentId ?? null);
-  };
-
-  switch (type) {
-    case '注入':
-    case 'inject': {
-      const content = effect.内容 || effect.content || '';
-      const position = effect.位置 || effect.position || 'after_char';
-      const durationType = effect.持续 || effect.durationType || 'once';
-      const durationValue = String(effect.持续值 ?? effect.durationValue ?? '');
-      const remainingTurns = durationType === 'turns' ? (parseInt(durationValue) || 1) : undefined;
-
-      createInjection({
-        characterId: charId,
-        sourceEventId: eventId,
-        content,
-        position,
-        durationType,
-        durationValue: durationValue || undefined,
-        remainingTurns,
-      });
-      traceEffect('ok', { position, durationType, remainingTurns });
-      break;
-    }
-
-    case '改数值':
-    case 'modify_value': {
-      const varName = effect.目标 || effect.target;
-      const op = effect.操作 || effect.operation || 'add';
-      const amount = effect.值 ?? effect.value ?? 0;
-
-      const val = getValueByVariable(charId, varName);
-      if (!val) {
-        traceEffect('skipped', { reason: 'unknown-variable', variableName: varName });
-        break;
-      }
-
-      switch (op) {
-        case 'add':
-          adjustValue(val.id, amount);
-          traceEffect('ok', { variableName: varName, operation: op, amount });
-          break;
-        case 'set':
-          adjustValue(val.id, amount - val.currentValue); // set = add (target - current)
-          traceEffect('ok', { variableName: varName, operation: op, amount });
-          break;
-        case 'multiply':
-          adjustValue(val.id, val.currentValue * amount - val.currentValue);
-          traceEffect('ok', { variableName: varName, operation: op, amount });
-          break;
-      }
-      break;
-    }
-
-    case '记录结果':
-    case 'set_outcome': {
-      const targetEvtId = effect.目标 || effect.target || eventId;
-      const outcomeVal = effect.值 || effect.value || '';
-      updateEvent(targetEvtId, { outcome: outcomeVal } as any);
-      // 更新快照（同次触发中后续效果可见）
-      snapshot.eventOutcomes[targetEvtId] = outcomeVal;
-      traceEffect('ok', { targetEventId: targetEvtId, outcome: outcomeVal });
-      break;
-    }
-
-    case '触发事件':
-    case 'trigger_event': {
-      const targetId = effect.目标 || effect.target;
-      const target = getEventById(targetId);
-      if (target && target.status === 'pending') {
-        // 直接触发（跳过概率检查，视为外部强制触发）
-        fireEvent(charId, target, { trigger: 'event_complete', completedEventId: targetId }, snapshot);
-        traceEffect('ok', { targetEventId: targetId });
-      } else {
-        traceEffect('skipped', { targetEventId: targetId, reason: target ? `status-${target.status}` : 'not-found' });
-      }
-      break;
-    }
-
-    case '解锁事件':
-    case 'unlock_event': {
-      const targetId = effect.目标 || effect.target;
-      unlockEvent(targetId);
-      traceEffect('ok', { targetEventId: targetId });
-      break;
-    }
-
-    case '锁定事件':
-    case 'lock_event': {
-      const targetId = effect.目标 || effect.target;
-      const target = getEventById(targetId);
-      if (target && target.status === 'pending') {
-        updateEvent(targetId, { status: 'locked' });
-        clearSubscriptions(targetId);
-        traceEffect('ok', { targetEventId: targetId });
-      } else {
-        traceEffect('skipped', { targetEventId: targetId, reason: target ? `status-${target.status}` : 'not-found' });
-      }
-      break;
-    }
-
-    case '改位置':
-    case 'change_location': {
-      const location = effect.目标 || effect.target || '';
-      const rawDb = getDb();
-      rawDb.prepare(`
-        INSERT INTO world_state (key, value, updated_at) VALUES ('location', ?, ?)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
-      `).run(location, new Date().toISOString());
-      snapshot.worldState['location'] = location;
-      traceEffect('ok', { location });
-      break;
-    }
-
-    case '记录历史':
-    case 'record_history': {
-      const content = effect.内容 || effect.content || '';
-      if (!content) break;
-      // executeEffect 是同步签名（fireEvent 链路依赖此假设），timelineStore.create 是 async；
-      // 失败不应阻塞事件触发主流程，故 fire-and-forget。
-      timelineStore.create({
-        charId,
-        title: content.slice(0, 30),
-        content,
-        timestamp: new Date().toISOString(),
-        type: 'event',
-        source: 'event_engine',
-        linkedEventId: eventId,
-      }).catch(e => console.error('[eventEngine/record_history]', e?.message ?? e));
-      traceEffect('ok', { contentSnippet: content.slice(0, 80) });
-      break;
-    }
-
-    default:
-      console.warn(`[eventEngine] 未知效果类型: ${type}`);
-      traceEffect('skipped', { reason: 'unknown-effect-type' });
+  const reg = effectRegistry.get(type);
+  if (!reg) {
+    console.warn(`[eventEngine] 未知效果类型: ${type}`);
+    traceEffectStatus(type, eventId, effect, 'skipped', { reason: 'unknown-effect-type' }, traceParentId ?? null);
+    return;
   }
+  reg.handler(charId, eventId, effect, snapshot, traceParentId ?? null);
+}
+
+// ── 内置 effect handlers（function declaration 便于在 registerBuiltinEffects 之前 hoist）──
+
+function injectEffectHandler(charId: string, eventId: string, effect: any, _snapshot: Snapshot, traceParentId: string | null): void {
+  const type = effect.类型 || effect.type;
+  const content = effect.内容 || effect.content || '';
+  const position = effect.位置 || effect.position || 'after_char';
+  const durationType = effect.持续 || effect.durationType || 'once';
+  const durationValue = String(effect.持续值 ?? effect.durationValue ?? '');
+  const remainingTurns = durationType === 'turns' ? (parseInt(durationValue) || 1) : undefined;
+
+  createInjection({
+    characterId: charId,
+    sourceEventId: eventId,
+    content,
+    position,
+    durationType,
+    durationValue: durationValue || undefined,
+    remainingTurns,
+  });
+  traceEffectStatus(type, eventId, effect, 'ok', { position, durationType, remainingTurns }, traceParentId);
+}
+
+function modifyValueEffectHandler(charId: string, eventId: string, effect: any, _snapshot: Snapshot, traceParentId: string | null): void {
+  const type = effect.类型 || effect.type;
+  const varName = effect.目标 || effect.target;
+  const op = effect.操作 || effect.operation || 'add';
+  const amount = effect.值 ?? effect.value ?? 0;
+
+  const val = getValueByVariable(charId, varName);
+  if (!val) {
+    traceEffectStatus(type, eventId, effect, 'skipped', { reason: 'unknown-variable', variableName: varName }, traceParentId);
+    return;
+  }
+
+  switch (op) {
+    case 'add':
+      adjustValue(val.id, amount);
+      break;
+    case 'set':
+      adjustValue(val.id, amount - val.currentValue); // set = add (target - current)
+      break;
+    case 'multiply':
+      adjustValue(val.id, val.currentValue * amount - val.currentValue);
+      break;
+    default:
+      traceEffectStatus(type, eventId, effect, 'skipped', { reason: 'unknown-operation', operation: op }, traceParentId);
+      return;
+  }
+  traceEffectStatus(type, eventId, effect, 'ok', { variableName: varName, operation: op, amount }, traceParentId);
+}
+
+function setOutcomeEffectHandler(_charId: string, eventId: string, effect: any, snapshot: Snapshot, traceParentId: string | null): void {
+  const type = effect.类型 || effect.type;
+  const targetEvtId = effect.目标 || effect.target || eventId;
+  const outcomeVal = effect.值 || effect.value || '';
+  updateEvent(targetEvtId, { outcome: outcomeVal } as any);
+  // 更新快照（同次触发中后续效果可见）
+  snapshot.eventOutcomes[targetEvtId] = outcomeVal;
+  traceEffectStatus(type, eventId, effect, 'ok', { targetEventId: targetEvtId, outcome: outcomeVal }, traceParentId);
+}
+
+function triggerEventEffectHandler(charId: string, eventId: string, effect: any, snapshot: Snapshot, traceParentId: string | null): void {
+  const type = effect.类型 || effect.type;
+  const targetId = effect.目标 || effect.target;
+  const target = getEventById(targetId);
+  if (target && target.status === 'pending') {
+    // 直接触发（跳过概率检查，视为外部强制触发）
+    fireEvent(charId, target, { trigger: 'event_complete', completedEventId: targetId }, snapshot);
+    traceEffectStatus(type, eventId, effect, 'ok', { targetEventId: targetId }, traceParentId);
+  } else {
+    traceEffectStatus(type, eventId, effect, 'skipped',
+      { targetEventId: targetId, reason: target ? `status-${target.status}` : 'not-found' },
+      traceParentId);
+  }
+}
+
+function unlockEventEffectHandler(_charId: string, eventId: string, effect: any, _snapshot: Snapshot, traceParentId: string | null): void {
+  const type = effect.类型 || effect.type;
+  const targetId = effect.目标 || effect.target;
+  unlockEvent(targetId);
+  traceEffectStatus(type, eventId, effect, 'ok', { targetEventId: targetId }, traceParentId);
+}
+
+function lockEventEffectHandler(_charId: string, eventId: string, effect: any, _snapshot: Snapshot, traceParentId: string | null): void {
+  const type = effect.类型 || effect.type;
+  const targetId = effect.目标 || effect.target;
+  const target = getEventById(targetId);
+  if (target && target.status === 'pending') {
+    updateEvent(targetId, { status: 'locked' });
+    clearSubscriptions(targetId);
+    traceEffectStatus(type, eventId, effect, 'ok', { targetEventId: targetId }, traceParentId);
+  } else {
+    traceEffectStatus(type, eventId, effect, 'skipped',
+      { targetEventId: targetId, reason: target ? `status-${target.status}` : 'not-found' },
+      traceParentId);
+  }
+}
+
+function changeLocationEffectHandler(_charId: string, eventId: string, effect: any, snapshot: Snapshot, traceParentId: string | null): void {
+  const type = effect.类型 || effect.type;
+  const location = effect.目标 || effect.target || '';
+  const rawDb = getDb();
+  rawDb.prepare(`
+    INSERT INTO world_state (key, value, updated_at) VALUES ('location', ?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+  `).run(location, new Date().toISOString());
+  snapshot.worldState['location'] = location;
+  traceEffectStatus(type, eventId, effect, 'ok', { location }, traceParentId);
+}
+
+function recordHistoryEffectHandler(charId: string, eventId: string, effect: any, _snapshot: Snapshot, traceParentId: string | null): void {
+  const type = effect.类型 || effect.type;
+  const content = effect.内容 || effect.content || '';
+  if (!content) {
+    traceEffectStatus(type, eventId, effect, 'skipped', { reason: 'empty-content' }, traceParentId);
+    return;
+  }
+  // executeEffect 是同步签名（fireEvent 链路依赖此假设），timelineStore.create 是 async；
+  // 失败不应阻塞事件触发主流程，故 fire-and-forget。
+  timelineStore.create({
+    charId,
+    title: content.slice(0, 30),
+    content,
+    timestamp: new Date().toISOString(),
+    type: 'event',
+    source: 'event_engine',
+    linkedEventId: eventId,
+  }).catch(e => console.error('[eventEngine/record_history]', e?.message ?? e));
+  traceEffectStatus(type, eventId, effect, 'ok', { contentSnippet: content.slice(0, 80) }, traceParentId);
+}
+
+/**
+ * 注册全部内置 effect。在 server 启动钩子调用一次（幂等：已注册同名会被覆盖）。
+ */
+export function registerBuiltinEffects(): void {
+  registerEffect(
+    { type: 'inject', aliases: ['注入'], description: '把内容加入 pending_injections 队列，组装上下文时插入对应位置', paramsHint: '{ content, position?, durationType?, durationValue? }' },
+    injectEffectHandler,
+  );
+  registerEffect(
+    { type: 'modify_value', aliases: ['改数值'], description: '修改某个 character_value 的当前值', paramsHint: '{ target, operation: "add"|"set"|"multiply", value }' },
+    modifyValueEffectHandler,
+  );
+  registerEffect(
+    { type: 'set_outcome', aliases: ['记录结果'], description: '设置某事件的 outcome 字段', paramsHint: '{ target?, value }' },
+    setOutcomeEffectHandler,
+  );
+  registerEffect(
+    { type: 'trigger_event', aliases: ['触发事件'], description: '立即触发某 pending 事件（跳过概率检查）', paramsHint: '{ target }' },
+    triggerEventEffectHandler,
+  );
+  registerEffect(
+    { type: 'unlock_event', aliases: ['解锁事件'], description: '把某 locked 事件转为 pending', paramsHint: '{ target }' },
+    unlockEventEffectHandler,
+  );
+  registerEffect(
+    { type: 'lock_event', aliases: ['锁定事件'], description: '把某 pending 事件转回 locked', paramsHint: '{ target }' },
+    lockEventEffectHandler,
+  );
+  registerEffect(
+    { type: 'change_location', aliases: ['改位置'], description: '修改 world_state.location', paramsHint: '{ target }' },
+    changeLocationEffectHandler,
+  );
+  registerEffect(
+    { type: 'record_history', aliases: ['记录历史'], description: '把内容写入 timeline（角色历史时间线）', paramsHint: '{ content }' },
+    recordHistoryEffectHandler,
+  );
 }
 
 // ── 事件连接处理 ──────────────────────────────────────────────────────────
@@ -659,50 +760,65 @@ function processEventConnections(completedEventId: string, snapshot: Snapshot): 
   }
 }
 
-// ── AI 回复中提取 outcome 标签 ────────────────────────────────────────────
-
-const OUTCOME_PATTERN = /\[EVENT:([a-zA-Z0-9_-]+):([a-zA-Z0-9_-]+)\]/g;
+// ── 应用 AI 协议解析后的事件结果 ──────────────────────────────────────────
 
 /**
- * 解析 AI 回复中的事件结果标签并写入数据库。
- * 标签格式：[EVENT:事件ID:结果]  示例：[EVENT:evt_confession:success]
+ * 应用 AI 协议解析后的事件 outcome 列表到数据库：
+ * - 写入 events.outcome 字段
+ * - 触发匹配的 branch 连接（按 conn.requiredOutcome 严格匹配）
  *
- * @returns 解析到的 { eventId, outcome }[] 列表，供调用方继续处理（如触发后续事件链）
+ * 输入形如：[{ eventId, outcome, reason? }]，由 aiProtocol.parseAIOutput 提供。
+ *
+ * @returns 实际应用成功的 { eventId, outcome }[] 列表（事件不存在的会被跳过）
  */
-export function parseOutcomeFromAIResponse(text: string): Array<{ eventId: string; outcome: string }> {
+export function applyEventOutcomes(
+  parsed: Array<{ eventId: string; outcome: string; reason?: string }>,
+): Array<{ eventId: string; outcome: string }> {
   const results: Array<{ eventId: string; outcome: string }> = [];
-  let match: RegExpExecArray | null;
+  if (!parsed.length) return results;
 
-  OUTCOME_PATTERN.lastIndex = 0; // 重置全局匹配
-  while ((match = OUTCOME_PATTERN.exec(text)) !== null) {
-    const [, eventId, outcome] = match;
+  const traceParentId = traceSummary('eventEngine', 'event.outcome.apply.start',
+    `apply ${parsed.length} event outcomes`, { count: parsed.length });
+
+  for (const item of parsed) {
+    const { eventId, outcome, reason } = item;
     const evt = getEventById(eventId);
-    if (evt) {
-      updateEvent(eventId, { outcome } as any);
-      results.push({ eventId, outcome });
-      console.log(`[eventEngine] AI 标记结果: ${eventId} → ${outcome}`);
+    if (!evt) {
+      traceDetail('eventEngine', 'event.outcome.skip', `${eventId} not found`,
+        { eventId, outcome, reason: 'event-not-found' }, traceParentId);
+      continue;
+    }
 
-      // 触发后续分支事件（根据 outcome 匹配 branch 连接）
-      const db = getDrizzle();
-      const branchConns = db.select().from(eventConnections)
-        .where(and(
-          eq(eventConnections.fromEventId, eventId),
-          eq(eventConnections.relationType, 'branch'),
-        ))
-        .all();
+    updateEvent(eventId, { outcome } as any);
+    results.push({ eventId, outcome });
+    traceDetail('eventEngine', 'event.outcome.applied', `${eventId} → ${outcome}`,
+      { eventId, outcome, providedReason: reason ?? null }, traceParentId);
+    console.log(`[eventEngine] AI 标记结果: ${eventId} → ${outcome}`);
 
-      for (const conn of branchConns) {
-        // 连接的 requiredOutcome 暂时存储在 relation_type 后缀中，约定格式：
-        // relationType = 'branch:success' 或 'branch:fail' 等
-        // 或者如果没有后缀，所有 branch 连接都走
-        const parts = conn.relationType.split(':');
-        const required = parts[1]; // 可能为 undefined
-        if (!required || required === outcome) {
-          unlockEvent(conn.toEventId);
-        }
+    // 触发后续分支事件（根据 outcome 匹配 branch 连接）
+    const db = getDrizzle();
+    const branchConns = db.select().from(eventConnections)
+      .where(and(
+        eq(eventConnections.fromEventId, eventId),
+        eq(eventConnections.relationType, 'branch'),
+      ))
+      .all();
+
+    for (const conn of branchConns) {
+      // requiredOutcome=null 表示该分支接受任意 outcome；非 null 时必须严格匹配
+      if (conn.requiredOutcome == null || conn.requiredOutcome === outcome) {
+        unlockEvent(conn.toEventId);
+        traceDetail('eventEngine', 'event.outcome.branch.unlocked',
+          `${eventId}→${conn.toEventId}`,
+          { from: eventId, to: conn.toEventId, requiredOutcome: conn.requiredOutcome, outcome },
+          traceParentId);
       }
     }
   }
+
+  traceSummary('eventEngine', 'event.outcome.apply.done',
+    `${results.length}/${parsed.length} applied`,
+    { applied: results.length, total: parsed.length });
 
   return results;
 }

@@ -53,5 +53,5 @@ export interface TraceEntry {
   events: TraceEvent[];
 }
 
-export type TabKey = 'ai' | 'trace';
+export type TabKey = 'ai' | 'trace' | 'caps';
 export type LevelFilter = 'summary' | 'detail' | 'debug';

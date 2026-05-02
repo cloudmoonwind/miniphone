@@ -5,6 +5,8 @@ import bodyParser from 'body-parser';
 
 import { getDb } from './db/database.js';
 import { seedAllCharacters } from './services/seed.js';
+import { registerBuiltinNamespaces } from './services/builtinNamespaces.js';
+import { listRegistered } from './services/placeholders.js';
 
 import sessionsRouter    from './routes/sessions.js';
 import charactersRouter  from './routes/characters.js';
@@ -32,7 +34,9 @@ import dafuRouter        from './routes/dafu.js';
 import valuesRouter      from './routes/values.js';
 import eventsRouter, { injectionsRouter, eventBooksRouter } from './routes/events.js';
 import worldstateRouter  from './routes/worldstate.js';
-import { checkAndFireEvents, tickCooldowns } from './services/eventEngine.js';
+import capabilitiesRouter from './routes/capabilities.js';
+import { checkAndFireEvents, tickCooldowns, registerBuiltinEffects } from './services/eventEngine.js';
+import { registerTriggerListener, dispatchTrigger } from './services/triggerBus.js';
 import { purgeOlderThan as purgeAiLogs } from './services/aiLogStore.js';
 import { purgeOlderThan as purgeTraceLogs } from './services/traceStore.js';
 
@@ -90,6 +94,7 @@ app.use('/api/event-books',                  eventBooksRouter);
 app.use('/api/events',                       eventsRouter);
 app.use('/api/injections',                   injectionsRouter);
 app.use('/api/worldstate',                   worldstateRouter);
+app.use('/api/capabilities',                 capabilitiesRouter);
 
 // ── Error handler ───────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
@@ -101,6 +106,17 @@ app.use((err, req, res, next) => {
 (async () => {
   // getDb() 内部会自动运行 drizzle migrations
   getDb();
+
+  // 占位符变量管道：注册所有内置命名空间
+  registerBuiltinNamespaces();
+  console.log(`[ICS server] 已注册命名空间: ${listRegistered().map(r => r.namespace).join(', ')}`);
+
+  // 事件系统：注册所有内置 effect 类型
+  registerBuiltinEffects();
+
+  // Trigger 总线：把 eventEngine.checkAndFireEvents 注册为唯一 listener
+  // 未来后处理规则系统等成为消费者时，直接 registerTriggerListener 即可
+  registerTriggerListener(checkAndFireEvents);
 
   // 为所有角色注入数值/事件种子数据（幂等，已有则跳过）
   try {
@@ -131,7 +147,7 @@ app.use((err, req, res, next) => {
     const charIds = getActiveCharIds();
     for (const charId of charIds) {
       try {
-        checkAndFireEvents(charId, { trigger: 'time_pass_hourly' });
+        dispatchTrigger(charId, { trigger: 'time_pass_hourly' });
       } catch (e: any) { console.error('[time_pass_hourly]', charId, e.message); }
     }
     if (charIds.length) console.log('[time_pass_hourly] checked', charIds.length, 'characters');
@@ -143,7 +159,7 @@ app.use((err, req, res, next) => {
     const charIds = getActiveCharIds();
     for (const charId of charIds) {
       try {
-        checkAndFireEvents(charId, { trigger: 'time_pass_daily' });
+        dispatchTrigger(charId, { trigger: 'time_pass_daily' });
         tickCooldowns(charId, 'days');
       } catch (e: any) { console.error('[time_pass_daily]', charId, e.message); }
     }

@@ -190,6 +190,9 @@ export const eventConnections = sqliteTable('event_connections', {
   fromEventId:  text('from_event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
   toEventId:    text('to_event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
   relationType: text('relation_type').notNull(), // 'next' | 'branch' | 'trigger' | 'unlock'
+  // 仅 relationType='branch' 时使用：标记此分支需要的 outcome 字符串（null 表示任意 outcome 都触发）
+  // 取代旧版 'branch:xxx' 拼接 hack
+  requiredOutcome: text('required_outcome'),
 });
 
 /** 条件订阅表：pending 事件订阅的条件变化 */
